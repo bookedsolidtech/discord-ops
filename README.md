@@ -8,7 +8,7 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **45 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, templates, project introspection
+- **45 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, project introspection
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
 - **Notification routing** — map notification types (ci_build, deploy, error) to channels per project
 - **Multi-bot support** — manage multiple Discord bots from a single MCP server with per-project tokens
@@ -321,34 +321,51 @@ In dry-run mode, destructive tools return a simulated success response showing w
 
 ## Message Templates
 
-17 built-in embed templates for polished Discord messages. Use `send_template` with project routing.
+23 built-in templates with cutting-edge Discord features. Use `send_template` with project routing.
 
-### DevOps Templates
+**Features across all templates:**
+- **Author branding** — every template has a configurable `author_name` + `author_icon` at the top
+- **Link buttons** — clickable buttons below embeds (View Logs, Open PR, Runbook, etc.)
+- **Discord timestamps** — dates auto-convert to each user's timezone with live countdowns
+- **Native polls** — real Discord polls with progress bars and vote tracking
+- **Multi-embed dashboards** — up to 10 embeds per message for service status boards
+- **Footer icons** — status indicator icons (green/red) next to footer text
+- **Clickable titles** — embed titles link directly to URLs
+- **Syntax-highlighted code** — code examples with language-specific highlighting
+- **Progress bars** — visual Unicode block progress indicators
 
-| Template            | Description                                  | Key Vars                                        |
-| ------------------- | -------------------------------------------- | ----------------------------------------------- |
-| `release`           | Version release announcement                 | `version`, `name`, `notes`, `highlights`, `npm` |
-| `deploy`            | Deployment success/failure                   | `status`, `environment`, `version`, `commit`    |
-| `ci_build`          | CI build result                              | `status`, `branch`, `tests`, `coverage`         |
-| `incident`          | Incident alert                               | `title`, `severity`, `status`, `service`        |
-| `incident_resolved` | Incident resolution                          | `title`, `duration`, `root_cause`, `resolution` |
-| `maintenance`       | Scheduled maintenance                        | `title`, `start`, `end`, `services`             |
-| `status_update`     | Service status (operational/degraded/outage) | `status`, `services`, `uptime`                  |
-| `review`            | PR review request                            | `title`, `repo`, `author`, `branch`, `url`      |
+### DevOps Templates (10)
 
-### Team & Community Templates
+| Template            | Description                                    | Key Features                                 |
+| ------------------- | ---------------------------------------------- | -------------------------------------------- |
+| `release`           | Version release with install + link buttons    | Author, link buttons, clickable title        |
+| `deploy`            | Deploy success/failure with logs button        | Footer icon, view/logs buttons               |
+| `ci_build`          | CI result with build link button               | Footer icon, clickable title                 |
+| `incident`          | Incident alert with severity colors            | Discord timestamps, status page button       |
+| `incident_resolved` | Resolution with postmortem button              | Discord timestamps, postmortem link          |
+| `maintenance`       | Maintenance with live timezone countdowns       | Discord timestamps, countdown, status button |
+| `status_update`     | Service status (operational/degraded/outage)   | Footer icon, dashboard button                |
+| `review`            | PR review with diff stats + PR button          | Clickable title, additions/deletions         |
+| `dashboard`         | Multi-embed service status board (up to 9 svc) | Multi-embed, per-service color cards         |
+| `oncall`            | On-call handoff with shift timestamps          | Discord timestamps, runbook button           |
+| `alert`             | Configurable alert (info/warn/error/critical)  | Level-based colors, metric thresholds        |
 
-| Template       | Description                      | Key Vars                                 |
-| -------------- | -------------------------------- | ---------------------------------------- |
-| `celebration`  | Celebrate wins and milestones    | `title`, `message`, `achievement`        |
-| `welcome`      | Welcome new team members         | `name`, `role`, `team`, `mention`        |
-| `shoutout`     | Recognize outstanding work       | `name`, `achievement`, `mention`         |
-| `quote`        | Inspirational/motivational quote | `text`, `author`, `source`               |
-| `announcement` | General announcement             | `title`, `message`, `action`, `deadline` |
-| `changelog`    | What's new (added/changed/fixed) | `version`, `added`, `changed`, `fixed`   |
-| `milestone`    | Project milestone reached        | `title`, `metric`, `target`, `next`      |
-| `tip`          | Pro tip with code example        | `message`, `title`, `example`, `link`    |
-| `poll`         | Quick poll with numbered options | `question`, `options` (pipe-separated)   |
+### Team & Community Templates (12)
+
+| Template       | Description                                | Key Features                                  |
+| -------------- | ------------------------------------------ | --------------------------------------------- |
+| `celebration`  | Celebrate wins with images                 | Author, thumbnail, image                      |
+| `welcome`      | Welcome members with onboarding buttons    | Discord timestamps, handbook/onboarding links |
+| `shoutout`     | Recognize work with avatar thumbnail       | Thumbnail, nomination attribution             |
+| `quote`        | Block-quoted inspirational text            | Block quote formatting, author avatar         |
+| `announcement` | Announcement with deadline countdown       | Discord timestamps, countdown, link button    |
+| `changelog`    | Changelog with 7 section types             | Deprecated, performance, security sections    |
+| `milestone`    | Milestone with target date countdown       | Discord timestamps, progress tracking         |
+| `tip`          | Pro tip with syntax-highlighted code       | Language-specific code blocks, doc button     |
+| `poll`         | Native Discord poll with vote tracking     | Native poll API, multiselect, duration        |
+| `progress`     | Visual progress bar with deadline          | Unicode progress bar, countdown               |
+| `standup`      | Daily standup summary                      | Yesterday/today/blockers sections             |
+| `retro`        | Sprint retrospective                       | Went-well/improve/actions, velocity           |
 
 ### Example
 
@@ -356,18 +373,53 @@ In dry-run mode, destructive tools return a simulated success response showing w
 send_template({
   template: "release",
   vars: {
-    version: "0.6.0",
+    version: "0.7.0",
     name: "discord-ops",
-    notes: "Template system for beautiful Discord embeds",
-    highlights: "17 templates, 45 tools",
-    npm: "discord-ops@0.6.0"
+    notes: "Cutting-edge template system with native Discord features",
+    highlights: "23 templates, native polls, link buttons, Discord timestamps",
+    npm: "discord-ops@0.7.0",
+    link: "https://github.com/bookedsolidtech/discord-ops/releases",
+    author_name: "Clarity CI",
+    author_icon: "https://example.com/logo.png"
   },
   project: "my-app",
   channel: "releases"
 })
 ```
 
-All templates support project routing (`project`, `channel`, `notification_type`, `channel_id`).
+### Native Discord Poll
+
+```
+send_template({
+  template: "poll",
+  vars: {
+    question: "Best language for MCP servers?",
+    options: "TypeScript|Rust|Go|Python",
+    duration: "48",
+    multiselect: "true"
+  },
+  project: "my-app",
+  channel: "dev"
+})
+```
+
+### Multi-Embed Dashboard
+
+```
+send_template({
+  template: "dashboard",
+  vars: {
+    services: "API|Database|CDN|Auth|Queue",
+    statuses: "operational|operational|degraded|operational|outage",
+    title: "Production Status",
+    url: "https://status.example.com"
+  },
+  project: "my-app",
+  channel: "alerts"
+})
+```
+
+All templates support project routing (`project`, `channel`, `notification_type`, `channel_id`) and author branding (`author_name`, `author_icon`).
 
 ## Multi-Organization Troubleshooting
 

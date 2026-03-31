@@ -13,25 +13,43 @@ const inputSchema = z.object({
   embeds: z
     .array(
       z.object({
-        title: z.string().optional(),
-        description: z.string().optional(),
+        title: z.string().max(256).optional(),
+        description: z.string().max(4096).optional(),
         color: z.number().optional(),
         url: z.string().url().optional(),
-        footer: z.object({ text: z.string() }).optional(),
+        thumbnail: z.object({ url: z.string().url() }).optional(),
+        image: z.object({ url: z.string().url() }).optional(),
+        author: z
+          .object({
+            name: z.string().max(256),
+            icon_url: z.string().url().optional(),
+            url: z.string().url().optional(),
+          })
+          .optional(),
+        footer: z
+          .object({
+            text: z.string().max(2048),
+            icon_url: z.string().url().optional(),
+          })
+          .optional(),
         timestamp: z.string().optional(),
         fields: z
           .array(
             z.object({
-              name: z.string(),
-              value: z.string(),
+              name: z.string().max(256),
+              value: z.string().max(1024),
               inline: z.boolean().optional(),
             }),
           )
+          .max(25)
           .optional(),
       }),
     )
+    .max(10)
     .optional()
-    .describe("Array of embed objects"),
+    .describe(
+      "Array of embed objects (max 10, supports thumbnail, image, author, footer with icon)",
+    ),
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 

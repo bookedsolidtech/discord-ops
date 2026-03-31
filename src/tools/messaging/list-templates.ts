@@ -29,6 +29,7 @@ export const listTemplatesCmd: ToolDefinition = {
       description: t.description,
       required_vars: t.requiredVars,
       optional_vars: t.optionalVars,
+      ...(t.features ? { features: t.features } : {}),
     }));
 
     return toolResultJson({
