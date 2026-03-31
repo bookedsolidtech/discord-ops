@@ -6,6 +6,9 @@ import { getMessages } from "./messaging/get-messages.js";
 import { editMessage } from "./messaging/edit-message.js";
 import { deleteMessage } from "./messaging/delete-message.js";
 import { addReaction } from "./messaging/add-reaction.js";
+import { pinMessage } from "./messaging/pin.js";
+import { unpinMessage } from "./messaging/unpin.js";
+import { searchMessages } from "./messaging/search.js";
 
 // Channels
 import { listChannels } from "./channels/list-channels.js";
@@ -15,10 +18,13 @@ import { editChannel } from "./channels/edit-channel.js";
 import { deleteChannel } from "./channels/delete-channel.js";
 import { purgeMessages } from "./channels/purge-messages.js";
 import { setSlowmode } from "./channels/set-slowmode.js";
+import { setPermissions } from "./channels/permissions.js";
 
 // Guilds
 import { listGuilds } from "./guilds/list-guilds.js";
 import { getGuild } from "./guilds/get-guild.js";
+import { getInvites } from "./guilds/invites.js";
+import { createInvite } from "./guilds/invites.js";
 
 // Members
 import { listMembers } from "./members/list-members.js";
@@ -34,6 +40,7 @@ import { assignRole } from "./roles/assign-role.js";
 // Threads
 import { createThread } from "./threads/create-thread.js";
 import { listThreads } from "./threads/list-threads.js";
+import { archiveThread } from "./threads/archive.js";
 
 // Moderation
 import { kickMember } from "./moderation/kick-member.js";
@@ -62,6 +69,9 @@ export const allTools: ToolDefinition[] = [
   editMessage,
   deleteMessage,
   addReaction,
+  pinMessage,
+  unpinMessage,
+  searchMessages,
 
   // Channels
   listChannels,
@@ -71,10 +81,13 @@ export const allTools: ToolDefinition[] = [
   deleteChannel,
   purgeMessages,
   setSlowmode,
+  setPermissions,
 
   // Guilds
   listGuilds,
   getGuild,
+  getInvites,
+  createInvite,
 
   // Members
   listMembers,
@@ -90,6 +103,7 @@ export const allTools: ToolDefinition[] = [
   // Threads
   createThread,
   listThreads,
+  archiveThread,
 
   // Moderation
   kickMember,

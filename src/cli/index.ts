@@ -3,9 +3,12 @@
 import { loadConfig } from "../config/index.js";
 import { DiscordClient } from "../client.js";
 import { createServer } from "../server.js";
+import type { ServerOptions } from "../server.js";
 import { startStdioTransport } from "../transport/stdio.js";
+import { startHttpTransport } from "../transport/http.js";
 import { logger, setLogLevel } from "../utils/logger.js";
 import type { LogLevel } from "../utils/logger.js";
+import { runSetup } from "./setup.js";
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -18,7 +21,7 @@ async function main(): Promise<void> {
 
   // Handle --version
   if (args.includes("--version") || args.includes("-v")) {
-    console.log("discord-ops 0.1.0");
+    console.log("discord-ops 0.2.0");
     process.exit(0);
   }
 
@@ -27,6 +30,16 @@ async function main(): Promise<void> {
     await runHealthCheck();
     return;
   }
+
+  // Handle setup subcommand
+  if (args[0] === "setup") {
+    await runSetup();
+    return;
+  }
+
+  // Parse global flags
+  const dryRun = args.includes("--dry-run");
+  const serverOptions: ServerOptions = { dryRun };
 
   // Configure log level
   const logLevel = process.env.DISCORD_OPS_LOG_LEVEL as LogLevel | undefined;
@@ -39,9 +52,33 @@ async function main(): Promise<void> {
   const discord = new DiscordClient(config.defaultToken);
 
   // Create MCP server with tool context
-  const server = createServer({ discord, config });
+  const server = createServer({ discord, config }, serverOptions);
 
-  // Start stdio transport
+  // Handle serve subcommand (HTTP/SSE transport)
+  if (args[0] === "serve") {
+    const portIndex = args.indexOf("--port");
+    const port = portIndex !== -1 ? parseInt(args[portIndex + 1], 10) : undefined;
+
+    if (portIndex !== -1 && (!port || isNaN(port))) {
+      console.error("Invalid --port value");
+      process.exit(1);
+    }
+
+    await startHttpTransport(server, { port });
+
+    // Graceful shutdown
+    const shutdown = async () => {
+      logger.info("Shutting down...");
+      await discord.destroy();
+      process.exit(0);
+    };
+
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+    return;
+  }
+
+  // Default: start stdio transport
   await startStdioTransport(server);
 
   // Graceful shutdown
@@ -113,15 +150,23 @@ discord-ops - Agency-grade Discord MCP server
 
 USAGE:
   discord-ops              Start MCP server (stdio transport)
+  discord-ops serve        Start MCP server (HTTP/SSE transport)
+  discord-ops setup        Interactive setup wizard
   discord-ops health       Run health check + permission audit
   discord-ops --help       Show this help
   discord-ops --version    Show version
+
+OPTIONS:
+  --dry-run                Simulate destructive operations without calling Discord API
+  --port <port>            HTTP port for serve mode (default: 3000)
 
 ENVIRONMENT:
   DISCORD_TOKEN            Default Discord bot token (required)
   <PROJECT>_TOKEN          Per-project bot tokens (configured via token_env in config)
   DISCORD_OPS_CONFIG       Path to global config file (default: ~/.discord-ops.json)
   DISCORD_OPS_LOG_LEVEL    Log level: debug, info, warn, error (default: info)
+  DISCORD_OPS_DRY_RUN      Enable dry-run mode (any truthy value)
+  DRY_RUN                  Enable dry-run mode (any truthy value, alias)
 
 CONFIG FILES:
   ~/.discord-ops.json      Global project routing config

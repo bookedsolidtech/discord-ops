@@ -8,10 +8,13 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **35 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, health check
+- **42 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
 - **Notification routing** — map notification types (ci_build, deploy, error) to channels per project
 - **Multi-bot support** — manage multiple Discord bots from a single MCP server
+- **HTTP/SSE + stdio transports** — stdio for Claude Code, HTTP/SSE for remote MCP clients
+- **Dry-run mode** — simulate destructive operations without calling Discord API
+- **Interactive setup wizard** — `discord-ops setup` walks through config creation
 - **Security hardening** — rate limiting, permission pre-flight checks, snowflake ID validation, self-protection guards
 - **Lazy login** — tools enumerate before Discord connects; first tool call triggers login
 - **Zod validation** — all inputs validated before execution
@@ -25,14 +28,18 @@ Agency-grade Discord MCP server with multi-guild project routing.
 # Install
 npm install -g discord-ops
 
-# Set your bot token
-export DISCORD_TOKEN="your-bot-token"
+# Interactive setup (creates ~/.discord-ops.json)
+discord-ops setup
 
-# Run health check
+# Or manual setup
+export DISCORD_TOKEN="your-bot-token"
 discord-ops health
 
 # Start MCP server (stdio)
 discord-ops
+
+# Start MCP server (HTTP/SSE)
+discord-ops serve --port 3000
 ```
 
 ## Claude Code Integration
@@ -108,83 +115,113 @@ send_message({ channel_id: "123456789", content: "Hello" })
 
 ## Tools
 
-### Messaging
+### Messaging (8 tools)
 
-| Tool | Description |
-| --- | --- |
-| `send_message` | Send a message with project routing |
-| `get_messages` | Fetch recent messages |
-| `edit_message` | Edit a bot message |
-| `delete_message` | Delete a message |
-| `add_reaction` | React to a message |
+| Tool              | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| `send_message`    | Send a message with project routing               |
+| `get_messages`    | Fetch recent messages                             |
+| `edit_message`    | Edit a bot message                                |
+| `delete_message`  | Delete a message                                  |
+| `add_reaction`    | React to a message                                |
+| `pin_message`     | Pin a message in a channel                        |
+| `unpin_message`   | Unpin a message                                   |
+| `search_messages` | Search messages by content, author, or date range |
 
-### Channels
+### Channels (8 tools)
 
-| Tool | Description |
-| --- | --- |
-| `list_channels` | List guild channels |
-| `get_channel` | Get channel details |
-| `create_channel` | Create a channel |
-| `edit_channel` | Edit channel properties |
-| `delete_channel` | Delete a channel |
-| `purge_messages` | Bulk-delete messages (max 100, < 14 days old) |
-| `set_slowmode` | Set or disable slowmode |
+| Tool              | Description                                           |
+| ----------------- | ----------------------------------------------------- |
+| `list_channels`   | List guild channels                                   |
+| `get_channel`     | Get channel details                                   |
+| `create_channel`  | Create a channel                                      |
+| `edit_channel`    | Edit channel properties                               |
+| `delete_channel`  | Delete a channel                                      |
+| `purge_messages`  | Bulk-delete messages (max 100, < 14 days old)         |
+| `set_slowmode`    | Set or disable slowmode                               |
+| `set_permissions` | Set channel permission overrides for a role or member |
 
-### Moderation
+### Moderation (4 tools)
 
-| Tool | Description |
-| --- | --- |
-| `kick_member` | Kick a member from a guild |
-| `ban_member` | Ban a user from a guild |
-| `unban_member` | Unban a user |
-| `timeout_member` | Timeout (mute) a member |
+| Tool             | Description                |
+| ---------------- | -------------------------- |
+| `kick_member`    | Kick a member from a guild |
+| `ban_member`     | Ban a user from a guild    |
+| `unban_member`   | Unban a user               |
+| `timeout_member` | Timeout (mute) a member    |
 
-### Roles
+### Roles (5 tools)
 
-| Tool | Description |
-| --- | --- |
-| `list_roles` | List guild roles |
-| `create_role` | Create a new role |
-| `edit_role` | Edit role properties |
-| `delete_role` | Delete a role |
+| Tool          | Description                        |
+| ------------- | ---------------------------------- |
+| `list_roles`  | List guild roles                   |
+| `create_role` | Create a new role                  |
+| `edit_role`   | Edit role properties               |
+| `delete_role` | Delete a role                      |
 | `assign_role` | Add or remove a role from a member |
 
-### Webhooks
+### Webhooks (6 tools)
 
-| Tool | Description |
-| --- | --- |
-| `create_webhook` | Create a webhook on a channel |
-| `get_webhook` | Get webhook details |
-| `list_webhooks` | List webhooks for a guild or channel |
-| `edit_webhook` | Edit webhook properties |
-| `delete_webhook` | Delete a webhook |
-| `execute_webhook` | Send a message via webhook |
+| Tool              | Description                          |
+| ----------------- | ------------------------------------ |
+| `create_webhook`  | Create a webhook on a channel        |
+| `get_webhook`     | Get webhook details                  |
+| `list_webhooks`   | List webhooks for a guild or channel |
+| `edit_webhook`    | Edit webhook properties              |
+| `delete_webhook`  | Delete a webhook                     |
+| `execute_webhook` | Send a message via webhook           |
 
-### Audit
+### Audit (1 tool)
 
-| Tool | Description |
-| --- | --- |
+| Tool              | Description                        |
+| ----------------- | ---------------------------------- |
 | `query_audit_log` | Query guild audit log with filters |
 
-### Other
+### Guilds & Members (6 tools)
 
-| Tool | Description |
-| --- | --- |
-| `list_guilds` | List bot's guilds |
-| `get_guild` | Get guild details |
-| `list_members` | List guild members |
-| `get_member` | Get member details |
-| `create_thread` | Create a thread |
-| `list_threads` | List active threads |
+| Tool            | Description                         |
+| --------------- | ----------------------------------- |
+| `list_guilds`   | List bot's guilds                   |
+| `get_guild`     | Get guild details                   |
+| `get_invites`   | Get all active invites for a guild  |
+| `create_invite` | Create an invite link for a channel |
+| `list_members`  | List guild members                  |
+| `get_member`    | Get member details                  |
+
+### Threads (3 tools)
+
+| Tool             | Description                            |
+| ---------------- | -------------------------------------- |
+| `create_thread`  | Create a thread                        |
+| `list_threads`   | List active threads                    |
+| `archive_thread` | Archive (and optionally lock) a thread |
+
+### System (1 tool)
+
+| Tool           | Description              |
+| -------------- | ------------------------ |
 | `health_check` | Bot status + permissions |
+
+## CLI
+
+```
+discord-ops              Start MCP server (stdio transport)
+discord-ops serve        Start MCP server (HTTP/SSE transport)
+discord-ops setup        Interactive setup wizard
+discord-ops health       Run health check + permission audit
+discord-ops --dry-run    Simulate destructive operations
+discord-ops --help       Show help
+discord-ops --version    Show version
+```
 
 ## Environment Variables
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `DISCORD_TOKEN` | Yes | Discord bot token |
-| `DISCORD_OPS_CONFIG` | No | Path to global config (default: `~/.discord-ops.json`) |
-| `DISCORD_OPS_LOG_LEVEL` | No | `debug`, `info`, `warn`, `error` (default: `info`) |
+| Variable                | Required | Description                                            |
+| ----------------------- | -------- | ------------------------------------------------------ |
+| `DISCORD_TOKEN`         | Yes      | Discord bot token                                      |
+| `DISCORD_OPS_CONFIG`    | No       | Path to global config (default: `~/.discord-ops.json`) |
+| `DISCORD_OPS_LOG_LEVEL` | No       | `debug`, `info`, `warn`, `error` (default: `info`)     |
+| `DISCORD_OPS_DRY_RUN`   | No       | Enable dry-run mode (any truthy value)                 |
 
 ## Development
 

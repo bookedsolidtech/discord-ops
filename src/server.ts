@@ -24,7 +24,22 @@ function getZodShape(schema: z.ZodType): Record<string, z.ZodType> | undefined {
 const destructiveLimiter = new RateLimiter(10, 60);
 const standardLimiter = new RateLimiter(30, 60);
 
-export function createServer(ctx: ToolContext): McpServer {
+export interface ServerOptions {
+  dryRun?: boolean;
+}
+
+function isDryRunEnabled(options?: ServerOptions): boolean {
+  if (options?.dryRun) return true;
+  return !!(process.env.DISCORD_OPS_DRY_RUN || process.env.DRY_RUN);
+}
+
+export function createServer(ctx: ToolContext, options?: ServerOptions): McpServer {
+  const dryRun = isDryRunEnabled(options);
+
+  if (dryRun) {
+    logger.warn("Dry-run mode active — destructive tools will simulate execution");
+  }
+
   const server = new McpServer({
     name: "discord-ops",
     version: "0.2.0",
@@ -77,6 +92,29 @@ export function createServer(ctx: ToolContext): McpServer {
           } catch {
             // If we can't check perms (e.g. guild not cached yet), let the tool try and fail naturally
           }
+        }
+
+        // Dry-run intercept — skip Discord API calls for destructive tools
+        if (dryRun && tool.destructive) {
+          const simulated = {
+            dryRun: true,
+            tool: tool.name,
+            action: "simulated",
+            params: parsed,
+            message: `[DRY RUN] Would execute ${tool.name} — no changes made`,
+          };
+
+          auditToolCall({
+            tool: tool.name,
+            params,
+            durationMs: Date.now() - start,
+            success: true,
+            error: undefined,
+          });
+
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(simulated, null, 2) }],
+          };
         }
 
         const result = await tool.handle(parsed, ctx);

@@ -1,10 +1,12 @@
 # discord-ops
 
-## 0.3.0
+## 0.2.0
 
 ### Minor Changes
 
-- d2c052b: Add 17 new tools (moderation, role CRUD, webhook CRUD+execute, audit log, channel moderation), security hardening (rate limiting, permission pre-flight, snowflake validation, self-protection guards), and local CI infrastructure.
+- 17 new tools: moderation (kick, ban, unban, timeout), role CRUD + assign, webhook CRUD + execute, audit log query, channel moderation (purge, slowmode, edit, delete)
+- Security hardening: rate limiting, permission pre-flight checks, snowflake validation, self-protection guards, error sanitization
+- Local CI infrastructure (act-ci.sh + act-ci.yml)
 
 ## 0.1.0
 

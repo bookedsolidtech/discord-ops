@@ -15,6 +15,7 @@ export function createMockMessage(overrides: Record<string, unknown> = {}) {
     attachments: { size: 0 },
     embeds: [],
     reactions: { cache: [] },
+    pinned: false,
     edit: vi.fn().mockImplementation(async (content: string) => ({
       ...createMockMessage(overrides),
       content,
@@ -22,6 +23,8 @@ export function createMockMessage(overrides: Record<string, unknown> = {}) {
     })),
     delete: vi.fn().mockResolvedValue(undefined),
     react: vi.fn().mockResolvedValue(undefined),
+    pin: vi.fn().mockResolvedValue(undefined),
+    unpin: vi.fn().mockResolvedValue(undefined),
     reply: vi.fn(),
     ...overrides,
   };
@@ -71,6 +74,16 @@ export function createMockChannel(overrides: Record<string, unknown> = {}) {
       createdAt: new Date("2026-01-01T00:00:00Z"),
     }),
     fetchWebhooks: vi.fn().mockResolvedValue(new Map()),
+    permissionOverwrites: {
+      edit: vi.fn().mockResolvedValue(undefined),
+    },
+    createInvite: vi.fn().mockResolvedValue({
+      code: "abc123",
+      maxAge: 86400,
+      maxUses: 0,
+      temporary: false,
+      expiresAt: new Date("2026-01-02T00:00:00Z"),
+    }),
     threads: {
       create: vi.fn().mockResolvedValue({
         id: "555555555555555555",
@@ -230,6 +243,25 @@ export function createMockGuild(overrides: Record<string, unknown> = {}) {
         return rolesMap;
       }),
       create: vi.fn().mockResolvedValue(mockRole),
+    },
+    invites: {
+      fetch: vi.fn().mockImplementation(async () => {
+        const inviteData = {
+          code: "abc123",
+          channel: { name: "test-channel" },
+          channelId: "222222222222222222",
+          inviter: { tag: "TestUser#0001" },
+          uses: 5,
+          maxUses: 10,
+          maxAge: 86400,
+          temporary: false,
+          createdAt: new Date("2026-01-01T00:00:00Z"),
+          expiresAt: new Date("2026-01-02T00:00:00Z"),
+        };
+        const invitesMap = new Map([["abc123", inviteData]]) as any;
+        invitesMap.map = vi.fn().mockImplementation((fn: any) => [...invitesMap.values()].map(fn));
+        return invitesMap;
+      }),
     },
     fetchWebhooks: vi.fn().mockResolvedValue(new Map()),
     fetchAuditLogs: vi.fn().mockImplementation(async () => {
