@@ -8,14 +8,15 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **42 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search
+- **43 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, project introspection
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
 - **Notification routing** — map notification types (ci_build, deploy, error) to channels per project
 - **Multi-bot support** — manage multiple Discord bots from a single MCP server with per-project tokens
 - **Flexible token configuration** — configurable default token env var, optional default token when all projects use per-project tokens
+- **Config validation** — `discord-ops validate` detects duplicate guilds, missing tokens, invalid channel refs without connecting to Discord
 - **HTTP/SSE + stdio transports** — stdio for Claude Code, HTTP/SSE for remote MCP clients
 - **Dry-run mode** — simulate destructive operations without calling Discord API
-- **Interactive setup wizard** — `discord-ops setup` walks through config creation
+- **Interactive setup wizard** — `discord-ops setup` supports single-bot and multi-bot configuration
 - **Security hardening** — rate limiting, permission pre-flight checks, snowflake ID validation, self-protection guards
 - **Lazy login** — tools enumerate before Discord connects; first tool call triggers login
 - **Zod validation** — all inputs validated before execution
@@ -260,19 +261,21 @@ send_message({ channel_id: "123456789", content: "Hello" })
 | `list_threads`   | List active threads                    |
 | `archive_thread` | Archive (and optionally lock) a thread |
 
-### System (1 tool)
+### System (2 tools)
 
-| Tool           | Description              |
-| -------------- | ------------------------ |
-| `health_check` | Bot status + permissions |
+| Tool            | Description                                                         |
+| --------------- | ------------------------------------------------------------------- |
+| `health_check`  | Bot status + permissions                                            |
+| `list_projects` | List all projects with guild mappings, token status, and validation |
 
 ## CLI
 
 ```
 discord-ops              Start MCP server (stdio transport)
 discord-ops serve        Start MCP server (HTTP/SSE transport)
-discord-ops setup        Interactive setup wizard
+discord-ops setup        Interactive setup wizard (single + multi-bot)
 discord-ops health       Run health check + permission audit
+discord-ops validate     Validate config without connecting to Discord
 discord-ops --dry-run    Simulate destructive operations
 discord-ops --help       Show help
 discord-ops --version    Show version
@@ -313,6 +316,40 @@ DRY_RUN=true discord-ops
 ```
 
 In dry-run mode, destructive tools return a simulated success response showing what would have happened.
+
+## Multi-Organization Troubleshooting
+
+### Validating your config
+
+Run `discord-ops validate` to check your config without connecting to Discord. It detects:
+
+- Missing `token_env` values (env var not set)
+- Duplicate guild IDs across projects with different tokens
+- `default_channel` referencing a nonexistent alias
+- `default_project` pointing to a nonexistent project
+- Notification routing to nonexistent channel aliases
+
+### Common issues
+
+**"No token available for project X"**
+The project needs a token. Either:
+
+- Set its `token_env` env var (e.g., `export ORG_A_TOKEN=...`)
+- Set a default token via `DISCORD_TOKEN`
+- Use `DISCORD_OPS_TOKEN_ENV` to point at a custom env var
+
+**Bot can't access a guild**
+If a project uses `token_env` for a different bot, that bot must be invited to the project's guild. Run `discord-ops health` to see which guilds each bot can access.
+
+**Migrating from single-bot to multi-bot**
+
+1. Add `token_env` to projects that need their own bot
+2. Set the corresponding env vars
+3. Run `discord-ops validate` to verify
+4. Run `discord-ops health` to test connections
+
+**Token rotation**
+Update the env var value and restart the MCP server. No config changes needed — `token_env` reads from the environment at runtime.
 
 ## Development
 

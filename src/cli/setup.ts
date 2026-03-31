@@ -110,10 +110,29 @@ export async function runSetup(): Promise<void> {
       const channelMap = await assignChannelAliases(rl, channels);
       const defaultChannel = await selectDefaultChannel(rl, channelMap);
 
+      // Ask about per-project bot token
+      let tokenEnv: string | undefined;
+      if (selectedGuilds.length > 1) {
+        const wantToken = await askQuestion(
+          rl,
+          `  Use a separate bot token for "${name}"? [y/N]: `,
+        );
+        if (wantToken.trim().toLowerCase() === "y") {
+          const envName = await askQuestion(
+            rl,
+            `  Environment variable name for this bot's token [${name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_DISCORD_TOKEN]: `,
+          );
+          tokenEnv =
+            envName.trim() || `${name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_DISCORD_TOKEN`;
+          console.log(`    Will use ${tokenEnv} for this project's bot token.`);
+        }
+      }
+
       projects[name] = {
         guild_id: guild.id,
         channels: channelMap,
         default_channel: defaultChannel,
+        ...(tokenEnv ? { token_env: tokenEnv } : {}),
       };
     }
 
@@ -203,10 +222,12 @@ async function checkExistingConfig(
 }
 
 async function obtainToken(rl: ReturnType<typeof createInterface>): Promise<string> {
-  const envToken = process.env.DISCORD_TOKEN;
+  // Check DISCORD_OPS_TOKEN_ENV first, then DISCORD_TOKEN
+  const tokenEnvName = process.env.DISCORD_OPS_TOKEN_ENV ?? "DISCORD_TOKEN";
+  const envToken = process.env[tokenEnvName];
 
   if (envToken) {
-    console.log("  DISCORD_TOKEN environment variable detected.");
+    console.log(`  ${tokenEnvName} environment variable detected.`);
     const useEnv = await askQuestion(rl, "  Use this token? [Y/n]: ");
     if (useEnv.trim().toLowerCase() !== "n") {
       return envToken;
@@ -217,7 +238,7 @@ async function obtainToken(rl: ReturnType<typeof createInterface>): Promise<stri
   const trimmed = token.trim();
 
   if (!trimmed) {
-    throw new Error("No token provided. Set DISCORD_TOKEN or enter one manually.");
+    throw new Error(`No token provided. Set ${tokenEnvName} or enter one manually.`);
   }
 
   if (trimmed.length < 50) {

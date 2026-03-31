@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { createRequire } from "node:module";
 import { allTools } from "./tools/index.js";
 import type { ToolContext } from "./tools/types.js";
 import { sanitizeError } from "./security/sanitizer.js";
@@ -7,6 +8,9 @@ import { auditToolCall } from "./security/audit.js";
 import { RateLimiter } from "./security/rate-limiter.js";
 import { checkPermissions } from "./security/permissions.js";
 import { logger } from "./utils/logger.js";
+
+const require = createRequire(import.meta.url);
+const { version: PKG_VERSION } = require("../package.json") as { version: string };
 
 /**
  * Extract the raw shape from a ZodObject for MCP SDK registration.
@@ -42,7 +46,7 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): McpServ
 
   const server = new McpServer({
     name: "discord-ops",
-    version: "0.2.0",
+    version: PKG_VERSION,
   });
 
   for (const tool of allTools) {

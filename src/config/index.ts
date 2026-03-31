@@ -30,9 +30,10 @@ export function getTokenForProject(projectName: string, config: LoadedConfig): s
     );
   }
   if (!config.defaultToken) {
-    throw new Error(
-      `No token available for project "${projectName}": token_env is not set or empty, and no default token configured`,
-    );
+    const hint = project?.token_env
+      ? `Set the ${project.token_env} environment variable, or set a default token via DISCORD_TOKEN / DISCORD_OPS_TOKEN_ENV.`
+      : `Add token_env to this project's config, or set a default token via DISCORD_TOKEN / DISCORD_OPS_TOKEN_ENV.`;
+    throw new Error(`No token available for project "${projectName}". ${hint}`);
   }
   return config.defaultToken;
 }
