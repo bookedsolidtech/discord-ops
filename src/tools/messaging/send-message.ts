@@ -29,9 +29,7 @@ export const sendMessage: ToolDefinition = {
 
     const message = await channel.send({
       content: input.content,
-      ...(input.reply_to
-        ? { reply: { messageReference: input.reply_to } }
-        : {}),
+      ...(input.reply_to ? { reply: { messageReference: input.reply_to } } : {}),
     });
 
     return toolResultJson({

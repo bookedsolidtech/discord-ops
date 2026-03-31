@@ -38,6 +38,7 @@ npm run format       # Format with Prettier
 ## Commit Messages
 
 Use conventional commits:
+
 - `feat:` new feature
 - `fix:` bug fix
 - `docs:` documentation

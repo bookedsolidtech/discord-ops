@@ -45,8 +45,7 @@ export function resolveTarget(
   }
 
   // Need a project for alias-based resolution
-  const projectName =
-    params.project ?? getDefaultProjectName(config.global, config.perProject);
+  const projectName = params.project ?? getDefaultProjectName(config.global, config.perProject);
 
   if (!projectName) {
     return { error: "No project specified and no default_project configured" };
@@ -73,10 +72,7 @@ export function resolveTarget(
   };
 }
 
-function resolveChannel(
-  params: ResolveParams,
-  project: ResolvedProject,
-): string | undefined {
+function resolveChannel(params: ResolveParams, project: ResolvedProject): string | undefined {
   // Explicit channel alias
   if (params.channel) {
     return project.channels[params.channel];

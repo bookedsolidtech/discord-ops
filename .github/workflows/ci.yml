@@ -6,9 +6,18 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   lint:
+    name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,7 +30,9 @@ jobs:
       - run: npm run format:check
 
   test:
+    name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,7 +43,9 @@ jobs:
       - run: npm run test:coverage
 
   build:
+    name: Build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [lint, test]
     steps:
       - uses: actions/checkout@v4
@@ -42,3 +55,39 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+
+  # -- Aggregate gate (for branch protection) --------------------------------
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    needs: [lint, test, build]
+    if: always()
+    steps:
+      - name: Check all gates
+        run: |
+          echo "Lint:  ${{ needs.lint.result }}"
+          echo "Test:  ${{ needs.test.result }}"
+          echo "Build: ${{ needs.build.result }}"
+
+          FAIL=0
+          for gate in lint test build; do
+            case "$gate" in
+              lint)  result="${{ needs.lint.result }}" ;;
+              test)  result="${{ needs.test.result }}" ;;
+              build) result="${{ needs.build.result }}" ;;
+            esac
+            if [[ "$result" != "success" ]]; then
+              echo "FAILED: $gate ($result)"
+              FAIL=1
+            fi
+          done
+
+          if [[ "$FAIL" -eq 1 ]]; then
+            echo ""
+            echo "One or more quality gates failed"
+            exit 1
+          fi
+
+          echo ""
+          echo "All quality gates passed!"

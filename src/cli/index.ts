@@ -94,7 +94,9 @@ async function runHealthCheck(): Promise<void> {
     console.log(`\nProjects configured: ${Object.keys(config.global.projects).length}`);
     for (const [name, project] of Object.entries(config.global.projects)) {
       const tokenInfo = project.token_env ? ` [${project.token_env}]` : "";
-      console.log(`  ${name}: guild=${project.guild_id}, channels=${Object.keys(project.channels).join(", ")}${tokenInfo}`);
+      console.log(
+        `  ${name}: guild=${project.guild_id}, channels=${Object.keys(project.channels).join(", ")}${tokenInfo}`,
+      );
     }
 
     console.log("\nHealth check passed.");

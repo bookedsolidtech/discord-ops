@@ -11,10 +11,7 @@ const config: LoadedConfig = {
 
 describe("resolveTarget", () => {
   it("resolves direct channel_id", () => {
-    const result = resolveTarget(
-      { channel_id: "999999999999999999" },
-      config,
-    );
+    const result = resolveTarget({ channel_id: "999999999999999999" }, config);
     expect(result).toEqual({
       guildId: "",
       channelId: "999999999999999999",
@@ -23,10 +20,7 @@ describe("resolveTarget", () => {
   });
 
   it("resolves project + channel alias", () => {
-    const result = resolveTarget(
-      { project: "clarity-house", channel: "builds" },
-      config,
-    );
+    const result = resolveTarget({ project: "clarity-house", channel: "builds" }, config);
     expect(result).toEqual({
       guildId: "1476779123861885081",
       channelId: "222222222222222222",
@@ -35,10 +29,7 @@ describe("resolveTarget", () => {
   });
 
   it("resolves notification_type via global routing", () => {
-    const result = resolveTarget(
-      { project: "clarity-house", notification_type: "error" },
-      config,
-    );
+    const result = resolveTarget({ project: "clarity-house", notification_type: "error" }, config);
     expect(result).toEqual({
       guildId: "1476779123861885081",
       channelId: "444444444444444444",
@@ -47,10 +38,7 @@ describe("resolveTarget", () => {
   });
 
   it("falls back to default_channel", () => {
-    const result = resolveTarget(
-      { project: "clarity-house" },
-      config,
-    );
+    const result = resolveTarget({ project: "clarity-house" }, config);
     expect(result).toEqual({
       guildId: "1476779123861885081",
       channelId: "111111111111111111",
@@ -85,10 +73,7 @@ describe("resolveTarget", () => {
       ...config,
       perProject: testPerProjectConfig,
     };
-    const result = resolveTarget(
-      { notification_type: "ci_build" },
-      configWithPerProject,
-    );
+    const result = resolveTarget({ notification_type: "ci_build" }, configWithPerProject);
     expect(result).toEqual({
       guildId: "1476779123861885081",
       channelId: "777777777777777777",
@@ -97,10 +82,7 @@ describe("resolveTarget", () => {
   });
 
   it("returns error for unknown project", () => {
-    const result = resolveTarget(
-      { project: "nonexistent" },
-      config,
-    );
+    const result = resolveTarget({ project: "nonexistent" }, config);
     expect(result).toHaveProperty("error");
   });
 

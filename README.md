@@ -106,34 +106,34 @@ send_message({ channel_id: "123456789", content: "Hello" })
 
 ## Tools (v0.1.0)
 
-| Tool | Description |
-|------|-------------|
-| `send_message` | Send a message with project routing |
-| `get_messages` | Fetch recent messages |
-| `edit_message` | Edit a bot message |
-| `delete_message` | Delete a message |
-| `add_reaction` | React to a message |
-| `list_channels` | List guild channels |
-| `get_channel` | Get channel details |
-| `create_channel` | Create a channel |
-| `edit_channel` | Edit channel properties |
-| `delete_channel` | Delete a channel |
-| `list_guilds` | List bot's guilds |
-| `get_guild` | Get guild details |
-| `list_members` | List guild members |
-| `get_member` | Get member details |
-| `list_roles` | List guild roles |
-| `create_thread` | Create a thread |
-| `list_threads` | List active threads |
-| `health_check` | Bot status + permissions |
+| Tool             | Description                         |
+| ---------------- | ----------------------------------- |
+| `send_message`   | Send a message with project routing |
+| `get_messages`   | Fetch recent messages               |
+| `edit_message`   | Edit a bot message                  |
+| `delete_message` | Delete a message                    |
+| `add_reaction`   | React to a message                  |
+| `list_channels`  | List guild channels                 |
+| `get_channel`    | Get channel details                 |
+| `create_channel` | Create a channel                    |
+| `edit_channel`   | Edit channel properties             |
+| `delete_channel` | Delete a channel                    |
+| `list_guilds`    | List bot's guilds                   |
+| `get_guild`      | Get guild details                   |
+| `list_members`   | List guild members                  |
+| `get_member`     | Get member details                  |
+| `list_roles`     | List guild roles                    |
+| `create_thread`  | Create a thread                     |
+| `list_threads`   | List active threads                 |
+| `health_check`   | Bot status + permissions            |
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DISCORD_TOKEN` | Yes | Discord bot token |
-| `DISCORD_OPS_CONFIG` | No | Path to global config (default: `~/.discord-ops.json`) |
-| `DISCORD_OPS_LOG_LEVEL` | No | `debug`, `info`, `warn`, `error` (default: `info`) |
+| Variable                | Required | Description                                            |
+| ----------------------- | -------- | ------------------------------------------------------ |
+| `DISCORD_TOKEN`         | Yes      | Discord bot token                                      |
+| `DISCORD_OPS_CONFIG`    | No       | Path to global config (default: `~/.discord-ops.json`) |
+| `DISCORD_OPS_LOG_LEVEL` | No       | `debug`, `info`, `warn`, `error` (default: `info`)     |
 
 ## Development
 

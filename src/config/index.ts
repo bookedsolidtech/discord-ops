@@ -20,15 +20,14 @@ export interface LoadedConfig {
  * If the project has `token_env`, reads that env var.
  * Otherwise falls back to the default DISCORD_TOKEN.
  */
-export function getTokenForProject(
-  projectName: string,
-  config: LoadedConfig,
-): string {
+export function getTokenForProject(projectName: string, config: LoadedConfig): string {
   const project = config.global.projects[projectName];
   if (project?.token_env) {
     const token = process.env[project.token_env];
     if (token) return token;
-    logger.warn(`token_env "${project.token_env}" for project "${projectName}" is not set, falling back to DISCORD_TOKEN`);
+    logger.warn(
+      `token_env "${project.token_env}" for project "${projectName}" is not set, falling back to DISCORD_TOKEN`,
+    );
   }
   return config.defaultToken;
 }
@@ -54,8 +53,7 @@ export function loadConfig(): LoadedConfig {
 }
 
 function loadGlobalConfig(): GlobalConfig {
-  const configPath =
-    process.env.DISCORD_OPS_CONFIG ?? resolve(homedir(), ".discord-ops.json");
+  const configPath = process.env.DISCORD_OPS_CONFIG ?? resolve(homedir(), ".discord-ops.json");
 
   if (!existsSync(configPath)) {
     logger.debug("No global config found", { path: configPath });

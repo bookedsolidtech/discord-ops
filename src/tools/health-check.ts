@@ -21,8 +21,7 @@ export const healthCheck: ToolDefinition = {
       status: "ok",
       connected,
       projects: Object.keys(ctx.config.global.projects),
-      default_project:
-        ctx.config.perProject?.project ?? ctx.config.global.default_project ?? null,
+      default_project: ctx.config.perProject?.project ?? ctx.config.global.default_project ?? null,
     };
 
     // Show which projects have custom token_env

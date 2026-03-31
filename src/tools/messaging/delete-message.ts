@@ -13,7 +13,8 @@ const inputSchema = z.object({
 
 export const deleteMessage: ToolDefinition = {
   name: "delete_message",
-  description: "Delete a message. Bot can only delete its own messages or messages in channels where it has Manage Messages permission.",
+  description:
+    "Delete a message. Bot can only delete its own messages or messages in channels where it has Manage Messages permission.",
   category: "messaging",
   inputSchema,
   destructive: true,
