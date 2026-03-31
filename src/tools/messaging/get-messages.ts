@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { MessageReaction } from "discord.js";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
 import { resolveTarget } from "../../routing/resolver.js";
@@ -39,7 +40,7 @@ export const getMessages: ToolDefinition = {
       timestamp: msg.createdAt.toISOString(),
       attachments: msg.attachments.size,
       embeds: msg.embeds.length,
-      reactions: [...(msg.reactions?.cache?.values?.() ?? [])].map((r: any) => ({
+      reactions: [...(msg.reactions?.cache?.values?.() ?? [])].map((r: MessageReaction) => ({
         emoji: r.emoji.name,
         count: r.count,
       })),

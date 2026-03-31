@@ -245,6 +245,13 @@ async function obtainToken(rl: ReturnType<typeof createInterface>): Promise<stri
     throw new Error("Token appears too short. Discord bot tokens are at least 50 characters.");
   }
 
+  // Discord bot tokens follow the format: base64(bot_id).timestamp.hmac
+  if (!/^[\w-]+\.[\w-]+\.[\w-]+$/.test(trimmed)) {
+    throw new Error(
+      "Token format looks invalid. Discord bot tokens have three dot-separated segments (e.g. AAAA.BBBB.CCCC).",
+    );
+  }
+
   return trimmed;
 }
 
