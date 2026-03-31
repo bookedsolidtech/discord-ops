@@ -1,5 +1,11 @@
 # discord-ops
 
+## 0.3.0
+
+### Minor Changes
+
+- 6e421f2: Add 8 new tools (pin/unpin message, search messages, archive thread, set channel permissions, get/create invites), HTTP/SSE transport, dry-run mode for destructive operations, and interactive CLI setup wizard.
+
 ## 0.2.0
 
 ### Minor Changes
