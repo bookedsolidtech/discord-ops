@@ -3,7 +3,8 @@ import { sanitizeError } from "../../src/security/sanitizer.js";
 
 describe("sanitizeError", () => {
   it("strips token fragments", () => {
-    const msg = "Auth failed with token XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.XXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXX0000";
+    const msg =
+      "Auth failed with token XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.XXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXX0000";
     const sanitized = sanitizeError(msg);
     expect(sanitized).not.toContain("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
     expect(sanitized).toContain("[REDACTED_TOKEN]");

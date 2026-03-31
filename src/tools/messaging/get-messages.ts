@@ -24,7 +24,7 @@ export const getMessages: ToolDefinition = {
       return { content: [{ type: "text", text: target.error }], isError: true };
     }
 
-    const channel = await ctx.discord.getChannel(target.channelId);
+    const channel = await ctx.discord.getChannel(target.channelId, target.token);
 
     const messages = await channel.messages.fetch({
       limit: input.limit,

@@ -1,4 +1,4 @@
-import type { LoadedConfig } from "../config/index.js";
+import { type LoadedConfig, getTokenForProject } from "../config/index.js";
 import { resolveProject, getDefaultProjectName, type ResolvedProject } from "../config/profiles.js";
 import type { NotificationType } from "../config/schema.js";
 
@@ -6,6 +6,7 @@ export interface ResolvedTarget {
   guildId: string;
   channelId: string;
   project?: string;
+  token?: string;
 }
 
 export interface ResolveParams {
@@ -44,8 +45,7 @@ export function resolveTarget(
   }
 
   // Need a project for alias-based resolution
-  const projectName =
-    params.project ?? getDefaultProjectName(config.global, config.perProject);
+  const projectName = params.project ?? getDefaultProjectName(config.global, config.perProject);
 
   if (!projectName) {
     return { error: "No project specified and no default_project configured" };
@@ -68,13 +68,11 @@ export function resolveTarget(
     guildId: project.guildId,
     channelId,
     project: projectName,
+    token: getTokenForProject(projectName, config),
   };
 }
 
-function resolveChannel(
-  params: ResolveParams,
-  project: ResolvedProject,
-): string | undefined {
+function resolveChannel(params: ResolveParams, project: ResolvedProject): string | undefined {
   // Explicit channel alias
   if (params.channel) {
     return project.channels[params.channel];

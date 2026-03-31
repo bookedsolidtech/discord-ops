@@ -13,7 +13,8 @@ const inputSchema = z.object({
 
 export const deleteMessage: ToolDefinition = {
   name: "delete_message",
-  description: "Delete a message. Bot can only delete its own messages or messages in channels where it has Manage Messages permission.",
+  description:
+    "Delete a message. Bot can only delete its own messages or messages in channels where it has Manage Messages permission.",
   category: "messaging",
   inputSchema,
   destructive: true,
@@ -23,7 +24,7 @@ export const deleteMessage: ToolDefinition = {
       return { content: [{ type: "text", text: target.error }], isError: true };
     }
 
-    const channel = await ctx.discord.getChannel(target.channelId);
+    const channel = await ctx.discord.getChannel(target.channelId, target.token);
     const message = await channel.messages.fetch(input.message_id);
     await message.delete();
 

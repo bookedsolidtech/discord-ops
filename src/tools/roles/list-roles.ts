@@ -1,9 +1,12 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { snowflakeId } from "../schema.js";
+import { getTokenForProject } from "../../config/index.js";
 
 const inputSchema = z.object({
-  guild_id: z.string().describe("Guild ID to list roles from"),
+  guild_id: snowflakeId.describe("Guild ID to list roles from"),
+  project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
 export const listRoles: ToolDefinition = {
@@ -13,7 +16,8 @@ export const listRoles: ToolDefinition = {
   inputSchema,
   requiresGuild: true,
   handle: async (input, ctx) => {
-    const guild = await ctx.discord.getGuild(input.guild_id);
+    const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
+    const guild = await ctx.discord.getGuild(input.guild_id, token);
     const roles = await guild.roles.fetch();
 
     const result = roles.map((role) => ({

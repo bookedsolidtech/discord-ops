@@ -4,6 +4,8 @@ import { allTools } from "./tools/index.js";
 import type { ToolContext } from "./tools/types.js";
 import { sanitizeError } from "./security/sanitizer.js";
 import { auditToolCall } from "./security/audit.js";
+import { RateLimiter } from "./security/rate-limiter.js";
+import { checkPermissions } from "./security/permissions.js";
 import { logger } from "./utils/logger.js";
 
 /**
@@ -18,10 +20,14 @@ function getZodShape(schema: z.ZodType): Record<string, z.ZodType> | undefined {
   return undefined;
 }
 
+// Tighter limits for destructive operations
+const destructiveLimiter = new RateLimiter(10, 60);
+const standardLimiter = new RateLimiter(30, 60);
+
 export function createServer(ctx: ToolContext): McpServer {
   const server = new McpServer({
     name: "discord-ops",
-    version: "0.1.0",
+    version: "0.2.0",
   });
 
   for (const tool of allTools) {
@@ -30,7 +36,49 @@ export function createServer(ctx: ToolContext): McpServer {
     const callback = async (params: Record<string, unknown>) => {
       const start = Date.now();
       try {
+        // Rate limiting — tighter for destructive ops
+        const limiter = tool.destructive ? destructiveLimiter : standardLimiter;
+        const rateCheck = limiter.check(tool.name);
+        if (!rateCheck.allowed) {
+          const retryAfter = Math.ceil((rateCheck.retryAfterMs ?? 1000) / 1000);
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Rate limited on ${tool.name}. Retry after ${retryAfter}s.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
         const parsed = tool.inputSchema.parse(params);
+
+        // Permission pre-flight — check bot has required perms before calling Discord API
+        if (tool.permissions?.length && tool.requiresGuild && parsed.guild_id) {
+          try {
+            const token = parsed.project
+              ? (await import("./config/index.js")).getTokenForProject(parsed.project, ctx.config)
+              : undefined;
+            const guild = await ctx.discord.getGuild(parsed.guild_id, token);
+            const botMember = await guild.members.fetchMe();
+            const permCheck = checkPermissions(botMember, tool.permissions);
+            if (!permCheck.allowed) {
+              return {
+                content: [
+                  {
+                    type: "text" as const,
+                    text: `Bot lacks required permissions: ${permCheck.missing.join(", ")}`,
+                  },
+                ],
+                isError: true,
+              };
+            }
+          } catch {
+            // If we can't check perms (e.g. guild not cached yet), let the tool try and fail naturally
+          }
+        }
+
         const result = await tool.handle(parsed, ctx);
 
         auditToolCall({

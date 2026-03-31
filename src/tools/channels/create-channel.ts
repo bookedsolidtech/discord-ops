@@ -2,9 +2,11 @@ import { z } from "zod";
 import { ChannelType, type GuildChannelTypes } from "discord.js";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { getTokenForProject } from "../../config/index.js";
 
 const inputSchema = z.object({
   guild_id: z.string().describe("Guild ID to create channel in"),
+  project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
   name: z.string().min(1).max(100).describe("Channel name"),
   type: z
     .enum(["text", "voice", "category", "announcement", "forum", "stage"])
@@ -31,7 +33,8 @@ export const createChannel: ToolDefinition = {
   requiresGuild: true,
   permissions: ["ManageChannels"],
   handle: async (input, ctx) => {
-    const guild = await ctx.discord.getGuild(input.guild_id);
+    const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
+    const guild = await ctx.discord.getGuild(input.guild_id, token);
 
     const channel = await guild.channels.create({
       name: input.name,

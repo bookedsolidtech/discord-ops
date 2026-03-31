@@ -24,10 +24,7 @@ describe("list_guilds", () => {
 describe("get_guild", () => {
   it("gets guild details", async () => {
     const ctx = createCtx();
-    const result = await getGuild.handle(
-      { guild_id: "444444444444444444" },
-      ctx,
-    );
+    const result = await getGuild.handle({ guild_id: "444444444444444444" }, ctx);
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0]!.text);
     expect(data.id).toBe("444444444444444444");

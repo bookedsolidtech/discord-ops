@@ -1,6 +1,6 @@
 {
   "name": "discord-ops",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Agency-grade Discord MCP server with multi-guild project routing",
   "type": "module",
   "license": "MIT",
@@ -67,6 +67,7 @@
     "@changesets/cli": "^2.29.4",
     "@eslint/js": "^9.39.4",
     "@types/node": "^22.15.3",
+    "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9.26.0",
     "prettier": "^3.5.3",
     "tsx": "^4.19.4",

@@ -1,9 +1,11 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { getTokenForProject } from "../../config/index.js";
 
 const inputSchema = z.object({
   guild_id: z.string().describe("Guild ID to list members from"),
+  project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
   limit: z.number().min(1).max(1000).default(100).describe("Number of members to fetch"),
 });
 
@@ -14,7 +16,8 @@ export const listMembers: ToolDefinition = {
   inputSchema,
   requiresGuild: true,
   handle: async (input, ctx) => {
-    const guild = await ctx.discord.getGuild(input.guild_id);
+    const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
+    const guild = await ctx.discord.getGuild(input.guild_id, token);
     const members = await guild.members.fetch({ limit: input.limit });
 
     const result = members.map((member) => ({

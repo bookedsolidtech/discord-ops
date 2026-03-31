@@ -1,16 +1,24 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { getTokenForProject } from "../../config/index.js";
 
-const inputSchema = z.object({});
+const inputSchema = z.object({
+  project: z
+    .string()
+    .optional()
+    .describe("Project name to list guilds for a specific bot (omit to list from default bot)"),
+});
 
 export const listGuilds: ToolDefinition = {
   name: "list_guilds",
-  description: "List all guilds (servers) the bot has access to.",
+  description:
+    "List all guilds (servers) the bot has access to. Pass project to use a specific bot token.",
   category: "guilds",
   inputSchema,
-  handle: async (_input, ctx) => {
-    const client = await ctx.discord.getClient();
+  handle: async (input, ctx) => {
+    const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
+    const client = await ctx.discord.getClient(token);
     const guilds = client.guilds.cache;
 
     const result = [...guilds.values()].map((guild) => ({

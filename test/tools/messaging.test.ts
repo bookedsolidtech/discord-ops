@@ -26,7 +26,7 @@ describe("send_message", () => {
       ctx,
     );
     expect(result.isError).toBeUndefined();
-    expect(ctx.discord.getChannel).toHaveBeenCalledWith("222222222222222222");
+    expect(ctx.discord.getChannel).toHaveBeenCalledWith("222222222222222222", expect.anything());
   });
 
   it("sends a message via direct channel_id", async () => {
@@ -36,7 +36,7 @@ describe("send_message", () => {
       ctx,
     );
     expect(result.isError).toBeUndefined();
-    expect(ctx.discord.getChannel).toHaveBeenCalledWith("999999999999999999");
+    expect(ctx.discord.getChannel).toHaveBeenCalledWith("999999999999999999", undefined);
   });
 
   it("returns error for unresolvable routing", async () => {
@@ -51,10 +51,7 @@ describe("send_message", () => {
 describe("get_messages", () => {
   it("fetches messages from a channel", async () => {
     const ctx = createCtx();
-    const result = await getMessages.handle(
-      { channel_id: "222222222222222222", limit: 10 },
-      ctx,
-    );
+    const result = await getMessages.handle({ channel_id: "222222222222222222", limit: 10 }, ctx);
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0]!.text);
     expect(data.channel_id).toBe("222222222222222222");

@@ -23,7 +23,7 @@ export const editMessage: ToolDefinition = {
       return { content: [{ type: "text", text: target.error }], isError: true };
     }
 
-    const channel = await ctx.discord.getChannel(target.channelId);
+    const channel = await ctx.discord.getChannel(target.channelId, target.token);
     const message = await channel.messages.fetch(input.message_id);
     const edited = await message.edit(input.content);
 
