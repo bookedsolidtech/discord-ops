@@ -624,8 +624,6 @@ const poll: TemplateRenderer = (vars) => {
   };
 };
 
-const review2 = review; // alias for later reference
-
 // ─── New Templates ───────────────────────────────────────────────────
 
 /**
