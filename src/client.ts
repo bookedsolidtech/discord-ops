@@ -72,19 +72,26 @@ class BotConnection {
  */
 export class DiscordClient {
   private connections = new Map<string, BotConnection>();
-  private defaultToken: string;
+  private defaultToken?: string;
   private guildCache = new TTLCache<Guild>(300);
 
-  constructor(defaultToken: string) {
-    const validation = validateTokenFormat(defaultToken);
-    if (!validation.valid) {
-      throw new Error(`Invalid Discord token: ${validation.reason}`);
+  constructor(defaultToken?: string) {
+    if (defaultToken) {
+      const validation = validateTokenFormat(defaultToken);
+      if (!validation.valid) {
+        throw new Error(`Invalid Discord token: ${validation.reason}`);
+      }
     }
     this.defaultToken = defaultToken;
   }
 
   private getConnection(token?: string): BotConnection {
     const t = token ?? this.defaultToken;
+    if (!t) {
+      throw new Error(
+        "No Discord token available. Set DISCORD_TOKEN, DISCORD_OPS_TOKEN_ENV, or use per-project token_env.",
+      );
+    }
     let conn = this.connections.get(t);
     if (!conn) {
       if (t !== this.defaultToken) {

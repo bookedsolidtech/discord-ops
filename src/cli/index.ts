@@ -21,7 +21,7 @@ async function main(): Promise<void> {
 
   // Handle --version
   if (args.includes("--version") || args.includes("-v")) {
-    console.log("discord-ops 0.2.0");
+    console.log("discord-ops 0.3.0");
     process.exit(0);
   }
 
@@ -99,7 +99,9 @@ async function runHealthCheck(): Promise<void> {
 
     // Collect unique tokens: default + any project-specific ones
     const tokens = new Map<string, string[]>(); // token → project names
-    tokens.set(config.defaultToken, ["(default)"]);
+    if (config.defaultToken) {
+      tokens.set(config.defaultToken, ["(default)"]);
+    }
     for (const [name, project] of Object.entries(config.global.projects)) {
       if (project.token_env) {
         const t = process.env[project.token_env];
@@ -161,7 +163,8 @@ OPTIONS:
   --port <port>            HTTP port for serve mode (default: 3000)
 
 ENVIRONMENT:
-  DISCORD_TOKEN            Default Discord bot token (required)
+  DISCORD_TOKEN            Default Discord bot token (required unless all projects have token_env)
+  DISCORD_OPS_TOKEN_ENV    Override which env var holds the default token (default: DISCORD_TOKEN)
   <PROJECT>_TOKEN          Per-project bot tokens (configured via token_env in config)
   DISCORD_OPS_CONFIG       Path to global config file (default: ~/.discord-ops.json)
   DISCORD_OPS_LOG_LEVEL    Log level: debug, info, warn, error (default: info)

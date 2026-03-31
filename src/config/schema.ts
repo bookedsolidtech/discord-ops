@@ -35,7 +35,9 @@ export const PerProjectConfigSchema = z.object({
 export type PerProjectConfig = z.infer<typeof PerProjectConfigSchema>;
 
 export const EnvConfigSchema = z.object({
-  DISCORD_TOKEN: z.string().min(50),
+  DISCORD_TOKEN: z.string().min(50).optional(),
+  DISCORD_OPS_TOKEN_ENV: z.string().optional(),
   DISCORD_OPS_CONFIG: z.string().optional(),
   DISCORD_OPS_LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
+  DISCORD_OPS_DRY_RUN: z.string().optional(),
 });

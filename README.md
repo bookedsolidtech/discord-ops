@@ -11,7 +11,8 @@ Agency-grade Discord MCP server with multi-guild project routing.
 - **42 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
 - **Notification routing** — map notification types (ci_build, deploy, error) to channels per project
-- **Multi-bot support** — manage multiple Discord bots from a single MCP server
+- **Multi-bot support** — manage multiple Discord bots from a single MCP server with per-project tokens
+- **Flexible token configuration** — configurable default token env var, optional default token when all projects use per-project tokens
 - **HTTP/SSE + stdio transports** — stdio for Claude Code, HTTP/SSE for remote MCP clients
 - **Dry-run mode** — simulate destructive operations without calling Discord API
 - **Interactive setup wizard** — `discord-ops setup` walks through config creation
@@ -60,6 +61,44 @@ Add to your `.mcp.json`:
 }
 ```
 
+### Multi-org setup (per-project tokens, no default)
+
+When each project uses its own bot token, you don't need `DISCORD_TOKEN` at all:
+
+```json
+{
+  "mcpServers": {
+    "discord": {
+      "command": "npx",
+      "args": ["-y", "discord-ops"],
+      "env": {
+        "PROJECT_A_TOKEN": "bot-token-for-project-a",
+        "PROJECT_B_TOKEN": "bot-token-for-project-b"
+      }
+    }
+  }
+}
+```
+
+### Custom default token env var
+
+If another tool already claims `DISCORD_TOKEN`, use `DISCORD_OPS_TOKEN_ENV` to point at a different env var:
+
+```json
+{
+  "mcpServers": {
+    "discord": {
+      "command": "npx",
+      "args": ["-y", "discord-ops"],
+      "env": {
+        "DISCORD_OPS_TOKEN_ENV": "MY_DISCORD_BOT_TOKEN",
+        "MY_DISCORD_BOT_TOKEN": "your-bot-token"
+      }
+    }
+  }
+}
+```
+
 ## Project Routing
 
 The killer feature: route messages by project name and channel alias instead of raw IDs.
@@ -87,6 +126,31 @@ The killer feature: route messages by project name and channel alias instead of 
   }
 }
 ```
+
+### Per-project bot tokens
+
+Projects can specify their own bot token via `token_env`:
+
+```json
+{
+  "projects": {
+    "org-a": {
+      "guild_id": "111111111111111111",
+      "channels": { "dev": "CHANNEL_ID" },
+      "default_channel": "dev",
+      "token_env": "ORG_A_DISCORD_TOKEN"
+    },
+    "org-b": {
+      "guild_id": "222222222222222222",
+      "channels": { "dev": "CHANNEL_ID" },
+      "default_channel": "dev",
+      "token_env": "ORG_B_DISCORD_TOKEN"
+    }
+  }
+}
+```
+
+When all projects have `token_env`, the default `DISCORD_TOKEN` is optional. Each project connects with its own bot.
 
 ### Per-project config (`.discord-ops.json` in repo root)
 
@@ -216,12 +280,39 @@ discord-ops --version    Show version
 
 ## Environment Variables
 
-| Variable                | Required | Description                                            |
-| ----------------------- | -------- | ------------------------------------------------------ |
-| `DISCORD_TOKEN`         | Yes      | Discord bot token                                      |
-| `DISCORD_OPS_CONFIG`    | No       | Path to global config (default: `~/.discord-ops.json`) |
-| `DISCORD_OPS_LOG_LEVEL` | No       | `debug`, `info`, `warn`, `error` (default: `info`)     |
-| `DISCORD_OPS_DRY_RUN`   | No       | Enable dry-run mode (any truthy value)                 |
+| Variable                | Required | Description                                                                 |
+| ----------------------- | -------- | --------------------------------------------------------------------------- |
+| `DISCORD_TOKEN`         | No\*     | Default Discord bot token (\*required unless all projects have `token_env`) |
+| `DISCORD_OPS_TOKEN_ENV` | No       | Override which env var holds the default token (default: `DISCORD_TOKEN`)   |
+| `<PROJECT>_TOKEN`       | No       | Per-project bot tokens (configured via `token_env` in project config)       |
+| `DISCORD_OPS_CONFIG`    | No       | Path to global config file (default: `~/.discord-ops.json`)                 |
+| `DISCORD_OPS_LOG_LEVEL` | No       | `debug`, `info`, `warn`, `error` (default: `info`)                          |
+| `DISCORD_OPS_DRY_RUN`   | No       | Enable dry-run mode (any truthy value)                                      |
+| `DRY_RUN`               | No       | Enable dry-run mode (any truthy value, alias)                               |
+
+### Token resolution
+
+1. If `DISCORD_OPS_TOKEN_ENV` is set, its value names the env var holding the default token (e.g., `DISCORD_OPS_TOKEN_ENV=MY_BOT_TOKEN` reads `MY_BOT_TOKEN`).
+2. Otherwise, the default token comes from `DISCORD_TOKEN`.
+3. Per-project tokens override the default: if a project config has `"token_env": "ORG_A_TOKEN"`, that project's bot uses `ORG_A_TOKEN`.
+4. If all projects have `token_env` set with valid values, no default token is needed at all.
+
+## Dry-Run Mode
+
+Enable dry-run to simulate destructive operations (delete, ban, kick, etc.) without actually calling the Discord API:
+
+```bash
+# Via CLI flag
+discord-ops --dry-run
+
+# Via environment variable
+DISCORD_OPS_DRY_RUN=1 discord-ops
+
+# Via env alias
+DRY_RUN=true discord-ops
+```
+
+In dry-run mode, destructive tools return a simulated success response showing what would have happened.
 
 ## Development
 

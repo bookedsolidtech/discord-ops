@@ -3,8 +3,10 @@ import { resolveTarget } from "../../src/routing/resolver.js";
 import { testGlobalConfig, testPerProjectConfig } from "../fixtures/config.js";
 import type { LoadedConfig } from "../../src/config/index.js";
 
+const DEFAULT_TOKEN = "fake-token-that-is-long-enough-to-pass-validation-check-abcdefgh";
+
 const config: LoadedConfig = {
-  token: "fake-token",
+  defaultToken: DEFAULT_TOKEN,
   global: testGlobalConfig,
   perProject: undefined,
 };
@@ -25,6 +27,7 @@ describe("resolveTarget", () => {
       guildId: "1476779123861885081",
       channelId: "222222222222222222",
       project: "clarity-house",
+      token: DEFAULT_TOKEN,
     });
   });
 
@@ -34,6 +37,7 @@ describe("resolveTarget", () => {
       guildId: "1476779123861885081",
       channelId: "444444444444444444",
       project: "clarity-house",
+      token: DEFAULT_TOKEN,
     });
   });
 
@@ -43,6 +47,7 @@ describe("resolveTarget", () => {
       guildId: "1476779123861885081",
       channelId: "111111111111111111",
       project: "clarity-house",
+      token: DEFAULT_TOKEN,
     });
   });
 
@@ -52,6 +57,7 @@ describe("resolveTarget", () => {
       guildId: "1476779123861885081",
       channelId: "111111111111111111",
       project: "clarity-house",
+      token: DEFAULT_TOKEN,
     });
   });
 
@@ -65,6 +71,7 @@ describe("resolveTarget", () => {
       guildId: "1476779123861885081",
       channelId: "666666666666666666",
       project: "helix",
+      token: DEFAULT_TOKEN,
     });
   });
 
@@ -78,6 +85,7 @@ describe("resolveTarget", () => {
       guildId: "1476779123861885081",
       channelId: "777777777777777777",
       project: "helix",
+      token: DEFAULT_TOKEN,
     });
   });
 
@@ -88,7 +96,7 @@ describe("resolveTarget", () => {
 
   it("returns error when no project and no default", () => {
     const noDefaultConfig: LoadedConfig = {
-      token: "fake",
+      defaultToken: DEFAULT_TOKEN,
       global: { projects: {} },
       perProject: undefined,
     };

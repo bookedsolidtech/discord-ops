@@ -12,7 +12,7 @@ import {
 export interface LoadedConfig {
   global: GlobalConfig;
   perProject?: PerProjectConfig;
-  defaultToken: string;
+  defaultToken?: string;
 }
 
 /**
@@ -26,7 +26,12 @@ export function getTokenForProject(projectName: string, config: LoadedConfig): s
     const token = process.env[project.token_env];
     if (token) return token;
     logger.warn(
-      `token_env "${project.token_env}" for project "${projectName}" is not set, falling back to DISCORD_TOKEN`,
+      `token_env "${project.token_env}" for project "${projectName}" is not set, falling back to default token`,
+    );
+  }
+  if (!config.defaultToken) {
+    throw new Error(
+      `No token available for project "${projectName}": token_env is not set or empty, and no default token configured`,
     );
   }
   return config.defaultToken;
@@ -41,13 +46,37 @@ export function getTokenForProject(projectName: string, config: LoadedConfig): s
  *  3. Direct params always work regardless
  */
 export function loadConfig(): LoadedConfig {
-  const defaultToken = process.env.DISCORD_TOKEN;
-  if (!defaultToken) {
-    throw new Error("DISCORD_TOKEN environment variable is required");
-  }
+  // Option A: DISCORD_OPS_TOKEN_ENV lets callers specify which env var holds the default token
+  const tokenEnvName = process.env.DISCORD_OPS_TOKEN_ENV ?? "DISCORD_TOKEN";
+  const defaultToken = process.env[tokenEnvName] || undefined;
 
   const global = loadGlobalConfig();
   const perProject = loadPerProjectConfig();
+
+  // Option B: if no default token, validate that all projects have their own token_env
+  if (!defaultToken) {
+    const projectEntries = Object.entries(global.projects);
+
+    if (projectEntries.length === 0) {
+      throw new Error(
+        `${tokenEnvName} environment variable is required (no projects with token_env configured)`,
+      );
+    }
+
+    const missing = projectEntries
+      .filter(([, p]) => !p.token_env || !process.env[p.token_env])
+      .map(([name]) => name);
+
+    if (missing.length > 0) {
+      throw new Error(
+        `${tokenEnvName} is not set, and these projects lack a valid token_env: ${missing.join(", ")}`,
+      );
+    }
+
+    logger.info(
+      `No default token set — all ${projectEntries.length} project(s) use per-project token_env`,
+    );
+  }
 
   return { global, perProject, defaultToken };
 }
