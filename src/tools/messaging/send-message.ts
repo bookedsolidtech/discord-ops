@@ -1,16 +1,17 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 
 const inputSchema = z.object({
   content: z.string().min(1).max(2000).describe("Message content (max 2000 chars)"),
-  channel_id: z.string().optional().describe("Direct channel ID"),
-  guild_id: z.string().optional().describe("Direct guild ID"),
+  channel_id: snowflakeId.optional().describe("Direct channel ID"),
+  guild_id: snowflakeId.optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
   notification_type: z.string().optional().describe("Notification type for auto-routing"),
-  reply_to: z.string().optional().describe("Message ID to reply to"),
+  reply_to: snowflakeId.optional().describe("Message ID to reply to"),
 });
 
 export const sendMessage: ToolDefinition = {

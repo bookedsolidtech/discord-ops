@@ -2,10 +2,11 @@ import { z } from "zod";
 import { ChannelType } from "discord.js";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
 const inputSchema = z.object({
-  guild_id: z.string().describe("Guild ID to list channels from"),
+  guild_id: snowflakeId.describe("Guild ID to list channels from"),
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
   type: z
     .enum(["text", "voice", "category", "announcement", "forum", "stage"])

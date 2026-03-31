@@ -10,11 +10,38 @@ import { logger } from "../utils/logger.js";
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
 export interface HttpTransportOptions {
   port?: number;
+  /** Bearer token required for all requests. Read from DISCORD_OPS_HTTP_TOKEN env if not set. */
+  authToken?: string;
+}
+
+function checkAuth(
+  req: IncomingMessage,
+  token: string | undefined,
+): { authorized: boolean; error?: string } {
+  if (!token) return { authorized: true }; // no token configured = open (localhost dev)
+
+  const header = req.headers.authorization;
+  if (!header) return { authorized: false, error: "Missing Authorization header" };
+
+  const [scheme, value] = header.split(" ", 2);
+  if (scheme !== "Bearer" || !value) {
+    return { authorized: false, error: "Authorization must use Bearer scheme" };
+  }
+
+  // Constant-time comparison to prevent timing attacks
+  if (value.length !== token.length) return { authorized: false, error: "Invalid token" };
+  let mismatch = 0;
+  for (let i = 0; i < value.length; i++) {
+    mismatch |= value.charCodeAt(i) ^ token.charCodeAt(i);
+  }
+  if (mismatch !== 0) return { authorized: false, error: "Invalid token" };
+
+  return { authorized: true };
 }
 
 export async function startHttpTransport(
@@ -22,12 +49,19 @@ export async function startHttpTransport(
   options: HttpTransportOptions = {},
 ): Promise<void> {
   const port = options.port ?? 3000;
+  const authToken = options.authToken ?? process.env.DISCORD_OPS_HTTP_TOKEN;
+
+  if (!authToken) {
+    logger.warn(
+      "HTTP transport running WITHOUT authentication. Set DISCORD_OPS_HTTP_TOKEN to require bearer auth.",
+    );
+  }
 
   // Track active transports by session ID for message routing
   const transports = new Map<string, SSEServerTransport>();
 
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
-    // Handle CORS preflight
+    // Handle CORS preflight (no auth required)
     if (req.method === "OPTIONS") {
       res.writeHead(204, CORS_HEADERS);
       res.end();
@@ -39,7 +73,21 @@ export async function startHttpTransport(
       res.setHeader(key, value);
     }
 
+    // Health endpoint is exempt from auth (for load balancers / probes)
     const url = new URL(req.url ?? "/", `http://localhost:${port}`);
+    if (req.method === "GET" && url.pathname === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok", sessions: transports.size }));
+      return;
+    }
+
+    // Authenticate all other endpoints
+    const auth = checkAuth(req, authToken);
+    if (!auth.authorized) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: auth.error }));
+      return;
+    }
 
     // SSE connection endpoint — client GETs this to open the stream
     if (req.method === "GET" && url.pathname === "/sse") {
@@ -72,13 +120,6 @@ export async function startHttpTransport(
       }
 
       await transport.handlePostMessage(req, res);
-      return;
-    }
-
-    // Health probe
-    if (req.method === "GET" && url.pathname === "/health") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok", sessions: transports.size }));
       return;
     }
 

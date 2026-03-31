@@ -17,6 +17,7 @@ export const deleteWebhook: ToolDefinition = {
   category: "webhooks",
   inputSchema,
   permissions: ["ManageWebhooks"],
+  requiresGuild: true,
   destructive: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;

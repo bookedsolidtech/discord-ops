@@ -7,6 +7,7 @@ import {
 } from "discord.js";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { renderTemplate } from "../../templates/registry.js";
 import { templateVarsSchema } from "../../templates/types.js";
@@ -19,8 +20,8 @@ const inputSchema = z.object({
       "Template name: release, deploy, ci_build, incident, incident_resolved, maintenance, status_update, review, celebration, welcome, shoutout, quote, announcement, changelog, milestone, tip, poll, dashboard, progress, oncall, standup, retro, alert",
     ),
   vars: templateVarsSchema,
-  channel_id: z.string().optional().describe("Direct channel ID"),
-  guild_id: z.string().optional().describe("Direct guild ID"),
+  channel_id: snowflakeId.optional().describe("Direct channel ID"),
+  guild_id: snowflakeId.optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
   notification_type: z.string().optional().describe("Notification type for auto-routing"),

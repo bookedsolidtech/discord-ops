@@ -2,16 +2,17 @@ import { z } from "zod";
 import type { MessageReaction } from "discord.js";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 
 const inputSchema = z.object({
-  channel_id: z.string().optional().describe("Direct channel ID"),
-  guild_id: z.string().optional().describe("Direct guild ID"),
+  channel_id: snowflakeId.optional().describe("Direct channel ID"),
+  guild_id: snowflakeId.optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
   limit: z.number().min(1).max(100).default(50).describe("Number of messages to fetch (max 100)"),
-  before: z.string().optional().describe("Get messages before this message ID"),
-  after: z.string().optional().describe("Get messages after this message ID"),
+  before: snowflakeId.optional().describe("Get messages before this message ID"),
+  after: snowflakeId.optional().describe("Get messages after this message ID"),
 });
 
 export const getMessages: ToolDefinition = {

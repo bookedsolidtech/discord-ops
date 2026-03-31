@@ -19,6 +19,7 @@ export const editWebhook: ToolDefinition = {
   category: "webhooks",
   inputSchema,
   permissions: ["ManageWebhooks"],
+  requiresGuild: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
     const client = await ctx.discord.getClient(token);

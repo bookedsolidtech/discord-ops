@@ -3,7 +3,7 @@ import type { GlobalConfig, PerProjectConfig } from "../../src/config/schema.js"
 export const testGlobalConfig: GlobalConfig = {
   projects: {
     "clarity-house": {
-      guild_id: "1476779123861885081",
+      guild_id: "900000000000000001",
       channels: {
         dev: "111111111111111111",
         builds: "222222222222222222",
@@ -14,7 +14,7 @@ export const testGlobalConfig: GlobalConfig = {
       default_channel: "dev",
     },
     helix: {
-      guild_id: "1476779123861885081",
+      guild_id: "900000000000000001",
       channels: {
         dev: "666666666666666666",
         builds: "777777777777777777",

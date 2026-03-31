@@ -166,7 +166,10 @@ export async function runSetup(): Promise<void> {
         Object.keys(notificationRouting).length > 0 ? notificationRouting : undefined,
     };
 
-    writeFileSync(GLOBAL_CONFIG_PATH, JSON.stringify(config, null, 2) + "\n", "utf-8");
+    writeFileSync(GLOBAL_CONFIG_PATH, JSON.stringify(config, null, 2) + "\n", {
+      encoding: "utf-8",
+      mode: 0o600,
+    });
     console.log(`\n  Global config written to: ${GLOBAL_CONFIG_PATH}`);
 
     // Step 10: Optionally generate per-project config

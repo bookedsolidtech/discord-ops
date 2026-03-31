@@ -1,12 +1,13 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
 const inputSchema = z.object({
-  guild_id: z.string().describe("Guild ID"),
+  guild_id: snowflakeId.describe("Guild ID"),
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
-  user_id: z.string().describe("User ID to look up"),
+  user_id: snowflakeId.describe("User ID to look up"),
 });
 
 export const getMember: ToolDefinition = {

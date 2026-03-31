@@ -1,12 +1,13 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
 import { toolResult } from "../types.js";
+import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 
 const inputSchema = z.object({
-  message_id: z.string().describe("ID of the message to delete"),
-  channel_id: z.string().optional().describe("Direct channel ID"),
-  guild_id: z.string().optional().describe("Direct guild ID"),
+  message_id: snowflakeId.describe("ID of the message to delete"),
+  channel_id: snowflakeId.optional().describe("Direct channel ID"),
+  guild_id: snowflakeId.optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
 });

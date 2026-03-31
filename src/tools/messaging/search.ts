@@ -5,16 +5,16 @@ import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 
 const inputSchema = z.object({
-  channel_id: z.string().optional().describe("Direct channel ID"),
-  guild_id: z.string().optional().describe("Direct guild ID"),
+  channel_id: snowflakeId.optional().describe("Direct channel ID"),
+  guild_id: snowflakeId.optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
   notification_type: z.string().optional().describe("Notification type for auto-routing"),
   query: z.string().min(1).describe("Text to search for in message content"),
   author_id: snowflakeId.optional().describe("Filter by author user ID"),
   limit: z.number().min(1).max(100).default(50).describe("Max messages to scan (default 50)"),
-  before: z.string().optional().describe("Fetch messages before this message ID"),
-  after: z.string().optional().describe("Fetch messages after this message ID"),
+  before: snowflakeId.optional().describe("Fetch messages before this message ID"),
+  after: snowflakeId.optional().describe("Fetch messages after this message ID"),
 });
 
 export const searchMessages: ToolDefinition = {

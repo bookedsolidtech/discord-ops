@@ -2,14 +2,15 @@ import { z } from "zod";
 import { ChannelType } from "discord.js";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
 const inputSchema = z.object({
-  channel_id: z.string().describe("Channel ID to edit"),
+  channel_id: snowflakeId.describe("Channel ID to edit"),
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
   name: z.string().min(1).max(100).optional().describe("New channel name"),
   topic: z.string().max(1024).optional().describe("New channel topic"),
-  parent_id: z.string().optional().describe("New category ID"),
+  parent_id: snowflakeId.optional().describe("New category ID"),
 });
 
 export const editChannel: ToolDefinition = {

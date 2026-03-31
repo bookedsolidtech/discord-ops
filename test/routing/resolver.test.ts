@@ -24,7 +24,7 @@ describe("resolveTarget", () => {
   it("resolves project + channel alias", () => {
     const result = resolveTarget({ project: "clarity-house", channel: "builds" }, config);
     expect(result).toEqual({
-      guildId: "1476779123861885081",
+      guildId: "900000000000000001",
       channelId: "222222222222222222",
       project: "clarity-house",
       token: DEFAULT_TOKEN,
@@ -34,7 +34,7 @@ describe("resolveTarget", () => {
   it("resolves notification_type via global routing", () => {
     const result = resolveTarget({ project: "clarity-house", notification_type: "error" }, config);
     expect(result).toEqual({
-      guildId: "1476779123861885081",
+      guildId: "900000000000000001",
       channelId: "444444444444444444",
       project: "clarity-house",
       token: DEFAULT_TOKEN,
@@ -44,7 +44,7 @@ describe("resolveTarget", () => {
   it("falls back to default_channel", () => {
     const result = resolveTarget({ project: "clarity-house" }, config);
     expect(result).toEqual({
-      guildId: "1476779123861885081",
+      guildId: "900000000000000001",
       channelId: "111111111111111111",
       project: "clarity-house",
       token: DEFAULT_TOKEN,
@@ -54,7 +54,7 @@ describe("resolveTarget", () => {
   it("uses default_project when project not specified", () => {
     const result = resolveTarget({}, config);
     expect(result).toEqual({
-      guildId: "1476779123861885081",
+      guildId: "900000000000000001",
       channelId: "111111111111111111",
       project: "clarity-house",
       token: DEFAULT_TOKEN,
@@ -68,7 +68,7 @@ describe("resolveTarget", () => {
     };
     const result = resolveTarget({}, configWithPerProject);
     expect(result).toEqual({
-      guildId: "1476779123861885081",
+      guildId: "900000000000000001",
       channelId: "666666666666666666",
       project: "helix",
       token: DEFAULT_TOKEN,
@@ -82,7 +82,7 @@ describe("resolveTarget", () => {
     };
     const result = resolveTarget({ notification_type: "ci_build" }, configWithPerProject);
     expect(result).toEqual({
-      guildId: "1476779123861885081",
+      guildId: "900000000000000001",
       channelId: "777777777777777777",
       project: "helix",
       token: DEFAULT_TOKEN,
