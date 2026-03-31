@@ -122,7 +122,7 @@ export function createMockDiscordClient(overrides: Record<string, unknown> = {})
 
 export function createMockConfig() {
   return {
-    token: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.XXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXX0000",
+    defaultToken: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.XXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXX0000",
     global: {
       projects: {
         "test-project": {

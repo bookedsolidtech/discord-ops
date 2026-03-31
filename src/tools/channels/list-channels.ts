@@ -2,9 +2,11 @@ import { z } from "zod";
 import { ChannelType } from "discord.js";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { getTokenForProject } from "../../config/index.js";
 
 const inputSchema = z.object({
   guild_id: z.string().describe("Guild ID to list channels from"),
+  project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
   type: z
     .enum(["text", "voice", "category", "announcement", "forum", "stage"])
     .optional()
@@ -27,7 +29,8 @@ export const listChannels: ToolDefinition = {
   inputSchema,
   requiresGuild: true,
   handle: async (input, ctx) => {
-    const guild = await ctx.discord.getGuild(input.guild_id);
+    const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
+    const guild = await ctx.discord.getGuild(input.guild_id, token);
     const channels = await guild.channels.fetch();
 
     let filtered = [...channels.values()].filter(Boolean);

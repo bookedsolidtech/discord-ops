@@ -12,7 +12,25 @@ import {
 export interface LoadedConfig {
   global: GlobalConfig;
   perProject?: PerProjectConfig;
-  token: string;
+  defaultToken: string;
+}
+
+/**
+ * Resolves the token for a given project.
+ * If the project has `token_env`, reads that env var.
+ * Otherwise falls back to the default DISCORD_TOKEN.
+ */
+export function getTokenForProject(
+  projectName: string,
+  config: LoadedConfig,
+): string {
+  const project = config.global.projects[projectName];
+  if (project?.token_env) {
+    const token = process.env[project.token_env];
+    if (token) return token;
+    logger.warn(`token_env "${project.token_env}" for project "${projectName}" is not set, falling back to DISCORD_TOKEN`);
+  }
+  return config.defaultToken;
 }
 
 /**
@@ -24,15 +42,15 @@ export interface LoadedConfig {
  *  3. Direct params always work regardless
  */
 export function loadConfig(): LoadedConfig {
-  const token = process.env.DISCORD_TOKEN;
-  if (!token) {
+  const defaultToken = process.env.DISCORD_TOKEN;
+  if (!defaultToken) {
     throw new Error("DISCORD_TOKEN environment variable is required");
   }
 
   const global = loadGlobalConfig();
   const perProject = loadPerProjectConfig();
 
-  return { global, perProject, token };
+  return { global, perProject, defaultToken };
 }
 
 function loadGlobalConfig(): GlobalConfig {

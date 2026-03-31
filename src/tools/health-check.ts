@@ -1,9 +1,11 @@
 import { z } from "zod";
 import type { ToolDefinition } from "./types.js";
 import { toolResultJson } from "./types.js";
+import { getTokenForProject } from "../config/index.js";
 
 const inputSchema = z.object({
   guild_id: z.string().optional().describe("Guild ID to check permissions for"),
+  project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
 export const healthCheck: ToolDefinition = {
@@ -23,8 +25,21 @@ export const healthCheck: ToolDefinition = {
         ctx.config.perProject?.project ?? ctx.config.global.default_project ?? null,
     };
 
+    // Show which projects have custom token_env
+    const multiBot: Record<string, string> = {};
+    for (const [name, project] of Object.entries(ctx.config.global.projects)) {
+      if (project.token_env) {
+        multiBot[name] = project.token_env;
+      }
+    }
+    if (Object.keys(multiBot).length > 0) {
+      result.multi_bot = multiBot;
+    }
+
+    const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
+
     if (connected) {
-      const client = await ctx.discord.getClient();
+      const client = await ctx.discord.getClient(token);
       result.bot_user = client.user?.tag;
       result.guild_count = client.guilds.cache.size;
       result.uptime_seconds = Math.floor((client.uptime ?? 0) / 1000);
@@ -32,7 +47,7 @@ export const healthCheck: ToolDefinition = {
 
     if (input.guild_id) {
       try {
-        const guild = await ctx.discord.getGuild(input.guild_id);
+        const guild = await ctx.discord.getGuild(input.guild_id, token);
         const me = await guild.members.fetchMe();
         result.guild = {
           id: guild.id,

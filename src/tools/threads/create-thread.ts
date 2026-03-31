@@ -27,7 +27,7 @@ export const createThread: ToolDefinition = {
       return { content: [{ type: "text", text: target.error }], isError: true };
     }
 
-    const channel = await ctx.discord.getChannel(target.channelId);
+    const channel = await ctx.discord.getChannel(target.channelId, target.token);
 
     const thread = input.message_id
       ? await channel.threads.create({

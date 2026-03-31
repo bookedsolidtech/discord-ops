@@ -36,7 +36,7 @@ async function main(): Promise<void> {
   const config = loadConfig();
 
   // Create lazy Discord client
-  const discord = new DiscordClient(config.token);
+  const discord = new DiscordClient(config.defaultToken);
 
   // Create MCP server with tool context
   const server = createServer({ discord, config });
@@ -58,24 +58,43 @@ async function main(): Promise<void> {
 async function runHealthCheck(): Promise<void> {
   try {
     const config = loadConfig();
-    const discord = new DiscordClient(config.token);
+    const discord = new DiscordClient(config.defaultToken);
 
-    console.log("Connecting to Discord...");
-    const client = await discord.getClient();
+    // Collect unique tokens: default + any project-specific ones
+    const tokens = new Map<string, string[]>(); // token → project names
+    tokens.set(config.defaultToken, ["(default)"]);
+    for (const [name, project] of Object.entries(config.global.projects)) {
+      if (project.token_env) {
+        const t = process.env[project.token_env];
+        if (t && t !== config.defaultToken) {
+          const names = tokens.get(t) ?? [];
+          names.push(name);
+          tokens.set(t, names);
+        }
+      }
+    }
 
-    console.log(`\nBot: ${client.user?.tag}`);
-    console.log(`Guilds: ${client.guilds.cache.size}`);
+    console.log(`Bots configured: ${tokens.size}`);
 
-    for (const [id, guild] of client.guilds.cache) {
-      const me = await guild.members.fetchMe();
-      console.log(`\n  ${guild.name} (${id})`);
-      console.log(`    Members: ${guild.memberCount}`);
-      console.log(`    Permissions: ${me.permissions.toArray().join(", ")}`);
+    for (const [token, projects] of tokens) {
+      console.log(`\nConnecting bot for: ${projects.join(", ")}...`);
+      const client = await discord.getClient(token);
+
+      console.log(`  Bot: ${client.user?.tag}`);
+      console.log(`  Guilds: ${client.guilds.cache.size}`);
+
+      for (const [id, guild] of client.guilds.cache) {
+        const me = await guild.members.fetchMe();
+        console.log(`\n    ${guild.name} (${id})`);
+        console.log(`      Members: ${guild.memberCount}`);
+        console.log(`      Permissions: ${me.permissions.toArray().join(", ")}`);
+      }
     }
 
     console.log(`\nProjects configured: ${Object.keys(config.global.projects).length}`);
     for (const [name, project] of Object.entries(config.global.projects)) {
-      console.log(`  ${name}: guild=${project.guild_id}, channels=${Object.keys(project.channels).join(", ")}`);
+      const tokenInfo = project.token_env ? ` [${project.token_env}]` : "";
+      console.log(`  ${name}: guild=${project.guild_id}, channels=${Object.keys(project.channels).join(", ")}${tokenInfo}`);
     }
 
     console.log("\nHealth check passed.");
@@ -97,7 +116,8 @@ USAGE:
   discord-ops --version    Show version
 
 ENVIRONMENT:
-  DISCORD_TOKEN            Discord bot token (required)
+  DISCORD_TOKEN            Default Discord bot token (required)
+  <PROJECT>_TOKEN          Per-project bot tokens (configured via token_env in config)
   DISCORD_OPS_CONFIG       Path to global config file (default: ~/.discord-ops.json)
   DISCORD_OPS_LOG_LEVEL    Log level: debug, info, warn, error (default: info)
 

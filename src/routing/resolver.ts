@@ -1,4 +1,4 @@
-import type { LoadedConfig } from "../config/index.js";
+import { type LoadedConfig, getTokenForProject } from "../config/index.js";
 import { resolveProject, getDefaultProjectName, type ResolvedProject } from "../config/profiles.js";
 import type { NotificationType } from "../config/schema.js";
 
@@ -6,6 +6,7 @@ export interface ResolvedTarget {
   guildId: string;
   channelId: string;
   project?: string;
+  token?: string;
 }
 
 export interface ResolveParams {
@@ -68,6 +69,7 @@ export function resolveTarget(
     guildId: project.guildId,
     channelId,
     project: projectName,
+    token: getTokenForProject(projectName, config),
   };
 }
 

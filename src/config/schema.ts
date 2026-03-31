@@ -14,6 +14,7 @@ export const ProjectConfigSchema = z.object({
   guild_id: z.string().regex(/^\d{17,20}$/, "Must be a valid Discord snowflake ID"),
   channels: z.record(z.string(), z.string().regex(/^\d{17,20}$/)),
   default_channel: z.string().optional(),
+  token_env: z.string().optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
