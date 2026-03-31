@@ -324,6 +324,7 @@ In dry-run mode, destructive tools return a simulated success response showing w
 23 built-in templates with cutting-edge Discord features. Use `send_template` with project routing.
 
 **Features across all templates:**
+
 - **Author branding** — every template has a configurable `author_name` + `author_icon` at the top
 - **Link buttons** — clickable buttons below embeds (View Logs, Open PR, Runbook, etc.)
 - **Discord timestamps** — dates auto-convert to each user's timezone with live countdowns
@@ -343,7 +344,7 @@ In dry-run mode, destructive tools return a simulated success response showing w
 | `ci_build`          | CI result with build link button               | Footer icon, clickable title                 |
 | `incident`          | Incident alert with severity colors            | Discord timestamps, status page button       |
 | `incident_resolved` | Resolution with postmortem button              | Discord timestamps, postmortem link          |
-| `maintenance`       | Maintenance with live timezone countdowns       | Discord timestamps, countdown, status button |
+| `maintenance`       | Maintenance with live timezone countdowns      | Discord timestamps, countdown, status button |
 | `status_update`     | Service status (operational/degraded/outage)   | Footer icon, dashboard button                |
 | `review`            | PR review with diff stats + PR button          | Clickable title, additions/deletions         |
 | `dashboard`         | Multi-embed service status board (up to 9 svc) | Multi-embed, per-service color cards         |
@@ -352,20 +353,20 @@ In dry-run mode, destructive tools return a simulated success response showing w
 
 ### Team & Community Templates (12)
 
-| Template       | Description                                | Key Features                                  |
-| -------------- | ------------------------------------------ | --------------------------------------------- |
-| `celebration`  | Celebrate wins with images                 | Author, thumbnail, image                      |
-| `welcome`      | Welcome members with onboarding buttons    | Discord timestamps, handbook/onboarding links |
-| `shoutout`     | Recognize work with avatar thumbnail       | Thumbnail, nomination attribution             |
-| `quote`        | Block-quoted inspirational text            | Block quote formatting, author avatar         |
-| `announcement` | Announcement with deadline countdown       | Discord timestamps, countdown, link button    |
-| `changelog`    | Changelog with 7 section types             | Deprecated, performance, security sections    |
-| `milestone`    | Milestone with target date countdown       | Discord timestamps, progress tracking         |
-| `tip`          | Pro tip with syntax-highlighted code       | Language-specific code blocks, doc button     |
-| `poll`         | Native Discord poll with vote tracking     | Native poll API, multiselect, duration        |
-| `progress`     | Visual progress bar with deadline          | Unicode progress bar, countdown               |
-| `standup`      | Daily standup summary                      | Yesterday/today/blockers sections             |
-| `retro`        | Sprint retrospective                       | Went-well/improve/actions, velocity           |
+| Template       | Description                             | Key Features                                  |
+| -------------- | --------------------------------------- | --------------------------------------------- |
+| `celebration`  | Celebrate wins with images              | Author, thumbnail, image                      |
+| `welcome`      | Welcome members with onboarding buttons | Discord timestamps, handbook/onboarding links |
+| `shoutout`     | Recognize work with avatar thumbnail    | Thumbnail, nomination attribution             |
+| `quote`        | Block-quoted inspirational text         | Block quote formatting, author avatar         |
+| `announcement` | Announcement with deadline countdown    | Discord timestamps, countdown, link button    |
+| `changelog`    | Changelog with 7 section types          | Deprecated, performance, security sections    |
+| `milestone`    | Milestone with target date countdown    | Discord timestamps, progress tracking         |
+| `tip`          | Pro tip with syntax-highlighted code    | Language-specific code blocks, doc button     |
+| `poll`         | Native Discord poll with vote tracking  | Native poll API, multiselect, duration        |
+| `progress`     | Visual progress bar with deadline       | Unicode progress bar, countdown               |
+| `standup`      | Daily standup summary                   | Yesterday/today/blockers sections             |
+| `retro`        | Sprint retrospective                    | Went-well/improve/actions, velocity           |
 
 ### Example
 
