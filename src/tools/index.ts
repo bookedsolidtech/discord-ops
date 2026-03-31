@@ -9,6 +9,8 @@ import { addReaction } from "./messaging/add-reaction.js";
 import { pinMessage } from "./messaging/pin.js";
 import { unpinMessage } from "./messaging/unpin.js";
 import { searchMessages } from "./messaging/search.js";
+import { sendTemplate } from "./messaging/send-template.js";
+import { listTemplatesCmd } from "./messaging/list-templates.js";
 
 // Channels
 import { listChannels } from "./channels/list-channels.js";
@@ -73,6 +75,8 @@ export const allTools: ToolDefinition[] = [
   pinMessage,
   unpinMessage,
   searchMessages,
+  sendTemplate,
+  listTemplatesCmd,
 
   // Channels
   listChannels,

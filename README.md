@@ -8,7 +8,7 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **43 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, project introspection
+- **45 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, templates, project introspection
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
 - **Notification routing** — map notification types (ci_build, deploy, error) to channels per project
 - **Multi-bot support** — manage multiple Discord bots from a single MCP server with per-project tokens
@@ -180,7 +180,7 @@ send_message({ channel_id: "123456789", content: "Hello" })
 
 ## Tools
 
-### Messaging (8 tools)
+### Messaging (10 tools)
 
 | Tool              | Description                                       |
 | ----------------- | ------------------------------------------------- |
@@ -192,6 +192,8 @@ send_message({ channel_id: "123456789", content: "Hello" })
 | `pin_message`     | Pin a message in a channel                        |
 | `unpin_message`   | Unpin a message                                   |
 | `search_messages` | Search messages by content, author, or date range |
+| `send_template`   | Send a styled embed using a built-in template     |
+| `list_templates`  | List available templates with required variables  |
 
 ### Channels (8 tools)
 
@@ -316,6 +318,56 @@ DRY_RUN=true discord-ops
 ```
 
 In dry-run mode, destructive tools return a simulated success response showing what would have happened.
+
+## Message Templates
+
+17 built-in embed templates for polished Discord messages. Use `send_template` with project routing.
+
+### DevOps Templates
+
+| Template            | Description                                  | Key Vars                                        |
+| ------------------- | -------------------------------------------- | ----------------------------------------------- |
+| `release`           | Version release announcement                 | `version`, `name`, `notes`, `highlights`, `npm` |
+| `deploy`            | Deployment success/failure                   | `status`, `environment`, `version`, `commit`    |
+| `ci_build`          | CI build result                              | `status`, `branch`, `tests`, `coverage`         |
+| `incident`          | Incident alert                               | `title`, `severity`, `status`, `service`        |
+| `incident_resolved` | Incident resolution                          | `title`, `duration`, `root_cause`, `resolution` |
+| `maintenance`       | Scheduled maintenance                        | `title`, `start`, `end`, `services`             |
+| `status_update`     | Service status (operational/degraded/outage) | `status`, `services`, `uptime`                  |
+| `review`            | PR review request                            | `title`, `repo`, `author`, `branch`, `url`      |
+
+### Team & Community Templates
+
+| Template       | Description                      | Key Vars                                 |
+| -------------- | -------------------------------- | ---------------------------------------- |
+| `celebration`  | Celebrate wins and milestones    | `title`, `message`, `achievement`        |
+| `welcome`      | Welcome new team members         | `name`, `role`, `team`, `mention`        |
+| `shoutout`     | Recognize outstanding work       | `name`, `achievement`, `mention`         |
+| `quote`        | Inspirational/motivational quote | `text`, `author`, `source`               |
+| `announcement` | General announcement             | `title`, `message`, `action`, `deadline` |
+| `changelog`    | What's new (added/changed/fixed) | `version`, `added`, `changed`, `fixed`   |
+| `milestone`    | Project milestone reached        | `title`, `metric`, `target`, `next`      |
+| `tip`          | Pro tip with code example        | `message`, `title`, `example`, `link`    |
+| `poll`         | Quick poll with numbered options | `question`, `options` (pipe-separated)   |
+
+### Example
+
+```
+send_template({
+  template: "release",
+  vars: {
+    version: "0.6.0",
+    name: "discord-ops",
+    notes: "Template system for beautiful Discord embeds",
+    highlights: "17 templates, 45 tools",
+    npm: "discord-ops@0.6.0"
+  },
+  project: "my-app",
+  channel: "releases"
+})
+```
+
+All templates support project routing (`project`, `channel`, `notification_type`, `channel_id`).
 
 ## Multi-Organization Troubleshooting
 
