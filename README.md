@@ -8,9 +8,11 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **18 MCP tools** — messaging, channels, guilds, members, roles, threads, health check
+- **35 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, health check
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
 - **Notification routing** — map notification types (ci_build, deploy, error) to channels per project
+- **Multi-bot support** — manage multiple Discord bots from a single MCP server
+- **Security hardening** — rate limiting, permission pre-flight checks, snowflake ID validation, self-protection guards
 - **Lazy login** — tools enumerate before Discord connects; first tool call triggers login
 - **Zod validation** — all inputs validated before execution
 - **Error sanitization** — tokens, webhook URLs, and snowflake IDs stripped from error output
@@ -104,36 +106,85 @@ send_message({ notification_type: "ci_build", content: "CI green" })
 send_message({ channel_id: "123456789", content: "Hello" })
 ```
 
-## Tools (v0.1.0)
+## Tools
 
-| Tool             | Description                         |
-| ---------------- | ----------------------------------- |
-| `send_message`   | Send a message with project routing |
-| `get_messages`   | Fetch recent messages               |
-| `edit_message`   | Edit a bot message                  |
-| `delete_message` | Delete a message                    |
-| `add_reaction`   | React to a message                  |
-| `list_channels`  | List guild channels                 |
-| `get_channel`    | Get channel details                 |
-| `create_channel` | Create a channel                    |
-| `edit_channel`   | Edit channel properties             |
-| `delete_channel` | Delete a channel                    |
-| `list_guilds`    | List bot's guilds                   |
-| `get_guild`      | Get guild details                   |
-| `list_members`   | List guild members                  |
-| `get_member`     | Get member details                  |
-| `list_roles`     | List guild roles                    |
-| `create_thread`  | Create a thread                     |
-| `list_threads`   | List active threads                 |
-| `health_check`   | Bot status + permissions            |
+### Messaging
+
+| Tool | Description |
+| --- | --- |
+| `send_message` | Send a message with project routing |
+| `get_messages` | Fetch recent messages |
+| `edit_message` | Edit a bot message |
+| `delete_message` | Delete a message |
+| `add_reaction` | React to a message |
+
+### Channels
+
+| Tool | Description |
+| --- | --- |
+| `list_channels` | List guild channels |
+| `get_channel` | Get channel details |
+| `create_channel` | Create a channel |
+| `edit_channel` | Edit channel properties |
+| `delete_channel` | Delete a channel |
+| `purge_messages` | Bulk-delete messages (max 100, < 14 days old) |
+| `set_slowmode` | Set or disable slowmode |
+
+### Moderation
+
+| Tool | Description |
+| --- | --- |
+| `kick_member` | Kick a member from a guild |
+| `ban_member` | Ban a user from a guild |
+| `unban_member` | Unban a user |
+| `timeout_member` | Timeout (mute) a member |
+
+### Roles
+
+| Tool | Description |
+| --- | --- |
+| `list_roles` | List guild roles |
+| `create_role` | Create a new role |
+| `edit_role` | Edit role properties |
+| `delete_role` | Delete a role |
+| `assign_role` | Add or remove a role from a member |
+
+### Webhooks
+
+| Tool | Description |
+| --- | --- |
+| `create_webhook` | Create a webhook on a channel |
+| `get_webhook` | Get webhook details |
+| `list_webhooks` | List webhooks for a guild or channel |
+| `edit_webhook` | Edit webhook properties |
+| `delete_webhook` | Delete a webhook |
+| `execute_webhook` | Send a message via webhook |
+
+### Audit
+
+| Tool | Description |
+| --- | --- |
+| `query_audit_log` | Query guild audit log with filters |
+
+### Other
+
+| Tool | Description |
+| --- | --- |
+| `list_guilds` | List bot's guilds |
+| `get_guild` | Get guild details |
+| `list_members` | List guild members |
+| `get_member` | Get member details |
+| `create_thread` | Create a thread |
+| `list_threads` | List active threads |
+| `health_check` | Bot status + permissions |
 
 ## Environment Variables
 
-| Variable                | Required | Description                                            |
-| ----------------------- | -------- | ------------------------------------------------------ |
-| `DISCORD_TOKEN`         | Yes      | Discord bot token                                      |
-| `DISCORD_OPS_CONFIG`    | No       | Path to global config (default: `~/.discord-ops.json`) |
-| `DISCORD_OPS_LOG_LEVEL` | No       | `debug`, `info`, `warn`, `error` (default: `info`)     |
+| Variable | Required | Description |
+| --- | --- | --- |
+| `DISCORD_TOKEN` | Yes | Discord bot token |
+| `DISCORD_OPS_CONFIG` | No | Path to global config (default: `~/.discord-ops.json`) |
+| `DISCORD_OPS_LOG_LEVEL` | No | `debug`, `info`, `warn`, `error` (default: `info`) |
 
 ## Development
 
@@ -143,6 +194,9 @@ cd discord-ops
 npm install
 npm run build
 npm test
+
+# Local CI
+./scripts/act-ci.sh --local
 ```
 
 ## License
