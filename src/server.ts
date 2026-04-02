@@ -7,6 +7,7 @@ import { sanitizeError } from "./security/sanitizer.js";
 import { auditToolCall } from "./security/audit.js";
 import { RateLimiter } from "./security/rate-limiter.js";
 import { checkPermissions } from "./security/permissions.js";
+import { filterTools } from "./profiles/index.js";
 import { logger } from "./utils/logger.js";
 
 const require = createRequire(import.meta.url);
@@ -24,12 +25,26 @@ function getZodShape(schema: z.ZodType): Record<string, z.ZodType> | undefined {
   return undefined;
 }
 
-// Tighter limits for destructive operations
-const destructiveLimiter = new RateLimiter(10, 60);
-const standardLimiter = new RateLimiter(30, 60);
-
 export interface ServerOptions {
   dryRun?: boolean;
+  profile?: string;
+  tools?: string[];
+  profileAdd?: string[];
+  profileRemove?: string[];
+}
+
+export interface ServerMeta {
+  toolCount: number;
+  totalTools: number;
+  profileName: string;
+  startedAt: string;
+  standardLimiter: RateLimiter;
+  destructiveLimiter: RateLimiter;
+}
+
+export interface CreateServerResult {
+  server: McpServer;
+  meta: ServerMeta;
 }
 
 function isDryRunEnabled(options?: ServerOptions): boolean {
@@ -37,19 +52,32 @@ function isDryRunEnabled(options?: ServerOptions): boolean {
   return !!(process.env.DISCORD_OPS_DRY_RUN || process.env.DRY_RUN);
 }
 
-export function createServer(ctx: ToolContext, options?: ServerOptions): McpServer {
+export function createServer(ctx: ToolContext, options?: ServerOptions): CreateServerResult {
   const dryRun = isDryRunEnabled(options);
 
   if (dryRun) {
     logger.warn("Dry-run mode active — destructive tools will simulate execution");
   }
 
+  // Filter tools by profile/explicit list, with optional add/remove overrides
+  const tools = filterTools(allTools, {
+    profile: options?.profile,
+    tools: options?.tools,
+    add: options?.profileAdd,
+    remove: options?.profileRemove,
+  });
+
+  const profileName = options?.tools?.length ? "custom" : (options?.profile ?? "full");
+
+  const destructiveLimiter = new RateLimiter(10, 60);
+  const standardLimiter = new RateLimiter(30, 60);
+
   const server = new McpServer({
     name: "discord-ops",
     version: PKG_VERSION,
   });
 
-  for (const tool of allTools) {
+  for (const tool of tools) {
     const shape = getZodShape(tool.inputSchema);
 
     const callback = async (params: Record<string, unknown>) => {
@@ -159,6 +187,16 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): McpServ
     }
   }
 
-  logger.info(`Registered ${allTools.length} tools`);
-  return server;
+  logger.info(`Registered ${tools.length}/${allTools.length} tools (profile: ${profileName})`);
+
+  const meta: ServerMeta = {
+    toolCount: tools.length,
+    totalTools: allTools.length,
+    profileName,
+    startedAt: new Date().toISOString(),
+    standardLimiter,
+    destructiveLimiter,
+  };
+
+  return { server, meta };
 }

@@ -19,10 +19,15 @@ export const ProjectConfigSchema = z.object({
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
 
+export const ToolProfileEnum = z.enum(["full", "monitoring", "readonly", "moderation"]);
+
 export const GlobalConfigSchema = z.object({
   projects: z.record(z.string(), ProjectConfigSchema),
   default_project: z.string().optional(),
   notification_routing: z.record(NotificationType, z.string()).optional(),
+  tool_profile: ToolProfileEnum.optional(),
+  tool_profile_add: z.array(z.string()).optional(),
+  tool_profile_remove: z.array(z.string()).optional(),
 });
 
 export type GlobalConfig = z.infer<typeof GlobalConfigSchema>;
@@ -30,6 +35,9 @@ export type GlobalConfig = z.infer<typeof GlobalConfigSchema>;
 export const PerProjectConfigSchema = z.object({
   project: z.string(),
   notification_routing: z.record(NotificationType, z.string()).optional(),
+  tool_profile: ToolProfileEnum.optional(),
+  tool_profile_add: z.array(z.string()).optional(),
+  tool_profile_remove: z.array(z.string()).optional(),
 });
 
 export type PerProjectConfig = z.infer<typeof PerProjectConfigSchema>;

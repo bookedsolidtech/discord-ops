@@ -50,7 +50,20 @@ async function main(): Promise<void> {
 
   // Parse global flags
   const dryRun = args.includes("--dry-run");
-  const serverOptions: ServerOptions = { dryRun };
+
+  // Parse --profile flag
+  const profileIndex = args.indexOf("--profile");
+  const profileArg = profileIndex !== -1 ? args[profileIndex + 1] : undefined;
+
+  // Parse --tools flag (comma-separated)
+  const toolsIndex = args.indexOf("--tools");
+  const toolsArg =
+    toolsIndex !== -1
+      ? args[toolsIndex + 1]
+          ?.split(",")
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : undefined;
 
   // Configure log level
   const logLevel = process.env.DISCORD_OPS_LOG_LEVEL as LogLevel | undefined;
@@ -59,11 +72,28 @@ async function main(): Promise<void> {
   // Load config (does NOT require Discord connection)
   const config = loadConfig();
 
+  // Resolve profile: --tools > --profile > per-project config > global config > "full"
+  const resolvedProfile = toolsArg?.length
+    ? undefined
+    : (profileArg ?? config.perProject?.tool_profile ?? config.global.tool_profile ?? "full");
+
+  // Resolve add/remove: per-project overrides global
+  const profileAdd = config.perProject?.tool_profile_add ?? config.global.tool_profile_add;
+  const profileRemove = config.perProject?.tool_profile_remove ?? config.global.tool_profile_remove;
+
+  const serverOptions: ServerOptions = {
+    dryRun,
+    profile: resolvedProfile,
+    tools: toolsArg,
+    profileAdd,
+    profileRemove,
+  };
+
   // Create lazy Discord client
   const discord = new DiscordClient(config.defaultToken);
 
   // Create MCP server with tool context
-  const server = createServer({ discord, config }, serverOptions);
+  const { server, meta } = createServer({ discord, config }, serverOptions);
 
   // Handle serve subcommand (HTTP/SSE transport)
   if (args[0] === "serve") {
@@ -75,7 +105,7 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
-    await startHttpTransport(server, { port });
+    await startHttpTransport(server, meta, { port });
 
     // Graceful shutdown
     const shutdown = async () => {
@@ -260,6 +290,8 @@ USAGE:
 OPTIONS:
   --dry-run                Simulate destructive operations without calling Discord API
   --port <port>            HTTP port for serve mode (default: 3000)
+  --profile <name>         Load a tool subset: full, monitoring, readonly, moderation
+  --tools "t1,t2,..."      Load only the listed tools (overrides --profile)
 
 ENVIRONMENT:
   DISCORD_TOKEN            Default Discord bot token (required unless all projects have token_env)

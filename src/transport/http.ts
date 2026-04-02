@@ -5,6 +5,7 @@ import {
 } from "node:http";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ServerMeta } from "../server.js";
 import { logger } from "../utils/logger.js";
 
 const CORS_HEADERS: Record<string, string> = {
@@ -46,6 +47,7 @@ function checkAuth(
 
 export async function startHttpTransport(
   server: McpServer,
+  meta: ServerMeta,
   options: HttpTransportOptions = {},
 ): Promise<void> {
   const port = options.port ?? 3000;
@@ -76,8 +78,23 @@ export async function startHttpTransport(
     // Health endpoint is exempt from auth (for load balancers / probes)
     const url = new URL(req.url ?? "/", `http://localhost:${port}`);
     if (req.method === "GET" && url.pathname === "/health") {
+      const startMs = new Date(meta.startedAt).getTime();
+      const uptimeSeconds = Math.floor((Date.now() - startMs) / 1000);
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok", sessions: transports.size }));
+      res.end(
+        JSON.stringify({
+          status: "ok",
+          uptime: uptimeSeconds,
+          toolProfile: meta.profileName,
+          toolCount: meta.toolCount,
+          totalTools: meta.totalTools,
+          sessions: transports.size,
+          rateLimiter: {
+            standard: meta.standardLimiter.stats(),
+            destructive: meta.destructiveLimiter.stats(),
+          },
+        }),
+      );
       return;
     }
 
