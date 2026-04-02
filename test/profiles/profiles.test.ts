@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  filterTools,
-  isProfileName,
-  PROFILES,
-  PROFILE_NAMES,
-} from "../../src/profiles/index.js";
+import { filterTools, isProfileName, PROFILES, PROFILE_NAMES } from "../../src/profiles/index.js";
 import type { ToolDefinition } from "../../src/tools/types.js";
 
 // Minimal fake tools for testing

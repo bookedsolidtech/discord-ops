@@ -10,18 +10,16 @@ import { isTimestamp, timestampToSnowflake } from "../../utils/snowflake.js";
  * Accept either a Discord snowflake ID or an ISO 8601 timestamp.
  * Timestamps are converted to snowflakes automatically.
  */
-const snowflakeOrTimestamp = z
-  .string()
-  .transform((val) => {
-    if (isTimestamp(val)) {
-      return timestampToSnowflake(val);
-    }
-    // Validate as snowflake
-    if (!/^\d{17,20}$/.test(val)) {
-      throw new Error(`Invalid value "${val}": must be a Discord snowflake ID or ISO 8601 timestamp`);
-    }
-    return val;
-  });
+const snowflakeOrTimestamp = z.string().transform((val) => {
+  if (isTimestamp(val)) {
+    return timestampToSnowflake(val);
+  }
+  // Validate as snowflake
+  if (!/^\d{17,20}$/.test(val)) {
+    throw new Error(`Invalid value "${val}": must be a Discord snowflake ID or ISO 8601 timestamp`);
+  }
+  return val;
+});
 
 const inputSchema = z.object({
   channel_id: snowflakeId.optional().describe("Direct channel ID"),
@@ -31,10 +29,14 @@ const inputSchema = z.object({
   limit: z.number().min(1).max(100).default(50).describe("Number of messages to fetch (max 100)"),
   before: snowflakeOrTimestamp
     .optional()
-    .describe("Get messages before this message ID or ISO 8601 timestamp (e.g. 2025-01-01T00:00:00Z)"),
+    .describe(
+      "Get messages before this message ID or ISO 8601 timestamp (e.g. 2025-01-01T00:00:00Z)",
+    ),
   after: snowflakeOrTimestamp
     .optional()
-    .describe("Get messages after this message ID or ISO 8601 timestamp (e.g. 2025-01-01T00:00:00Z)"),
+    .describe(
+      "Get messages after this message ID or ISO 8601 timestamp (e.g. 2025-01-01T00:00:00Z)",
+    ),
 });
 
 export const getMessages: ToolDefinition = {

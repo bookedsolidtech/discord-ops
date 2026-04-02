@@ -54,10 +54,7 @@ export interface FilterOptions {
  * `add`/`remove` modify the resolved profile set (ignored when `tools` is used).
  * Throws on unknown profile or tool names.
  */
-export function filterTools(
-  allTools: ToolDefinition[],
-  options?: FilterOptions,
-): ToolDefinition[] {
+export function filterTools(allTools: ToolDefinition[], options?: FilterOptions): ToolDefinition[] {
   if (!options) return allTools;
 
   const allNames = new Set(allTools.map((t) => t.name));

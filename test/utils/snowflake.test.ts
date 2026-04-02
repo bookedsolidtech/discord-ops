@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  DISCORD_EPOCH,
-  timestampToSnowflake,
-  isTimestamp,
-} from "../../src/utils/snowflake.js";
+import { DISCORD_EPOCH, timestampToSnowflake, isTimestamp } from "../../src/utils/snowflake.js";
 
 describe("isTimestamp", () => {
   it("returns true for ISO 8601 strings", () => {
@@ -43,8 +39,6 @@ describe("timestampToSnowflake", () => {
   });
 
   it("throws on timestamps before Discord epoch", () => {
-    expect(() => timestampToSnowflake("2010-01-01T00:00:00Z")).toThrow(
-      "before the Discord epoch",
-    );
+    expect(() => timestampToSnowflake("2010-01-01T00:00:00Z")).toThrow("before the Discord epoch");
   });
 });

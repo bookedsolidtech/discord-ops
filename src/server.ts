@@ -67,9 +67,7 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
     remove: options?.profileRemove,
   });
 
-  const profileName = options?.tools?.length
-    ? "custom"
-    : options?.profile ?? "full";
+  const profileName = options?.tools?.length ? "custom" : (options?.profile ?? "full");
 
   const destructiveLimiter = new RateLimiter(10, 60);
   const standardLimiter = new RateLimiter(30, 60);

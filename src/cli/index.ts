@@ -57,9 +57,13 @@ async function main(): Promise<void> {
 
   // Parse --tools flag (comma-separated)
   const toolsIndex = args.indexOf("--tools");
-  const toolsArg = toolsIndex !== -1
-    ? args[toolsIndex + 1]?.split(",").map((t) => t.trim()).filter(Boolean)
-    : undefined;
+  const toolsArg =
+    toolsIndex !== -1
+      ? args[toolsIndex + 1]
+          ?.split(",")
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : undefined;
 
   // Configure log level
   const logLevel = process.env.DISCORD_OPS_LOG_LEVEL as LogLevel | undefined;
@@ -71,7 +75,7 @@ async function main(): Promise<void> {
   // Resolve profile: --tools > --profile > per-project config > global config > "full"
   const resolvedProfile = toolsArg?.length
     ? undefined
-    : profileArg ?? config.perProject?.tool_profile ?? config.global.tool_profile ?? "full";
+    : (profileArg ?? config.perProject?.tool_profile ?? config.global.tool_profile ?? "full");
 
   // Resolve add/remove: per-project overrides global
   const profileAdd = config.perProject?.tool_profile_add ?? config.global.tool_profile_add;
