@@ -866,6 +866,30 @@ const alert: TemplateRenderer = (vars) => {
   };
 };
 
+/**
+ * Simple — minimal branded embed. Auto-used by send_message for polished output.
+ * Just wraps text in a color bar + description + timestamp + optional author.
+ */
+const simple: TemplateRenderer = (vars) => ({
+  embeds: [
+    {
+      ...(vars.title ? { title: vars.title } : {}),
+      description: vars.message ?? "",
+      color: Colors[vars.color as keyof typeof Colors] ?? Colors.info,
+      ...(vars.author_name
+        ? {
+            author: {
+              name: vars.author_name,
+              ...(vars.author_icon ? { icon_url: vars.author_icon } : {}),
+            },
+          }
+        : {}),
+      footer: { text: vars.footer ?? "" },
+      timestamp: new Date().toISOString(),
+    },
+  ],
+});
+
 // ─── Registry ────────────────────────────────────────────────────────
 
 export interface TemplateInfo {
@@ -1355,6 +1379,18 @@ export const templates: Record<string, TemplateInfo> = {
     ],
     render: alert,
     features: ["author", "footer_icon", "link_buttons"],
+  },
+
+  // Utility
+  simple: {
+    name: "simple",
+    category: "utility",
+    description:
+      "Minimal branded embed — color bar, description, timestamp, optional author. Auto-used by send_message for polished output",
+    requiredVars: ["message"],
+    optionalVars: ["title", "color", "footer", "author_name", "author_icon"],
+    render: simple,
+    features: ["author"],
   },
 };
 

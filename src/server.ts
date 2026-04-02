@@ -34,6 +34,7 @@ export interface ServerOptions {
 }
 
 export interface ServerMeta {
+  version: string;
   toolCount: number;
   totalTools: number;
   profileName: string;
@@ -190,6 +191,7 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
   logger.info(`Registered ${tools.length}/${allTools.length} tools (profile: ${profileName})`);
 
   const meta: ServerMeta = {
+    version: PKG_VERSION,
     toolCount: tools.length,
     totalTools: allTools.length,
     profileName,
