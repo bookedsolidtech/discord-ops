@@ -46,6 +46,40 @@ describe("send_message", () => {
     const result = await sendMessage.handle({ content: "Oops" }, ctx);
     expect(result.isError).toBe(true);
   });
+
+  it("auto-wraps in embed by default", async () => {
+    const ctx = createCtx();
+    const result = await sendMessage.handle(
+      { content: "Hello embed", project: "test-project", channel: "dev" },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.template).toBe("simple");
+    // Verify send was called with embeds, not content
+    const mockChannel = await ctx.discord.getChannel("222222222222222222");
+    expect(mockChannel.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeds: expect.arrayContaining([expect.objectContaining({ description: "Hello embed" })]),
+      }),
+    );
+  });
+
+  it("sends plain text when raw=true", async () => {
+    const ctx = createCtx();
+    const result = await sendMessage.handle(
+      { content: "Plain text", raw: true, project: "test-project", channel: "dev" },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.template).toBeUndefined();
+    expect(data.content).toBeDefined();
+    const mockChannel = await ctx.discord.getChannel("222222222222222222");
+    expect(mockChannel.send).toHaveBeenCalledWith(
+      expect.objectContaining({ content: "Plain text" }),
+    );
+  });
 });
 
 describe("get_messages", () => {
