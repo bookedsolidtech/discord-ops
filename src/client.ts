@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, type Guild, type TextChannel } from "discord
 import { logger } from "./utils/logger.js";
 import { validateTokenFormat } from "./security/token-validator.js";
 import { TTLCache } from "./utils/cache.js";
+import { fuzzyFind } from "./routing/fuzzy.js";
 
 /**
  * Single Discord bot connection — lazy login on first use.
@@ -132,6 +133,24 @@ export class DiscordClient {
       throw new Error(`Channel ${channelId} not found or not a text channel`);
     }
     return channel as TextChannel;
+  }
+
+  /**
+   * Find a text channel in a guild by name using fuzzy matching.
+   * Returns the channel ID if found, undefined otherwise.
+   */
+  async findChannelByName(
+    guildId: string,
+    name: string,
+    token?: string,
+  ): Promise<string | undefined> {
+    const guild = await this.getGuild(guildId, token);
+    const channels = await guild.channels.fetch();
+    const textChannels = channels
+      .filter((c) => c !== null && c.isTextBased())
+      .map((c) => ({ id: c!.id, name: c!.name }));
+    const match = fuzzyFind(textChannels, name);
+    return match?.item.id;
   }
 
   async destroy(): Promise<void> {

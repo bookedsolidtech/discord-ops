@@ -19,7 +19,7 @@ export const editMessage: ToolDefinition = {
   category: "messaging",
   inputSchema,
   handle: async (input, ctx) => {
-    const target = resolveTarget(input, ctx.config);
+    const target = await resolveTarget(input, ctx.config, ctx.discord);
     if ("error" in target) {
       return { content: [{ type: "text", text: target.error }], isError: true };
     }
