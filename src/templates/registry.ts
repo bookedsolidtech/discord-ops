@@ -1399,7 +1399,7 @@ export function getTemplate(name: string): TemplateInfo | undefined {
 }
 
 export function listTemplates(): TemplateInfo[] {
-  return Object.values(templates);
+  return Object.values(templates).filter((t) => t.name !== "simple");
 }
 
 export function renderTemplate(name: string, vars: Record<string, string>): RenderedTemplate {

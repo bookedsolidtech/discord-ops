@@ -1,6 +1,8 @@
 import { type LoadedConfig, getTokenForProject } from "../config/index.js";
 import { resolveProject, getDefaultProjectName, type ResolvedProject } from "../config/profiles.js";
 import type { NotificationType } from "../config/schema.js";
+import type { DiscordClient } from "../client.js";
+import { fuzzyFind } from "./fuzzy.js";
 
 export interface ResolvedTarget {
   guildId: string;
@@ -27,14 +29,17 @@ export interface ResolveParams {
  *
  * Priority:
  *  1. Direct channel_id + guild_id (always works)
- *  2. Project + channel alias
- *  3. Project + notification_type → channel alias
- *  4. Project + default_channel
+ *  2. Project + channel alias (exact)
+ *  3. Project + channel alias (fuzzy match on alias keys)
+ *  4. Project + notification_type → channel alias
+ *  5. Project + default_channel
+ *  6. Project + live Discord channel name lookup (fuzzy)
  */
-export function resolveTarget(
+export async function resolveTarget(
   params: ResolveParams,
   config: LoadedConfig,
-): ResolvedTarget | { error: string } {
+  discord?: DiscordClient,
+): Promise<ResolvedTarget | { error: string }> {
   // Direct IDs always win
   if (params.channel_id) {
     return {
@@ -56,26 +61,42 @@ export function resolveTarget(
     return { error: `Project "${projectName}" not found in config` };
   }
 
-  // Resolve channel
+  const token = getTokenForProject(projectName, config);
+
+  // Resolve channel via config aliases or notification routing
   const channelId = resolveChannel(params, project);
-  if (!channelId) {
-    return {
-      error: `Cannot resolve channel for project "${projectName}". Provide channel, notification_type, or set default_channel`,
-    };
+  if (channelId) {
+    return { guildId: project.guildId, channelId, project: projectName, token };
+  }
+
+  // Fallback: live Discord channel name lookup (fuzzy)
+  if (params.channel && discord && project.guildId) {
+    const liveChannelId = await discord.findChannelByName(project.guildId, params.channel, token);
+    if (liveChannelId) {
+      return { guildId: project.guildId, channelId: liveChannelId, project: projectName, token };
+    }
   }
 
   return {
-    guildId: project.guildId,
-    channelId,
-    project: projectName,
-    token: getTokenForProject(projectName, config),
+    error: `Cannot resolve channel "${params.channel ?? params.notification_type ?? "(none)"}" for project "${projectName}". Provide channel, notification_type, or set default_channel`,
   };
 }
 
 function resolveChannel(params: ResolveParams, project: ResolvedProject): string | undefined {
-  // Explicit channel alias
+  // Explicit channel alias — exact then fuzzy on configured alias keys
   if (params.channel) {
-    return project.channels[params.channel];
+    const exact = project.channels[params.channel];
+    if (exact) return exact;
+
+    // Fuzzy match against configured alias keys
+    const aliases = Object.keys(project.channels).map((k) => ({
+      id: project.channels[k],
+      name: k,
+    }));
+    const fuzzyMatch = fuzzyFind(aliases, params.channel);
+    if (fuzzyMatch) return fuzzyMatch.item.id;
+
+    return undefined;
   }
 
   // Notification type → channel alias → channel ID
