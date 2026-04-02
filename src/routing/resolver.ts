@@ -89,7 +89,10 @@ function resolveChannel(params: ResolveParams, project: ResolvedProject): string
     if (exact) return exact;
 
     // Fuzzy match against configured alias keys
-    const aliases = Object.keys(project.channels).map((k) => ({ id: project.channels[k], name: k }));
+    const aliases = Object.keys(project.channels).map((k) => ({
+      id: project.channels[k],
+      name: k,
+    }));
     const fuzzyMatch = fuzzyFind(aliases, params.channel);
     if (fuzzyMatch) return fuzzyMatch.item.id;
 
