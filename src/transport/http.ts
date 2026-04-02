@@ -84,6 +84,7 @@ export async function startHttpTransport(
       res.end(
         JSON.stringify({
           status: "ok",
+          version: meta.version,
           uptime: uptimeSeconds,
           toolProfile: meta.profileName,
           toolCount: meta.toolCount,

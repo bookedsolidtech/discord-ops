@@ -616,3 +616,49 @@ describe("template timestamp helpers", () => {
     expect(startField!.value).toContain("TBD");
   });
 });
+
+describe("simple template", () => {
+  it("renders a minimal embed with message", () => {
+    const result = renderTemplate("simple", { message: "Hello world" });
+    expect(result.embeds).toHaveLength(1);
+    expect(result.embeds[0].description).toBe("Hello world");
+    expect(result.embeds[0].color).toBeDefined();
+    expect(result.embeds[0].timestamp).toBeDefined();
+  });
+
+  it("includes optional title", () => {
+    const result = renderTemplate("simple", { message: "Body", title: "My Title" });
+    expect(result.embeds[0].title).toBe("My Title");
+  });
+
+  it("includes author when provided", () => {
+    const result = renderTemplate("simple", {
+      message: "Body",
+      author_name: "Bot Name",
+      author_icon: "https://example.com/icon.png",
+    });
+    expect(result.embeds[0].author).toEqual({
+      name: "Bot Name",
+      icon_url: "https://example.com/icon.png",
+    });
+  });
+
+  it("omits author when not provided", () => {
+    const result = renderTemplate("simple", { message: "Body" });
+    expect(result.embeds[0].author).toBeUndefined();
+  });
+
+  it("uses custom color", () => {
+    const result = renderTemplate("simple", { message: "Body", color: "success" });
+    expect(result.embeds[0].color).toBe(0x57f287); // Colors.success
+  });
+
+  it("includes footer when provided", () => {
+    const result = renderTemplate("simple", { message: "Body", footer: "My Footer" });
+    expect(result.embeds[0].footer).toEqual({ text: "My Footer" });
+  });
+
+  it("requires message var", () => {
+    expect(() => renderTemplate("simple", {})).toThrow("requires: message");
+  });
+});
