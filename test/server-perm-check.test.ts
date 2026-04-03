@@ -20,7 +20,11 @@ vi.mock("../src/config/index.js", async (importOriginal) => {
 
 import { createServer } from "../src/server.js";
 import { checkPermissions } from "../src/security/permissions.js";
-import { createMockDiscordClient, createMockConfig, createMockGuild } from "./mocks/discord-client.js";
+import {
+  createMockDiscordClient,
+  createMockConfig,
+  createMockGuild,
+} from "./mocks/discord-client.js";
 import type { ToolDefinition, ToolContext } from "../src/tools/types.js";
 
 // Access allTools array from the mocked module so we can push tools in each test.
