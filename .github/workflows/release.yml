@@ -16,6 +16,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -32,6 +34,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.CHANGESET_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Sync main back to staging
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin staging
+          git checkout staging
+          git merge origin/main --no-edit
+          git push origin staging
+
       - name: Notify Discord on publish
         if: steps.changesets.outputs.published == 'true'
         env:
@@ -40,6 +52,7 @@ jobs:
           PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
           REPO: ${{ github.repository }}
         run: |
+          git checkout main
           node - <<'NOTIFY'
             const { execSync } = require('child_process');
             const fs = require('fs');
@@ -60,12 +73,13 @@ jobs:
                   .split('\n')
                   .slice(1) // drop the "## version" line
                   .map(l => l
-                    .replace(/^### (.+)$/, '**$1**')          // ### Minor Changes → **Minor Changes**
-                    .replace(/^(- )[a-f0-9]{7,}: /, '$1')     // strip commit hash from bullet lines
+                    .replace(/^### (.+)$/, '**$1**')      // ### Minor Changes → **Minor Changes**
+                    .replace(/^(- )[a-f0-9]{7,}: /, '$1') // strip commit hash from bullet lines
                   )
                   .filter(l => l.trim())
                   .slice(0, 12)
-                  .join('\n');
+                  .join('\n')
+                  .slice(0, 1000); // Discord embed field limit is 1024; leave headroom
                 if (formatted) highlights = formatted;
               }
             } catch {}
