@@ -42,10 +42,12 @@ export async function resolveTarget(
 ): Promise<ResolvedTarget | { error: string }> {
   // Direct IDs always win
   if (params.channel_id) {
+    const token = params.project ? getTokenForProject(params.project, config) : undefined;
     return {
       guildId: params.guild_id ?? "",
       channelId: params.channel_id,
       project: params.project,
+      token,
     };
   }
 
