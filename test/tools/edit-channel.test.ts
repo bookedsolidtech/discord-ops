@@ -71,10 +71,7 @@ describe("edit_channel", () => {
 
   it("edits a channel position", async () => {
     const ctx = createCtx();
-    const result = await editChannel.handle(
-      { channel_id: "222222222222222222", position: 3 },
-      ctx,
-    );
+    const result = await editChannel.handle({ channel_id: "222222222222222222", position: 3 }, ctx);
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0]!.text);
     expect(data.id).toBe("222222222222222222");

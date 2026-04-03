@@ -11,7 +11,12 @@ const inputSchema = z.object({
   name: z.string().min(1).max(100).optional().describe("New channel name"),
   topic: z.string().max(1024).optional().describe("New channel topic"),
   parent_id: snowflakeId.optional().describe("New category ID"),
-  position: z.number().int().min(0).optional().describe("New position (0-indexed) within the category or guild"),
+  position: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe("New position (0-indexed) within the category or guild"),
 });
 
 export const editChannel: ToolDefinition = {
