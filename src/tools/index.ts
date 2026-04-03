@@ -10,6 +10,7 @@ import { pinMessage } from "./messaging/pin.js";
 import { unpinMessage } from "./messaging/unpin.js";
 import { searchMessages } from "./messaging/search.js";
 import { sendTemplate } from "./messaging/send-template.js";
+import { sendEmbed } from "./messaging/send-embed.js";
 import { listTemplatesCmd } from "./messaging/list-templates.js";
 
 // Channels
@@ -76,6 +77,7 @@ export const allTools: ToolDefinition[] = [
   unpinMessage,
   searchMessages,
   sendTemplate,
+  sendEmbed,
   listTemplatesCmd,
 
   // Channels
