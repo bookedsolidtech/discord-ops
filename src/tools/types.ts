@@ -25,6 +25,32 @@ export interface ToolDefinition {
   handle: (input: any, ctx: ToolContext) => Promise<ToolResult>;
 }
 
+/**
+ * Type-safe tool factory. Use instead of `const x: ToolDefinition = {...}` to get
+ * a properly typed `handle` function without `any` on the input parameter.
+ *
+ * @example
+ * const myTool = defineTool({
+ *   name: "my_tool",
+ *   inputSchema: z.object({ id: snowflakeId }),
+ *   handle: async (input, ctx) => { // input is typed as { id: string }
+ *     ...
+ *   },
+ * });
+ */
+export function defineTool<TSchema extends z.ZodType>(def: {
+  name: string;
+  description: string;
+  category: string;
+  inputSchema: TSchema;
+  permissions?: PermissionResolvable[];
+  destructive?: boolean;
+  requiresGuild?: boolean;
+  handle: (input: z.infer<TSchema>, ctx: ToolContext) => Promise<ToolResult>;
+}): ToolDefinition {
+  return def as ToolDefinition;
+}
+
 export function toolResult(text: string, isError?: boolean): ToolResult {
   return {
     content: [{ type: "text", text }],

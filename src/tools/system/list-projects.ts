@@ -14,12 +14,13 @@ export const listProjects: ToolDefinition = {
   handle: async (_input, ctx) => {
     const validation = validateConfig(ctx.config);
 
+    // token_env name is omitted intentionally — it reveals env var names which aids exfiltration (M-5).
+    // token_set (boolean) is sufficient for operators to know if a token is configured.
     const projects = validation.projects.map((p) => ({
       name: p.name,
       guild_id: p.guildId,
       channels: p.channels,
       default_channel: p.defaultChannel ?? null,
-      token_env: p.tokenEnv ?? null,
       token_set: p.tokenSet,
     }));
 

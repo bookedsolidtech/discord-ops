@@ -17,13 +17,19 @@ export function auditToolCall(entry: AuditEntry): void {
   });
 }
 
-function redactSensitiveParams(params: Record<string, unknown>): Record<string, unknown> {
-  const redacted = { ...params };
-  const sensitiveKeys = ["token", "secret", "password", "webhook_url"];
+const SENSITIVE_KEYS = ["token", "secret", "password", "webhook_url"];
 
-  for (const key of Object.keys(redacted)) {
-    if (sensitiveKeys.some((sk) => key.toLowerCase().includes(sk))) {
+function redactSensitiveParams(params: Record<string, unknown>): Record<string, unknown> {
+  const redacted: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(params)) {
+    if (SENSITIVE_KEYS.some((sk) => key.toLowerCase().includes(sk))) {
       redacted[key] = "[REDACTED]";
+    } else if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      // Recurse into nested objects so nested sensitive fields are also redacted (M-4)
+      redacted[key] = redactSensitiveParams(value as Record<string, unknown>);
+    } else {
+      redacted[key] = value;
     }
   }
 

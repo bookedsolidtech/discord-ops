@@ -16,6 +16,7 @@ export const deleteChannel: ToolDefinition = {
   inputSchema,
   destructive: true,
   permissions: ["ManageChannels"],
+  requiresGuild: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
     const channel = await ctx.discord.getAnyChannel(input.channel_id, token);

@@ -25,7 +25,12 @@ class BotConnection {
   async getClient(): Promise<Client> {
     if (this.client?.isReady()) return this.client;
     if (this.connecting) return this.connecting;
-    this.connecting = this.connect();
+    // Clear `connecting` on failure so the next call retries instead of returning
+    // a permanently rejected promise (BotConnection permanent rejection fix).
+    this.connecting = this.connect().catch((err: unknown) => {
+      this.connecting = null;
+      throw err;
+    });
     return this.connecting;
   }
 

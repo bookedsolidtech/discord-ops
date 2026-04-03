@@ -7,7 +7,36 @@ export interface OgMetadata {
   siteName?: string;
 }
 
+/**
+ * Validates that a URL is a public HTTP/HTTPS URL.
+ * Blocks loopback, link-local, and private RFC-1918 ranges to prevent SSRF (M-2).
+ */
+function isPublicHttpUrl(urlStr: string): boolean {
+  try {
+    const url = new URL(urlStr);
+    if (!["http:", "https:"].includes(url.protocol)) return false;
+    const h = url.hostname.toLowerCase();
+    // Loopback
+    if (h === "localhost" || h === "127.0.0.1" || h === "::1") return false;
+    // Link-local — AWS/Azure/GCP metadata endpoints
+    if (h === "169.254.169.254" || h.startsWith("169.254.")) return false;
+    // RFC-1918 private IPv4
+    if (h.startsWith("10.") || h.startsWith("192.168.")) return false;
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return false;
+    // IPv6 private/link-local (fc00::/7, fe80::/10)
+    if (h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80")) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function fetchOgMetadata(url: string): Promise<OgMetadata> {
+  if (!isPublicHttpUrl(url)) {
+    logger.warn("Blocked fetch of non-public or non-HTTP URL", { url });
+    return {};
+  }
+
   try {
     const response = await fetch(url, {
       headers: { "User-Agent": "discord-ops/1.0 (OG metadata fetcher)" },

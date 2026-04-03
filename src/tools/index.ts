@@ -28,8 +28,8 @@ import { setPermissions } from "./channels/permissions.js";
 // Guilds
 import { listGuilds } from "./guilds/list-guilds.js";
 import { getGuild } from "./guilds/get-guild.js";
-import { getInvites } from "./guilds/invites.js";
-import { createInvite } from "./guilds/invites.js";
+import { getInvites } from "./guilds/get-invites.js";
+import { createInvite } from "./guilds/create-invite.js";
 
 // Members
 import { listMembers } from "./members/list-members.js";

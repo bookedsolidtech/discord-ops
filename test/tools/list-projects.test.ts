@@ -49,7 +49,7 @@ describe("list_projects tool", () => {
     expect(data.has_default_token).toBe(true);
   });
 
-  it("shows token_env status per project", async () => {
+  it("shows token_set status per project (token_env name is not exposed)", async () => {
     process.env.ORG_A_TOKEN = "some-token";
 
     const config: LoadedConfig = {
@@ -74,12 +74,12 @@ describe("list_projects tool", () => {
     const data = JSON.parse(result.content[0].text);
 
     const orgA = data.projects.find((p: any) => p.name === "org-a");
-    expect(orgA.token_env).toBe("ORG_A_TOKEN");
     expect(orgA.token_set).toBe(true);
+    expect(orgA.token_env).toBeUndefined(); // env var name must not be exposed (M-5)
 
     const orgB = data.projects.find((p: any) => p.name === "org-b");
-    expect(orgB.token_env).toBe("ORG_B_TOKEN");
     expect(orgB.token_set).toBe(false);
+    expect(orgB.token_env).toBeUndefined();
 
     // Should have errors for org-b
     expect(data.errors.length).toBeGreaterThan(0);

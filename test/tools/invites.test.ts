@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { getInvites, createInvite } from "../../src/tools/guilds/invites.js";
+import { getInvites } from "../../src/tools/guilds/get-invites.js";
+import { createInvite } from "../../src/tools/guilds/create-invite.js";
 import {
   createMockDiscordClient,
   createMockGuild,
@@ -43,6 +44,7 @@ describe("create_invite", () => {
     expect(createInvite.name).toBe("create_invite");
     expect(createInvite.category).toBe("guilds");
     expect(createInvite.permissions).toContain("CreateInstantInvite");
+    expect(createInvite.requiresGuild).toBe(true);
   });
 
   it("creates an invite with defaults", async () => {
