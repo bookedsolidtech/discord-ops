@@ -22,3 +22,4 @@ npm run build         # compile to dist/
 - Feature work on `dev` or feature branches
 - `staging` for release candidates
 - `main` is the published release branch — merges trigger npm publish via changesets
+
