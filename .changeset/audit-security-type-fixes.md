@@ -5,12 +5,14 @@
 Comprehensive security, type safety, and correctness audit fixes (5-specialist review)
 
 **Security**
+
 - Fix shell injection in release workflow: use `execFileSync` argv array instead of shell string interpolation for Discord notification step
 - Remove unused `id-token: write` permission from release workflow
 - Guard `PUBLISHED_PACKAGES` JSON parse in CI notify script to prevent spurious workflow failures
 - Inline `DISCORD_OPS_CONFIG` JSON now throws on malformed input instead of silently using empty config
 
 **Correctness**
+
 - `delete_channel`: use `getAnyChannel` so voice channels, categories, and forums can be deleted (was text-only)
 - `archive_thread`: use `getAnyChannel` + `isThread()` guard instead of duck-typed `as any` cast
 - `query_audit_log`: return error on unknown `action_type` instead of silently ignoring the filter
@@ -19,6 +21,7 @@ Comprehensive security, type safety, and correctness audit fixes (5-specialist r
 - `setup.ts`: add `"alert"` to wizard `NOTIFICATION_TYPES` list (was missing from enum)
 
 **Type safety**
+
 - `server.ts`: replace `(schema as any)._def` with `instanceof z.ZodObject`; move `getTokenForProject` to static import
 - `purge_messages`: replace `as any` with `TextChannel` cast
 - `set_slowmode`: replace `(updated as any).name` with runtime presence check
@@ -29,6 +32,7 @@ Comprehensive security, type safety, and correctness audit fixes (5-specialist r
 - `owners.ts`: replace `as never` cast with proper `NotificationType` parameter type; return `null` for project-not-found vs `""` for no-op
 
 **Dead code removal**
+
 - Delete empty `src/cli/health.ts` placeholder (referenced v0.1.0 in a v0.18+ package)
 - Delete unused `src/utils/retry.ts` (exported but never imported)
 - Remove dead `properties` array and `void` suppressor in `og-fetch.ts`
@@ -39,6 +43,7 @@ Comprehensive security, type safety, and correctness audit fixes (5-specialist r
 - Deduplicate `channel.threads.create` call in `create-thread.ts`
 
 **Tests**
+
 - Add `findChannelByName` mock to `createMockDiscordClient`
 - Fix `notify-owners.test.ts`: type `notifyOn` as `NotificationType[]` (was `string[]`)
 - Fix `archive-thread.test.ts`: use `getAnyChannel` + `isThread()` mock
