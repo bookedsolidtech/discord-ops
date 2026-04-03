@@ -115,10 +115,11 @@ async function main(): Promise<void> {
   // Handle serve subcommand (HTTP/SSE transport)
   if (args[0] === "serve") {
     const portIndex = args.indexOf("--port");
-    const port = portIndex !== -1 ? parseInt(args[portIndex + 1], 10) : undefined;
+    const portStr = portIndex !== -1 ? args[portIndex + 1] : undefined;
+    const port = portStr !== undefined ? parseInt(portStr, 10) : undefined;
 
-    if (portIndex !== -1 && (!port || isNaN(port))) {
-      console.error("Invalid --port value");
+    if (port !== undefined && (isNaN(port) || port < 1 || port > 65535)) {
+      console.error("Invalid --port value: must be between 1 and 65535");
       process.exit(1);
     }
 

@@ -50,7 +50,7 @@ describe("create_invite", () => {
   it("creates an invite with defaults", async () => {
     const ctx = createCtx();
     const mockCh = createMockChannel();
-    (ctx.discord.getChannel as any).mockResolvedValue(mockCh);
+    (ctx.discord.getAnyChannel as any).mockResolvedValue(mockCh);
 
     const result = await createInvite.handle(
       {
@@ -78,7 +78,7 @@ describe("create_invite", () => {
   it("creates a temporary invite with custom settings", async () => {
     const ctx = createCtx();
     const mockCh = createMockChannel();
-    (ctx.discord.getChannel as any).mockResolvedValue(mockCh);
+    (ctx.discord.getAnyChannel as any).mockResolvedValue(mockCh);
 
     const result = await createInvite.handle(
       {
@@ -98,5 +98,26 @@ describe("create_invite", () => {
       temporary: true,
       unique: true,
     });
+  });
+
+  it("creates an invite for a non-text channel (voice/stage)", async () => {
+    const ctx = createCtx();
+    const mockVoiceCh = createMockChannel({ type: 2, name: "voice-lobby" }); // GuildVoice
+    (ctx.discord.getAnyChannel as any).mockResolvedValue(mockVoiceCh);
+
+    const result = await createInvite.handle(
+      {
+        channel_id: "222222222222222222",
+        max_age: 0,
+        max_uses: 0,
+        temporary: false,
+        unique: false,
+      },
+      ctx,
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(ctx.discord.getAnyChannel).toHaveBeenCalledWith("222222222222222222", undefined);
+    expect(mockVoiceCh.createInvite).toHaveBeenCalled();
   });
 });
