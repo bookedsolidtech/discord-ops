@@ -4,6 +4,7 @@ import { toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { fetchOgMetadata } from "../../utils/og-fetch.js";
+import { buildOwnerMentions } from "../../config/owners.js";
 
 const inputSchema = z.object({
   url: z.string().url().describe("URL to unfurl as a rich embed"),
@@ -51,7 +52,11 @@ export const sendEmbed: ToolDefinition = {
     if (input.footer) embed.footer = { text: input.footer };
 
     const channel = await ctx.discord.getChannel(target.channelId, target.token);
-    const message = await channel.send({ embeds: [embed] });
+    const mentions = buildOwnerMentions(target.project, input.notification_type, ctx.config);
+    const message = await channel.send({
+      ...(mentions ? { content: mentions } : {}),
+      embeds: [embed],
+    });
 
     return toolResultJson({
       id: message.id,

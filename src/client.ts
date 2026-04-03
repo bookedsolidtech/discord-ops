@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, type Guild, type TextChannel } from "discord.js";
+import { Client, GatewayIntentBits, type Guild, type TextChannel, type GuildChannel } from "discord.js";
 import { logger } from "./utils/logger.js";
 import { validateTokenFormat } from "./security/token-validator.js";
 import { TTLCache } from "./utils/cache.js";
@@ -126,13 +126,43 @@ export class DiscordClient {
     return guild;
   }
 
-  async getChannel(channelId: string, token?: string): Promise<TextChannel> {
+  async getChannel(channelIdOrName: string, token?: string, guildId?: string): Promise<TextChannel> {
+    const resolvedId = /^\d{17,20}$/.test(channelIdOrName)
+      ? channelIdOrName
+      : await this.resolveChannelName(channelIdOrName, token, guildId);
     const client = await this.getClient(token);
-    const channel = await client.channels.fetch(channelId);
+    const channel = await client.channels.fetch(resolvedId);
     if (!channel || !channel.isTextBased()) {
-      throw new Error(`Channel ${channelId} not found or not a text channel`);
+      throw new Error(`Channel "${channelIdOrName}" not found or not a text channel`);
     }
     return channel as TextChannel;
+  }
+
+  async getAnyChannel(channelIdOrName: string, token?: string, guildId?: string): Promise<GuildChannel> {
+    const resolvedId = /^\d{17,20}$/.test(channelIdOrName)
+      ? channelIdOrName
+      : await this.resolveChannelName(channelIdOrName, token, guildId);
+    const client = await this.getClient(token);
+    const channel = await client.channels.fetch(resolvedId);
+    if (!channel || !("guild" in channel)) {
+      throw new Error(`Channel "${channelIdOrName}" not found or not a guild channel`);
+    }
+    return channel as GuildChannel;
+  }
+
+  private async resolveChannelName(name: string, token?: string, guildId?: string): Promise<string> {
+    if (guildId) {
+      const id = await this.findChannelByName(guildId, name, token);
+      if (!id) throw new Error(`Channel "${name}" not found in guild ${guildId}`);
+      return id;
+    }
+    // No guild context — search across all cached guilds
+    const client = await this.getClient(token);
+    for (const guild of client.guilds.cache.values()) {
+      const id = await this.findChannelByName(guild.id, name, token);
+      if (id) return id;
+    }
+    throw new Error(`Channel "${name}" not found — provide guild_id for reliable name resolution`);
   }
 
   /**

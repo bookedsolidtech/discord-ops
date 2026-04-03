@@ -292,6 +292,7 @@ export function createMockDiscordClient(overrides: Record<string, unknown> = {})
       fetchWebhook: vi.fn().mockResolvedValue(mockWebhook),
     }),
     getChannel: vi.fn().mockResolvedValue(mockChannel),
+    getAnyChannel: vi.fn().mockResolvedValue(mockChannel),
     getGuild: vi.fn().mockResolvedValue(mockGuild),
     destroy: vi.fn().mockResolvedValue(undefined),
   };
