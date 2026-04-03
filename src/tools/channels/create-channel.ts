@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { ChannelType } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 import { CHANNEL_TYPE_MAP } from "./channel-types.js";
@@ -18,7 +17,7 @@ const inputSchema = z.object({
   parent_id: snowflakeId.optional().describe("Category ID to place channel under"),
 });
 
-export const createChannel: ToolDefinition = {
+export const createChannel = defineTool({
   name: "create_channel",
   description: "Create a new channel in a guild.",
   category: "channels",
@@ -44,4 +43,4 @@ export const createChannel: ToolDefinition = {
       parent_id: channel.parentId,
     });
   },
-};
+});

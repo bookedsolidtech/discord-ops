@@ -86,6 +86,15 @@ export async function startHttpTransport(
   const transports = new Map<string, SSEServerTransport>();
   const ipCounters = new Map<string, IpBucket>();
 
+  // Prune expired IP buckets periodically to prevent unbounded map growth
+  const pruneInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, bucket] of ipCounters) {
+      if (now > bucket.resetAt) ipCounters.delete(ip);
+    }
+  }, IP_WINDOW_MS);
+  pruneInterval.unref(); // don't keep the process alive for cleanup alone
+
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     // Handle CORS preflight (no auth required)
     if (req.method === "OPTIONS") {
@@ -174,6 +183,7 @@ export async function startHttpTransport(
 
   // Graceful shutdown helper
   const shutdown = () => {
+    clearInterval(pruneInterval);
     logger.info("Shutting down HTTP transport...");
     for (const transport of transports.values()) {
       transport.close().catch(() => {});

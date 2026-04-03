@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson, toolResult } from "../types.js";
+import { defineTool, toolResultJson, toolResult } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { buildOwnerMentions } from "../../config/owners.js";
@@ -22,7 +21,7 @@ const inputSchema = z.object({
     .describe("Optional message text to append after the mentions"),
 });
 
-export const notifyOwners: ToolDefinition = {
+export const notifyOwners = defineTool({
   name: "notify_owners",
   description:
     "Ping project owners in a channel based on notification_type. Sends owner <@mention>s only — no embed, no template. Use when you need a raw ping without a full message. No-ops silently if notification_type is not in the project's notify_owners_on list.",
@@ -59,4 +58,4 @@ export const notifyOwners: ToolDefinition = {
       timestamp: message.createdAt.toISOString(),
     });
   },
-};
+});

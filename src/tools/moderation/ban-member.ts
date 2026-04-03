@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult, toolResultJson } from "../types.js";
+import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -17,7 +16,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const banMember: ToolDefinition = {
+export const banMember = defineTool({
   name: "ban_member",
   description:
     "Ban a user from a guild. Can optionally delete recent messages. Requires BanMembers permission.",
@@ -53,4 +52,4 @@ export const banMember: ToolDefinition = {
       delete_message_seconds: input.delete_message_seconds ?? 0,
     });
   },
-};
+});

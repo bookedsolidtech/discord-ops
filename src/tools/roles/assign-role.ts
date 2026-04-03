@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -13,7 +12,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const assignRole: ToolDefinition = {
+export const assignRole = defineTool({
   name: "assign_role",
   description: "Add or remove a role from a guild member. Requires ManageRoles permission.",
   category: "roles",
@@ -40,4 +39,4 @@ export const assignRole: ToolDefinition = {
       reason: input.reason ?? null,
     });
   },
-};
+});

@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { getTokenForProject } from "../../config/index.js";
 
 const inputSchema = z.object({
@@ -10,7 +9,7 @@ const inputSchema = z.object({
     .describe("Project name to list guilds for a specific bot (omit to list from default bot)"),
 });
 
-export const listGuilds: ToolDefinition = {
+export const listGuilds = defineTool({
   name: "list_guilds",
   description:
     "List all guilds (servers) the bot has access to. Pass project to use a specific bot token.",
@@ -34,4 +33,4 @@ export const listGuilds: ToolDefinition = {
       guilds: result,
     });
   },
-};
+});

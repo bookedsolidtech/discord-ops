@@ -1,11 +1,10 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { validateConfig } from "../../config/validate.js";
 
 const inputSchema = z.object({});
 
-export const listProjects: ToolDefinition = {
+export const listProjects = defineTool({
   name: "list_projects",
   description:
     "List all configured projects with their guild mappings, channel aliases, token status, and routing config. Essential for understanding multi-org setups.",
@@ -45,4 +44,4 @@ export const listProjects: ToolDefinition = {
 
     return toolResultJson(result);
   },
-};
+});

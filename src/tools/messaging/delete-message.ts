@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult } from "../types.js";
+import { defineTool, toolResult } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 
@@ -12,7 +11,7 @@ const inputSchema = z.object({
   channel: z.string().optional().describe("Channel alias within project"),
 });
 
-export const deleteMessage: ToolDefinition = {
+export const deleteMessage = defineTool({
   name: "delete_message",
   description:
     "Delete a message. Bot can only delete its own messages or messages in channels where it has Manage Messages permission.",
@@ -31,4 +30,4 @@ export const deleteMessage: ToolDefinition = {
 
     return toolResult(`Deleted message ${input.message_id}`);
   },
-};
+});

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { getTokenForProject } from "../../src/config/index.js";
+import { getTokenForProject, loadConfig } from "../../src/config/index.js";
 import type { LoadedConfig } from "../../src/config/index.js";
 
 describe("getTokenForProject", () => {
@@ -162,5 +162,65 @@ describe("getTokenForProject", () => {
     expect(getTokenForProject("org-a", config)).toBe("token-a");
     expect(getTokenForProject("org-b", config)).toBe("token-b");
     expect(getTokenForProject("org-c", config)).toBe("default-token");
+  });
+});
+
+describe("DISCORD_OPS_TOKEN_ENV validation", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+    // Supply an inline JSON config so loadGlobalConfig() never touches the filesystem.
+    process.env.DISCORD_OPS_CONFIG = JSON.stringify({ projects: {} });
+    // Supply a default token so loadConfig() doesn't fail on the "no token" guard.
+    process.env.DISCORD_TOKEN = "fake-default-token";
+    // Remove the variable under test so each case starts clean.
+    delete process.env.DISCORD_OPS_TOKEN_ENV;
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('accepts "DISCORD_TOKEN" (default — no DISCORD_OPS_TOKEN_ENV set)', () => {
+    // DISCORD_OPS_TOKEN_ENV is absent; falls back to "DISCORD_TOKEN" which passes the regex.
+    expect(() => loadConfig()).not.toThrow();
+  });
+
+  it('accepts a single uppercase letter "A"', () => {
+    process.env.DISCORD_OPS_TOKEN_ENV = "A";
+    process.env.A = "fake-token";
+    expect(() => loadConfig()).not.toThrow();
+  });
+
+  it('accepts "MY_BOT_TOKEN"', () => {
+    process.env.DISCORD_OPS_TOKEN_ENV = "MY_BOT_TOKEN";
+    process.env.MY_BOT_TOKEN = "fake-token";
+    expect(() => loadConfig()).not.toThrow();
+  });
+
+  it('rejects "lowercase" — starts with lowercase letter', () => {
+    process.env.DISCORD_OPS_TOKEN_ENV = "lowercase";
+    expect(() => loadConfig()).toThrow("DISCORD_OPS_TOKEN_ENV must be a valid env var name");
+  });
+
+  it('rejects "123STARTS_WITH_DIGIT" — starts with digit', () => {
+    process.env.DISCORD_OPS_TOKEN_ENV = "123STARTS_WITH_DIGIT";
+    expect(() => loadConfig()).toThrow("DISCORD_OPS_TOKEN_ENV must be a valid env var name");
+  });
+
+  it('rejects "HAS SPACES" — contains a space', () => {
+    process.env.DISCORD_OPS_TOKEN_ENV = "HAS SPACES";
+    expect(() => loadConfig()).toThrow("DISCORD_OPS_TOKEN_ENV must be a valid env var name");
+  });
+
+  it('rejects "HAS-DASHES" — contains a hyphen', () => {
+    process.env.DISCORD_OPS_TOKEN_ENV = "HAS-DASHES";
+    expect(() => loadConfig()).toThrow("DISCORD_OPS_TOKEN_ENV must be a valid env var name");
+  });
+
+  it("rejects empty string", () => {
+    process.env.DISCORD_OPS_TOKEN_ENV = "";
+    expect(() => loadConfig()).toThrow("DISCORD_OPS_TOKEN_ENV must be a valid env var name");
   });
 });

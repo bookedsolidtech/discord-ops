@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult, toolResultJson } from "../types.js";
+import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -11,7 +10,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const kickMember: ToolDefinition = {
+export const kickMember = defineTool({
   name: "kick_member",
   description: "Kick a member from a guild. Requires KickMembers permission.",
   category: "moderation",
@@ -44,4 +43,4 @@ export const kickMember: ToolDefinition = {
       reason: input.reason ?? null,
     });
   },
-};
+});

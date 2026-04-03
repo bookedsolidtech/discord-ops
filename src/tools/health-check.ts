@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "./types.js";
-import { toolResultJson } from "./types.js";
+import { defineTool, toolResultJson } from "./types.js";
 import { snowflakeId } from "./schema.js";
 import { getTokenForProject } from "../config/index.js";
 
@@ -9,7 +8,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const healthCheck: ToolDefinition = {
+export const healthCheck = defineTool({
   name: "health_check",
   description:
     "Check bot connection status, permissions, and project routing config. Optionally checks permissions in a specific guild.",
@@ -64,4 +63,4 @@ export const healthCheck: ToolDefinition = {
 
     return toolResultJson(result);
   },
-};
+});

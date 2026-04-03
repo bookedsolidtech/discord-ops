@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -10,7 +9,7 @@ const inputSchema = z.object({
   archived: z.boolean().default(false).describe("Include archived threads"),
 });
 
-export const listThreads: ToolDefinition = {
+export const listThreads = defineTool({
   name: "list_threads",
   description: "List active (and optionally archived) threads in a guild.",
   category: "threads",
@@ -38,4 +37,4 @@ export const listThreads: ToolDefinition = {
       threads,
     });
   },
-};
+});

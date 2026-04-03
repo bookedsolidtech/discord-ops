@@ -121,11 +121,9 @@ function loadGlobalConfig(): GlobalConfig {
     const raw = JSON.parse(readFileSync(configPath, "utf-8"));
     return GlobalConfigSchema.parse(raw);
   } catch (err) {
-    logger.warn("Failed to parse global config, using empty config", {
-      path: configPath,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return { projects: {} };
+    throw new Error(
+      `Failed to parse global config at "${configPath}": ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }
 

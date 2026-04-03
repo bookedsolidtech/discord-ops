@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { MessageReaction } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { isTimestamp, timestampToSnowflake } from "../../utils/snowflake.js";
@@ -39,7 +38,7 @@ const inputSchema = z.object({
     ),
 });
 
-export const getMessages: ToolDefinition = {
+export const getMessages = defineTool({
   name: "get_messages",
   description:
     "Fetch recent messages from a Discord channel. Supports both snowflake IDs and ISO 8601 timestamps for before/after parameters.",
@@ -78,4 +77,4 @@ export const getMessages: ToolDefinition = {
       messages: result,
     });
   },
-};
+});

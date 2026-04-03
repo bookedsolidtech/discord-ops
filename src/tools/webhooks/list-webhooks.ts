@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { Collection, Snowflake, Webhook, WebhookType } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResult, toolResultJson } from "../types.js";
+import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -16,7 +15,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const listWebhooks: ToolDefinition = {
+export const listWebhooks = defineTool({
   name: "list_webhooks",
   description: "List webhooks in a guild or channel. Requires ManageWebhooks permission.",
   category: "webhooks",
@@ -58,4 +57,4 @@ export const listWebhooks: ToolDefinition = {
       webhooks: result,
     });
   },
-};
+});

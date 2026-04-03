@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -9,7 +8,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const getGuild: ToolDefinition = {
+export const getGuild = defineTool({
   name: "get_guild",
   description: "Get detailed information about a guild (server).",
   category: "guilds",
@@ -34,4 +33,4 @@ export const getGuild: ToolDefinition = {
       verification_level: guild.verificationLevel,
     });
   },
-};
+});

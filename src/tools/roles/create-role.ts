@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -21,7 +20,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const createRole: ToolDefinition = {
+export const createRole = defineTool({
   name: "create_role",
   description: "Create a new role in a guild. Requires ManageRoles permission.",
   category: "roles",
@@ -34,7 +33,7 @@ export const createRole: ToolDefinition = {
 
     const role = await guild.roles.create({
       name: input.name,
-      color: input.color,
+      color: input.color as `#${string}` | undefined,
       mentionable: input.mentionable,
       hoist: input.hoist,
       reason: input.reason,
@@ -51,4 +50,4 @@ export const createRole: ToolDefinition = {
       guild_id: input.guild_id,
     });
   },
-};
+});

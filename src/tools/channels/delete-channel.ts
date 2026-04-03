@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult } from "../types.js";
+import { defineTool, toolResult } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -9,7 +8,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const deleteChannel: ToolDefinition = {
+export const deleteChannel = defineTool({
   name: "delete_channel",
   description: "Delete a channel. This is irreversible.",
   category: "channels",
@@ -25,4 +24,4 @@ export const deleteChannel: ToolDefinition = {
 
     return toolResult(`Deleted channel #${name} (${input.channel_id})`);
   },
-};
+});

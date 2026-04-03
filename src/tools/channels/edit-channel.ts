@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { ChannelType, type GuildChannel, type TextChannel } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -19,7 +18,7 @@ const inputSchema = z.object({
     .describe("New position (0-indexed) within the category or guild"),
 });
 
-export const editChannel: ToolDefinition = {
+export const editChannel = defineTool({
   name: "edit_channel",
   description: "Edit a channel's name, topic, category, or position.",
   category: "channels",
@@ -45,4 +44,4 @@ export const editChannel: ToolDefinition = {
       parent_id: edited.parentId,
     });
   },
-};
+});
