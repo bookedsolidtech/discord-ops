@@ -8,9 +8,10 @@ import { getTokenForProject } from "../../config/index.js";
 // Derive valid flag names directly from discord.js — auto-updates with library upgrades
 const VALID_PERMISSION_FLAGS = new Set(Object.keys(PermissionFlagsBits));
 
-const permissionFlag = z
-  .string()
-  .refine((f) => VALID_PERMISSION_FLAGS.has(f), (f) => ({ message: `Invalid permission flag: "${f}"` }));
+const permissionFlag = z.string().refine(
+  (f) => VALID_PERMISSION_FLAGS.has(f),
+  (f) => ({ message: `Invalid permission flag: "${f}"` }),
+);
 
 const inputSchema = z.object({
   channel_id: snowflakeId.describe("Channel ID to set permissions on"),
