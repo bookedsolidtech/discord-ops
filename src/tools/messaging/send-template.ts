@@ -5,8 +5,7 @@ import {
   ButtonStyle,
   type MessageCreateOptions,
 } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { renderTemplate } from "../../templates/registry.js";
@@ -84,7 +83,7 @@ function buildPoll(poll?: TemplatePoll): object | undefined {
   };
 }
 
-export const sendTemplate: ToolDefinition = {
+export const sendTemplate = defineTool({
   name: "send_template",
   description:
     "Send a beautifully formatted Discord message using a built-in template. Supports embeds, link buttons, native polls, multi-embed dashboards, Discord timestamps, and author branding. Use list_templates for full details on all 23 templates.",
@@ -129,4 +128,4 @@ export const sendTemplate: ToolDefinition = {
       ...(rendered.embeds.length > 1 ? { embed_count: rendered.embeds.length } : {}),
     });
   },
-};
+});

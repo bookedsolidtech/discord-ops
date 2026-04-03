@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { ThreadChannel } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResult } from "../types.js";
+import { defineTool, toolResult } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -11,7 +10,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name for token resolution"),
 });
 
-export const archiveThread: ToolDefinition = {
+export const archiveThread = defineTool({
   name: "archive_thread",
   description:
     "Archive a thread, optionally locking it to prevent new messages. Archived threads are hidden from the channel list but can be unarchived.",
@@ -34,4 +33,4 @@ export const archiveThread: ToolDefinition = {
 
     return toolResult(`Archived thread "${thread.name}"${input.locked ? " (locked)" : ""}`);
   },
-};
+});

@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult, toolResultJson } from "../types.js";
+import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -53,7 +52,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const executeWebhook: ToolDefinition = {
+export const executeWebhook = defineTool({
   name: "execute_webhook",
   description:
     "Send a message through a webhook. Supports content, embeds, and username/avatar overrides. Great for CI/CD notifications.",
@@ -93,4 +92,4 @@ export const executeWebhook: ToolDefinition = {
       timestamp: message.createdAt?.toISOString(),
     });
   },
-};
+});

@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 
@@ -17,7 +16,7 @@ const inputSchema = z.object({
     .describe("Auto-archive duration in minutes (60, 1440, 4320, 10080)"),
 });
 
-export const createThread: ToolDefinition = {
+export const createThread = defineTool({
   name: "create_thread",
   description: "Create a thread in a channel, optionally from an existing message.",
   category: "threads",
@@ -44,4 +43,4 @@ export const createThread: ToolDefinition = {
       auto_archive_duration: thread.autoArchiveDuration,
     });
   },
-};
+});

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { TextChannel } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResult, toolResultJson } from "../types.js";
+import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -20,7 +19,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const purgeMessages: ToolDefinition = {
+export const purgeMessages = defineTool({
   name: "purge_messages",
   description:
     "Bulk-delete messages from a channel. Messages must be less than 14 days old. Requires ManageMessages permission. This is irreversible.",
@@ -46,4 +45,4 @@ export const purgeMessages: ToolDefinition = {
       reason: input.reason ?? null,
     });
   },
-};
+});

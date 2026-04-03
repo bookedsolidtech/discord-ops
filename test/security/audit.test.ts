@@ -1,23 +1,28 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { auditToolCall } from "../../src/security/audit.js";
 
 describe("redactSensitiveParams", () => {
-  it("redacts top-level token field", () => {
-    const logged: unknown[] = [];
-    vi.spyOn(console, "log").mockImplementation((...args) => logged.push(args));
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-    // We test via auditToolCall since redactSensitiveParams is not exported
-    // The logger.info output is inspected via the logged params
-    // Use a spy on the module-level logger instead
+  it("redacts top-level token field", () => {
+    const logLines: string[] = [];
+    vi.spyOn(process.stderr, "write").mockImplementation((chunk: unknown) => {
+      logLines.push(String(chunk));
+      return true;
+    });
+
     auditToolCall({
       tool: "test_tool",
       params: { channel_id: "123", token: "super-secret" },
       durationMs: 10,
       success: true,
     });
-    // If redaction is working, the function completes without throwing and
-    // doesn't leak the real token. We test the function more directly below.
-    vi.restoreAllMocks();
+
+    const output = logLines.join("");
+    expect(output).toContain("[REDACTED]");
+    expect(output).not.toContain("super-secret");
   });
 
   it("redacts nested sensitive fields (M-4 recursive check)", async () => {

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { ChannelType, type TextChannel } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -10,7 +9,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const getChannel: ToolDefinition = {
+export const getChannel = defineTool({
   name: "get_channel",
   description: "Get detailed information about a specific channel.",
   category: "channels",
@@ -40,4 +39,4 @@ export const getChannel: ToolDefinition = {
 
     return toolResultJson(result);
   },
-};
+});

@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult } from "../types.js";
+import { defineTool, toolResult } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 
@@ -13,7 +12,7 @@ const inputSchema = z.object({
   channel: z.string().optional().describe("Channel alias within project"),
 });
 
-export const addReaction: ToolDefinition = {
+export const addReaction = defineTool({
   name: "add_reaction",
   description: "Add a reaction emoji to a message.",
   category: "messaging",
@@ -30,4 +29,4 @@ export const addReaction: ToolDefinition = {
 
     return toolResult(`Added reaction ${input.emoji} to message ${input.message_id}`);
   },
-};
+});

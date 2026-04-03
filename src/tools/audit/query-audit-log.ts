@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { AuditLogEvent } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -20,7 +19,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const queryAuditLog: ToolDefinition = {
+export const queryAuditLog = defineTool({
   name: "query_audit_log",
   description:
     "Query the guild audit log. Filter by user, action type, or fetch recent entries. Requires ViewAuditLog permission.",
@@ -80,4 +79,4 @@ export const queryAuditLog: ToolDefinition = {
       entries,
     });
   },
-};
+});

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { PermissionFlagsBits } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResult } from "../types.js";
+import { defineTool, toolResult } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -25,7 +24,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name for token resolution"),
 });
 
-export const setPermissions: ToolDefinition = {
+export const setPermissions = defineTool({
   name: "set_permissions",
   description:
     "Set channel permission overrides for a role or member. Specify permission flags to allow or deny. Common flags: ViewChannel, SendMessages, ManageMessages, EmbedLinks, AttachFiles, ReadMessageHistory, AddReactions, ManageChannels.",
@@ -48,4 +47,4 @@ export const setPermissions: ToolDefinition = {
         `allow=[${input.allow?.join(", ") ?? "none"}], deny=[${input.deny?.join(", ") ?? "none"}]`,
     );
   },
-};
+});

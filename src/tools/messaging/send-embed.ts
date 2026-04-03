@@ -1,7 +1,7 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
+import { NotificationType } from "../../config/schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { fetchOgMetadata } from "../../utils/og-fetch.js";
 import { buildOwnerMentions } from "../../config/owners.js";
@@ -12,7 +12,7 @@ const inputSchema = z.object({
   guild_id: snowflakeId.optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
-  notification_type: z.string().optional().describe("Notification type for auto-routing"),
+  notification_type: NotificationType.optional().describe("Notification type for auto-routing"),
   title: z.string().max(256).optional().describe("Override OG title"),
   description: z.string().max(4096).optional().describe("Override OG description"),
   image_url: z.string().url().optional().describe("Override OG image URL"),
@@ -20,7 +20,7 @@ const inputSchema = z.object({
   footer: z.string().max(2048).optional().describe("Footer text"),
 });
 
-export const sendEmbed: ToolDefinition = {
+export const sendEmbed = defineTool({
   name: "send_embed",
   description:
     "Send a rich Discord embed by fetching Open Graph metadata from a URL. Automatically extracts title, description, and image from the page. Supports overrides for all OG fields plus color and footer.",
@@ -66,4 +66,4 @@ export const sendEmbed: ToolDefinition = {
       ...(target.project ? { project: target.project } : {}),
     });
   },
-};
+});

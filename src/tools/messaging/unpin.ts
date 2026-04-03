@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult } from "../types.js";
+import { defineTool, toolResult } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -10,7 +9,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name for token resolution"),
 });
 
-export const unpinMessage: ToolDefinition = {
+export const unpinMessage = defineTool({
   name: "unpin_message",
   description: "Unpin a message from a Discord channel.",
   category: "messaging",
@@ -23,4 +22,4 @@ export const unpinMessage: ToolDefinition = {
     await message.unpin();
     return toolResult(`Unpinned message ${input.message_id} from #${channel.name}`);
   },
-};
+});

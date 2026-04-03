@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { ChannelType, type NonThreadGuildBasedChannel } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResult, toolResultJson } from "../types.js";
+import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -45,7 +44,7 @@ const inputSchema = z
     }
   });
 
-export const moveChannel: ToolDefinition = {
+export const moveChannel = defineTool({
   name: "move_channel",
   description:
     "Move a channel or category to a position immediately before or after another channel. Uses before_id/after_id instead of raw position integers.",
@@ -99,4 +98,4 @@ export const moveChannel: ToolDefinition = {
         : { moved: "after", reference_id: input.after_id }),
     });
   },
-};
+});

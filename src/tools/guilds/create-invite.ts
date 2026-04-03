@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -31,7 +30,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name for token resolution"),
 });
 
-export const createInvite: ToolDefinition = {
+export const createInvite = defineTool({
   name: "create_invite",
   description: "Create an invite link for a Discord channel.",
   category: "guilds",
@@ -60,4 +59,4 @@ export const createInvite: ToolDefinition = {
       expires_at: invite.expiresAt?.toISOString(),
     });
   },
-};
+});

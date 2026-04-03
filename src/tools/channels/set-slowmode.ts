@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -15,7 +14,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const setSlowmode: ToolDefinition = {
+export const setSlowmode = defineTool({
   name: "set_slowmode",
   description:
     "Set or disable slowmode on a channel. Set seconds to 0 to disable. Requires ManageChannels permission.",
@@ -39,4 +38,4 @@ export const setSlowmode: ToolDefinition = {
       action: input.seconds > 0 ? "slowmode_set" : "slowmode_disabled",
     });
   },
-};
+});

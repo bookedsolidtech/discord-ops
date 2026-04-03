@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 
@@ -17,7 +16,7 @@ const inputSchema = z.object({
   after: snowflakeId.optional().describe("Fetch messages after this message ID"),
 });
 
-export const searchMessages: ToolDefinition = {
+export const searchMessages = defineTool({
   name: "search_messages",
   description:
     "Search for messages containing specific text in a channel. Scans recent messages and filters by content, optionally by author. Supports project routing.",
@@ -62,4 +61,4 @@ export const searchMessages: ToolDefinition = {
       results: matches,
     });
   },
-};
+});

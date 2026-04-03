@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -10,7 +9,7 @@ const inputSchema = z.object({
   limit: z.number().min(1).max(1000).default(100).describe("Number of members to fetch"),
 });
 
-export const listMembers: ToolDefinition = {
+export const listMembers = defineTool({
   name: "list_members",
   description: "List members of a guild.",
   category: "members",
@@ -37,4 +36,4 @@ export const listMembers: ToolDefinition = {
       members: result,
     });
   },
-};
+});

@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -9,7 +8,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const listRoles: ToolDefinition = {
+export const listRoles = defineTool({
   name: "list_roles",
   description: "List all roles in a guild.",
   category: "roles",
@@ -37,4 +36,4 @@ export const listRoles: ToolDefinition = {
       roles: [...result].sort((a, b) => b.position - a.position),
     });
   },
-};
+});

@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -13,7 +12,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const editWebhook: ToolDefinition = {
+export const editWebhook = defineTool({
   name: "edit_webhook",
   description: "Edit a webhook's name or channel. Requires ManageWebhooks permission.",
   category: "webhooks",
@@ -38,4 +37,4 @@ export const editWebhook: ToolDefinition = {
       guild_id: updated.guildId,
     });
   },
-};
+});

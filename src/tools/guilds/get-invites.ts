@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -9,7 +8,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name for token resolution"),
 });
 
-export const getInvites: ToolDefinition = {
+export const getInvites = defineTool({
   name: "get_invites",
   description: "Get all active invites for a guild.",
   category: "guilds",
@@ -40,4 +39,4 @@ export const getInvites: ToolDefinition = {
       })),
     });
   },
-};
+});

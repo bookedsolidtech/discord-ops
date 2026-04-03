@@ -1,7 +1,7 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
+import { NotificationType } from "../../config/schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { renderTemplate } from "../../templates/registry.js";
 import { buildOwnerMentions } from "../../config/owners.js";
@@ -12,7 +12,7 @@ const inputSchema = z.object({
   guild_id: snowflakeId.optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
-  notification_type: z.string().optional().describe("Notification type for auto-routing"),
+  notification_type: NotificationType.optional().describe("Notification type for auto-routing"),
   reply_to: snowflakeId.optional().describe("Message ID to reply to"),
   raw: z
     .boolean()
@@ -20,7 +20,7 @@ const inputSchema = z.object({
     .describe("Send as plain text instead of auto-wrapping in an embed (default: false)"),
 });
 
-export const sendMessage: ToolDefinition = {
+export const sendMessage = defineTool({
   name: "send_message",
   description:
     "Send a message to a Discord channel. Messages are automatically wrapped in a polished embed. Set raw=true for plain text. For richer formatting, use send_template instead.",
@@ -68,4 +68,4 @@ export const sendMessage: ToolDefinition = {
       ...(target.project ? { project: target.project } : {}),
     });
   },
-};
+});

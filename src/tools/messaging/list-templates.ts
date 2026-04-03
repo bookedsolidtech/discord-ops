@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { listTemplates } from "../../templates/registry.js";
 
 const inputSchema = z.object({
@@ -10,7 +9,7 @@ const inputSchema = z.object({
     .describe("Filter by category: devops, team, or all (default: all)"),
 });
 
-export const listTemplatesCmd: ToolDefinition = {
+export const listTemplatesCmd = defineTool({
   name: "list_templates",
   description:
     "List all available message templates with their required/optional variables. Use with send_template to send formatted Discord embeds.",
@@ -37,4 +36,4 @@ export const listTemplatesCmd: ToolDefinition = {
       templates: result,
     });
   },
-};
+});

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { ChannelType } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 import { CHANNEL_TYPE_MAP } from "./channel-types.js";
@@ -15,7 +14,7 @@ const inputSchema = z.object({
     .describe("Filter by channel type"),
 });
 
-export const listChannels: ToolDefinition = {
+export const listChannels = defineTool({
   name: "list_channels",
   description: "List all channels in a guild, optionally filtered by type.",
   category: "channels",
@@ -47,4 +46,4 @@ export const listChannels: ToolDefinition = {
       channels: result.sort((a, b) => a.position - b.position),
     });
   },
-};
+});

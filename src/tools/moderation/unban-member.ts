@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -11,7 +10,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const unbanMember: ToolDefinition = {
+export const unbanMember = defineTool({
   name: "unban_member",
   description: "Unban a user from a guild. Requires BanMembers permission.",
   category: "moderation",
@@ -31,4 +30,4 @@ export const unbanMember: ToolDefinition = {
       reason: input.reason ?? null,
     });
   },
-};
+});

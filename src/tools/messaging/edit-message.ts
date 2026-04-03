@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 
@@ -13,7 +12,7 @@ const inputSchema = z.object({
   channel: z.string().optional().describe("Channel alias within project"),
 });
 
-export const editMessage: ToolDefinition = {
+export const editMessage = defineTool({
   name: "edit_message",
   description: "Edit a message sent by the bot.",
   category: "messaging",
@@ -35,4 +34,4 @@ export const editMessage: ToolDefinition = {
       edited_timestamp: edited.editedAt?.toISOString(),
     });
   },
-};
+});

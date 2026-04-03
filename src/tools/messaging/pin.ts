@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult } from "../types.js";
+import { defineTool, toolResult } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -10,7 +9,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name for token resolution"),
 });
 
-export const pinMessage: ToolDefinition = {
+export const pinMessage = defineTool({
   name: "pin_message",
   description: "Pin a message in a Discord channel. Channels can have up to 50 pinned messages.",
   category: "messaging",
@@ -23,4 +22,4 @@ export const pinMessage: ToolDefinition = {
     await message.pin();
     return toolResult(`Pinned message ${input.message_id} in #${channel.name}`);
   },
-};
+});

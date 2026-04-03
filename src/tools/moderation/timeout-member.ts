@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult, toolResultJson } from "../types.js";
+import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -16,7 +15,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const timeoutMember: ToolDefinition = {
+export const timeoutMember = defineTool({
   name: "timeout_member",
   description:
     "Timeout (mute) a member for a specified duration. Set duration_seconds to 0 to remove timeout. Requires ModerateMembers permission.",
@@ -57,4 +56,4 @@ export const timeoutMember: ToolDefinition = {
       reason: input.reason ?? null,
     });
   },
-};
+});
