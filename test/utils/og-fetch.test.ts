@@ -65,8 +65,7 @@ describe("fetchOgMetadata — SSRF protection (M-2)", () => {
   it("allows legitimate public HTTPS URL", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       headers: { get: () => "text/html; charset=utf-8" },
-      text: async () =>
-        `<meta property="og:title" content="Example Site">`,
+      text: async () => `<meta property="og:title" content="Example Site">`,
     } as any);
 
     const result = await fetchOgMetadata("https://example.com/page");
