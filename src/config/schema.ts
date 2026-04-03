@@ -5,6 +5,7 @@ export const NotificationType = z.enum([
   "deploy",
   "release",
   "error",
+  "alert",
   "announcement",
   "dev",
 ]);
