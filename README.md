@@ -466,16 +466,16 @@ Any tool name accepted by the MCP server works here — `send_message`, `send_te
 
 ## Environment Variables
 
-| Variable                 | Required | Description                                                                 |
-| ------------------------ | -------- | --------------------------------------------------------------------------- |
-| `DISCORD_TOKEN`          | No\*     | Default Discord bot token (\*required unless all projects have `token_env`) |
-| `DISCORD_OPS_TOKEN_ENV`  | No       | Override which env var holds the default token (default: `DISCORD_TOKEN`)   |
-| `<PROJECT>_TOKEN`        | No       | Per-project bot tokens (configured via `token_env` in project config)       |
+| Variable                 | Required | Description                                                                        |
+| ------------------------ | -------- | ---------------------------------------------------------------------------------- |
+| `DISCORD_TOKEN`          | No\*     | Default Discord bot token (\*required unless all projects have `token_env`)        |
+| `DISCORD_OPS_TOKEN_ENV`  | No       | Override which env var holds the default token (default: `DISCORD_TOKEN`)          |
+| `<PROJECT>_TOKEN`        | No       | Per-project bot tokens (configured via `token_env` in project config)              |
 | `DISCORD_OPS_CONFIG`     | No       | Path to global config file, or inline JSON string (default: `~/.discord-ops.json`) |
-| `DISCORD_OPS_LOG_LEVEL`  | No       | `debug`, `info`, `warn`, `error` (default: `info`)                          |
-| `DISCORD_OPS_DRY_RUN`    | No       | Enable dry-run mode (any truthy value)                                      |
-| `DRY_RUN`                | No       | Enable dry-run mode (any truthy value, alias)                               |
-| `DISCORD_OPS_HTTP_TOKEN` | No       | Bearer token for HTTP transport authentication (strongly recommended)       |
+| `DISCORD_OPS_LOG_LEVEL`  | No       | `debug`, `info`, `warn`, `error` (default: `info`)                                 |
+| `DISCORD_OPS_DRY_RUN`    | No       | Enable dry-run mode (any truthy value)                                             |
+| `DRY_RUN`                | No       | Enable dry-run mode (any truthy value, alias)                                      |
+| `DISCORD_OPS_HTTP_TOKEN` | No       | Bearer token for HTTP transport authentication (strongly recommended)              |
 
 ### Token resolution
 
@@ -517,6 +517,7 @@ In CI you typically have one bot token and one project. Pass a minimal config as
 ### GitHub Actions example
 
 Store two secrets in your repo:
+
 - `BOOKED_DISCORD_BOT_TOKEN` — your bot token
 - `DISCORD_OPS_CONFIG` — the config JSON **minified to a single line** (multiline strings break GitHub secrets)
 

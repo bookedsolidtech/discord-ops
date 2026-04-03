@@ -50,14 +50,23 @@ jobs:
 
             const version = pkg.version;
 
-            // Extract latest changelog section
+            // Extract and format latest changelog section for Discord
             let highlights = 'See changelog for full details.';
             try {
               const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
               const match = changelog.match(new RegExp(`## ${version.replace(/\./g, '\\.')}[\\s\\S]*?(?=\\n## |$)`));
               if (match) {
-                const lines = match[0].split('\n').slice(1).filter(l => l.trim()).slice(0, 8);
-                if (lines.length) highlights = lines.join('\n');
+                const formatted = match[0]
+                  .split('\n')
+                  .slice(1) // drop the "## version" line
+                  .map(l => l
+                    .replace(/^### (.+)$/, '**$1**')          // ### Minor Changes → **Minor Changes**
+                    .replace(/^(- )[a-f0-9]{7,}: /, '$1')     // strip commit hash from bullet lines
+                  )
+                  .filter(l => l.trim())
+                  .slice(0, 12)
+                  .join('\n');
+                if (formatted) highlights = formatted;
               }
             } catch {}
 
