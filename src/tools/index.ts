@@ -12,12 +12,14 @@ import { searchMessages } from "./messaging/search.js";
 import { sendTemplate } from "./messaging/send-template.js";
 import { sendEmbed } from "./messaging/send-embed.js";
 import { listTemplatesCmd } from "./messaging/list-templates.js";
+import { notifyOwners } from "./messaging/notify-owners.js";
 
 // Channels
 import { listChannels } from "./channels/list-channels.js";
 import { getChannel } from "./channels/get-channel.js";
 import { createChannel } from "./channels/create-channel.js";
 import { editChannel } from "./channels/edit-channel.js";
+import { moveChannel } from "./channels/move-channel.js";
 import { deleteChannel } from "./channels/delete-channel.js";
 import { purgeMessages } from "./channels/purge-messages.js";
 import { setSlowmode } from "./channels/set-slowmode.js";
@@ -79,12 +81,14 @@ export const allTools: ToolDefinition[] = [
   sendTemplate,
   sendEmbed,
   listTemplatesCmd,
+  notifyOwners,
 
   // Channels
   listChannels,
   getChannel,
   createChannel,
   editChannel,
+  moveChannel,
   deleteChannel,
   purgeMessages,
   setSlowmode,
