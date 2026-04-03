@@ -8,7 +8,7 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **45 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, project introspection
+- **46 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, project introspection
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
 - **Notification routing** — map notification types (ci_build, deploy, error) to channels per project
 - **Multi-bot support** — manage multiple Discord bots from a single MCP server with per-project tokens
@@ -46,54 +46,76 @@ discord-ops serve --port 3000
 
 ## Claude Code Integration
 
-Add to your `.mcp.json`:
+Add to your project's `.mcp.json`. Use `npx` without a version pin so every session automatically uses the latest published release:
 
 ```json
 {
   "mcpServers": {
-    "discord": {
+    "discord-ops": {
       "command": "npx",
       "args": ["-y", "discord-ops"],
       "env": {
-        "DISCORD_TOKEN": "your-bot-token"
+        "DISCORD_TOKEN": "${DISCORD_TOKEN}"
       }
     }
   }
 }
 ```
 
-### Multi-org setup (per-project tokens, no default)
+The `${VAR}` syntax is Claude Code's native env var interpolation — it reads the value from your shell environment at startup. Export your bot token in `~/.zshrc` (or `.bashrc`) and it will be available to all projects without hardcoding it in any file.
 
-When each project uses its own bot token, you don't need `DISCORD_TOKEN` at all:
+### Multi-org setup (per-project tokens)
+
+When each project has its own bot, pass all token env vars and let `~/.discord-ops.json` handle which project uses which:
 
 ```json
 {
   "mcpServers": {
-    "discord": {
+    "discord-ops": {
       "command": "npx",
       "args": ["-y", "discord-ops"],
       "env": {
-        "PROJECT_A_TOKEN": "bot-token-for-project-a",
-        "PROJECT_B_TOKEN": "bot-token-for-project-b"
+        "ORG_A_DISCORD_TOKEN": "${ORG_A_DISCORD_TOKEN}",
+        "ORG_B_DISCORD_TOKEN": "${ORG_B_DISCORD_TOKEN}"
       }
     }
   }
 }
 ```
 
-### Custom default token env var
+Each project in `~/.discord-ops.json` declares `"token_env": "ORG_A_DISCORD_TOKEN"` and discord-ops routes automatically. No default `DISCORD_TOKEN` needed when all projects have `token_env` set.
 
-If another tool already claims `DISCORD_TOKEN`, use `DISCORD_OPS_TOKEN_ENV` to point at a different env var:
+### Single-org shorthand
+
+If all your projects share one bot, just pass that token:
 
 ```json
 {
   "mcpServers": {
-    "discord": {
+    "discord-ops": {
       "command": "npx",
       "args": ["-y", "discord-ops"],
       "env": {
-        "DISCORD_OPS_TOKEN_ENV": "MY_DISCORD_BOT_TOKEN",
-        "MY_DISCORD_BOT_TOKEN": "your-bot-token"
+        "DISCORD_TOKEN": "${DISCORD_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+### Custom token env var name
+
+If another tool already claims `DISCORD_TOKEN`, use `DISCORD_OPS_TOKEN_ENV` to point at a different name:
+
+```json
+{
+  "mcpServers": {
+    "discord-ops": {
+      "command": "npx",
+      "args": ["-y", "discord-ops"],
+      "env": {
+        "DISCORD_OPS_TOKEN_ENV": "MY_BOT_TOKEN",
+        "MY_BOT_TOKEN": "${MY_BOT_TOKEN}"
       }
     }
   }
