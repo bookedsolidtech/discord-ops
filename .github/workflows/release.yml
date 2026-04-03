@@ -24,9 +24,65 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Create Release Pull Request or Publish
+        id: changesets
         uses: changesets/action@v1
         with:
           publish: npx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.CHANGESET_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Notify Discord on publish
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          DISCORD_TOKEN: ${{ secrets.BOOKED_DISCORD_BOT_TOKEN }}
+          DISCORD_OPS_CONFIG: ${{ secrets.DISCORD_OPS_CONFIG }}
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
+          REPO: ${{ github.repository }}
+        run: |
+          node - <<'NOTIFY'
+            const { execSync } = require('child_process');
+            const fs = require('fs');
+
+            const pkgs = JSON.parse(process.env.PUBLISHED_PACKAGES || '[]');
+            const pkg = pkgs.find(p => p.name === 'discord-ops');
+            if (!pkg) process.exit(0);
+
+            const version = pkg.version;
+
+            // Extract latest changelog section
+            let highlights = 'See changelog for full details.';
+            try {
+              const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+              const match = changelog.match(new RegExp(`## ${version.replace(/\./g, '\\.')}[\\s\\S]*?(?=\\n## |$)`));
+              if (match) {
+                const lines = match[0].split('\n').slice(1).filter(l => l.trim()).slice(0, 8);
+                if (lines.length) highlights = lines.join('\n');
+              }
+            } catch {}
+
+            const date = new Date().toISOString().slice(0, 10);
+            const npmUrl = `https://www.npmjs.com/package/discord-ops/v/${version}`;
+            const releaseUrl = `https://github.com/${process.env.REPO}/releases`;
+
+            const args = JSON.stringify({
+              project: 'discord-ops',
+              channel: 'releases',
+              template: 'release',
+              vars: {
+                name: 'discord-ops',
+                version: `v${version}`,
+                author_name: 'Booked Solid Technology',
+                highlights,
+                npm: 'discord-ops@latest',
+                npm_url: npmUrl,
+                link: releaseUrl,
+                footer: `Published ${date}`
+              }
+            });
+
+            execSync(`node dist/cli/index.js run send_template --args '${args.replace(/'/g, "'\\''")}'`, {
+              stdio: 'inherit',
+              env: process.env
+            });
+          NOTIFY

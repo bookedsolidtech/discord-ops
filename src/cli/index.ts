@@ -10,6 +10,7 @@ import { startHttpTransport } from "../transport/http.js";
 import { logger, setLogLevel } from "../utils/logger.js";
 import type { LogLevel } from "../utils/logger.js";
 import { runSetup } from "./setup.js";
+import { runTool } from "./run.js";
 import { validateConfig, type ConfigValidationResult } from "../config/validate.js";
 
 const require = createRequire(import.meta.url);
@@ -45,6 +46,22 @@ async function main(): Promise<void> {
   // Handle validate subcommand
   if (args[0] === "validate") {
     await runValidate();
+    return;
+  }
+
+  // Handle run subcommand: discord-ops run <tool> --args '<json>'
+  if (args[0] === "run") {
+    const toolName = args[1];
+    if (!toolName) {
+      console.error("Usage: discord-ops run <tool> --args '<json>'");
+      process.exit(1);
+    }
+    const argsIndex = args.indexOf("--args");
+    if (argsIndex === -1 || !args[argsIndex + 1]) {
+      console.error("Usage: discord-ops run <tool> --args '<json>'");
+      process.exit(1);
+    }
+    await runTool(toolName, args[argsIndex + 1]);
     return;
   }
 
@@ -279,13 +296,18 @@ function printUsage(): void {
 discord-ops - Agency-grade Discord MCP server
 
 USAGE:
-  discord-ops              Start MCP server (stdio transport)
-  discord-ops serve        Start MCP server (HTTP/SSE transport)
-  discord-ops setup        Interactive setup wizard
-  discord-ops health       Run health check + permission audit
-  discord-ops validate     Validate config without connecting to Discord
-  discord-ops --help       Show this help
-  discord-ops --version    Show version
+  discord-ops                        Start MCP server (stdio transport)
+  discord-ops serve                  Start MCP server (HTTP/SSE transport)
+  discord-ops run <tool> --args '{}' Run any tool directly (no AI/MCP required)
+  discord-ops setup                  Interactive setup wizard
+  discord-ops health                 Run health check + permission audit
+  discord-ops validate               Validate config without connecting to Discord
+  discord-ops --help                 Show this help
+  discord-ops --version              Show version
+
+EXAMPLES:
+  discord-ops run send_message --args '{"project":"my-app","channel":"general","content":"Hello!"}'
+  discord-ops run send_template --args '{"project":"my-app","template":"release","vars":{"version":"1.0.0","name":"my-app","highlights":"Initial release","npm":"my-app@latest"}}'
 
 OPTIONS:
   --dry-run                Simulate destructive operations without calling Discord API
