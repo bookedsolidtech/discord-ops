@@ -57,10 +57,7 @@ interface IpBucket {
 const IP_WINDOW_MS = 60_000;
 const IP_MAX_REQUESTS = 120; // generous enough for legitimate use (~2 req/s)
 
-function checkIpRateLimit(
-  ipCounters: Map<string, IpBucket>,
-  ip: string,
-): { allowed: boolean } {
+function checkIpRateLimit(ipCounters: Map<string, IpBucket>, ip: string): { allowed: boolean } {
   const now = Date.now();
   const bucket = ipCounters.get(ip);
   if (!bucket || now > bucket.resetAt) {

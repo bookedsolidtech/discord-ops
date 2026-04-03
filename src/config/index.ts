@@ -109,9 +109,7 @@ function loadGlobalConfig(): GlobalConfig {
   // or accidental reads of sensitive non-JSON files.
   const configPath = resolve(configEnv ?? join(homedir(), ".discord-ops.json"));
   if (!configPath.endsWith(".json")) {
-    throw new Error(
-      `DISCORD_OPS_CONFIG path must end in ".json". Got: "${configPath}"`,
-    );
+    throw new Error(`DISCORD_OPS_CONFIG path must end in ".json". Got: "${configPath}"`);
   }
 
   if (!existsSync(configPath)) {
