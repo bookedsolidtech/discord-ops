@@ -1,6 +1,6 @@
 {
   "name": "discord-ops",
-  "version": "0.20.1",
+  "version": "0.20.2",
   "description": "Agency-grade Discord MCP server with multi-guild project routing",
   "type": "module",
   "license": "MIT",
