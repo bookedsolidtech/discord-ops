@@ -1,5 +1,23 @@
 # discord-ops
 
+## 0.16.0
+
+### Minor Changes
+
+- b42d0fe: feat: add `run` CLI subcommand and inline JSON support for `DISCORD_OPS_CONFIG`
+  - `discord-ops run <tool> --args '<json>'` — execute any tool directly from shell, no AI/MCP required. Supports the full tool suite including `send_template`, `send_message`, `send_embed`, and all 46 tools.
+  - `DISCORD_OPS_CONFIG` now accepts an inline JSON string in addition to a file path — if the value starts with `{` it is parsed directly. Eliminates the need to write config files in CI environments.
+  - `release.yml` GitHub Actions workflow — automatically posts a rich Discord release notification to `#releases` after every successful npm publish via changesets.
+  - README — new CLI `run` docs with examples, CI/CD integration section with config shape, GitHub Actions example, and updated `DISCORD_OPS_CONFIG` env var description.
+
+### Patch Changes
+
+- b42d0fe: fix: add "alert" to NotificationType enum — global config with alert in notify_owners_on caused config parse failure and MCP startup crash
+- b42d0fe: fix: clean up changelog formatting in Discord release notifications — section headers now render as bold text, commit hashes stripped from bullet lines
+- b42d0fe: Fix stale npx cache — use `discord-ops@latest` in MCP config
+
+  Without `@latest`, npx may serve a cached older version indefinitely, causing MCP clients to run stale code even after new releases are published. All MCP config examples in the README updated to use `discord-ops@latest`.
+
 ## 0.15.0
 
 ### Minor Changes
