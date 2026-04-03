@@ -1,5 +1,57 @@
 # discord-ops
 
+## 0.15.0
+
+### Minor Changes
+
+- 01c3e44: feat: add `run` CLI subcommand and inline JSON support for `DISCORD_OPS_CONFIG`
+  - `discord-ops run <tool> --args '<json>'` — execute any tool directly from shell, no AI/MCP required. Supports the full tool suite including `send_template`, `send_message`, `send_embed`, and all 46 tools.
+  - `DISCORD_OPS_CONFIG` now accepts an inline JSON string in addition to a file path — if the value starts with `{` it is parsed directly. Eliminates the need to write config files in CI environments.
+  - `release.yml` GitHub Actions workflow — automatically posts a rich Discord release notification to `#releases` after every successful npm publish via changesets.
+  - README — new CLI `run` docs with examples, CI/CD integration section with config shape, GitHub Actions example, and updated `DISCORD_OPS_CONFIG` env var description.
+
+### Patch Changes
+
+- 01c3e44: fix: add "alert" to NotificationType enum — global config with alert in notify_owners_on caused config parse failure and MCP startup crash
+- 01c3e44: Fix stale npx cache — use `discord-ops@latest` in MCP config
+
+  Without `@latest`, npx may serve a cached older version indefinitely, causing MCP clients to run stale code even after new releases are published. All MCP config examples in the README updated to use `discord-ops@latest`.
+
+## 0.14.3
+
+### Patch Changes
+
+- 6bd5a54: fix: add "alert" to NotificationType enum — global config with alert in notify_owners_on caused config parse failure and MCP startup crash
+- 6bd5a54: Fix stale npx cache — use `discord-ops@latest` in MCP config
+
+  Without `@latest`, npx may serve a cached older version indefinitely, causing MCP clients to run stale code even after new releases are published. All MCP config examples in the README updated to use `discord-ops@latest`.
+
+## 0.14.2
+
+### Patch Changes
+
+- 9fb0d4b: Fix stale npx cache — use `discord-ops@latest` in MCP config
+
+  Without `@latest`, npx may serve a cached older version indefinitely, causing MCP clients to run stale code even after new releases are published. All MCP config examples in the README updated to use `discord-ops@latest`.
+
+## 0.14.1
+
+### Patch Changes
+
+- a17e500: Comprehensive README documentation update
+  - Document `send_embed` tool (OG metadata unfurling with field overrides)
+  - Document auto-embed behavior for `send_message` and `raw: true` opt-out
+  - Document tool profiles (`--profile`, `--tools`, built-in profiles, per-project config)
+  - Document owner pings (`owners`, `notify_owners_on`, safety behavior for "dev")
+  - Document smart channel resolution (4-layer: alias → fuzzy → Discord API → error)
+  - Document HTTP transport authentication (`DISCORD_OPS_HTTP_TOKEN`)
+  - Document `edit_channel` support for categories and voice channels, `position` field
+  - Document ISO 8601 timestamp support for `get_messages`
+  - Add full advanced config reference table with all `~/.discord-ops.json` fields
+  - Add `send_embed` to messaging tools table (fixing count to correctly show 46 tools)
+  - Add on-call handoff template example
+  - Add "Channel not found" troubleshooting entry
+
 ## 0.14.0
 
 ### Minor Changes
