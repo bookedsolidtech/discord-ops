@@ -4,6 +4,7 @@ import { toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { renderTemplate } from "../../templates/registry.js";
+import { buildOwnerMentions } from "../../config/owners.js";
 
 const inputSchema = z.object({
   content: z.string().min(1).max(2000).describe("Message content (max 2000 chars)"),
@@ -32,11 +33,13 @@ export const sendMessage: ToolDefinition = {
     }
 
     const channel = await ctx.discord.getChannel(target.channelId, target.token);
+    const mentions = buildOwnerMentions(target.project, input.notification_type, ctx.config);
 
     // Auto-wrap in simple embed unless raw=true
     if (!input.raw) {
       const rendered = renderTemplate("simple", { message: input.content });
       const message = await channel.send({
+        ...(mentions ? { content: mentions } : {}),
         embeds: rendered.embeds,
         ...(input.reply_to ? { reply: { messageReference: input.reply_to } } : {}),
       });
@@ -52,7 +55,7 @@ export const sendMessage: ToolDefinition = {
     }
 
     const message = await channel.send({
-      content: input.content,
+      content: mentions ? `${mentions}\n${input.content}` : input.content,
       ...(input.reply_to ? { reply: { messageReference: input.reply_to } } : {}),
     });
 
