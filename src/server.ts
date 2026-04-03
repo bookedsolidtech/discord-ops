@@ -39,8 +39,6 @@ export interface ServerMeta {
   totalTools: number;
   profileName: string;
   startedAt: string;
-  standardLimiter: RateLimiter;
-  destructiveLimiter: RateLimiter;
 }
 
 export interface CreateServerResult {
@@ -102,25 +100,34 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
 
         const parsed = tool.inputSchema.parse(params);
 
-        // Permission pre-flight — check bot has required perms before calling Discord API
-        if (tool.permissions?.length && tool.requiresGuild && parsed.guild_id) {
+        // Permission pre-flight — check bot has required perms before calling Discord API.
+        // Resolves guild from guild_id (guild tools) or channel_id (channel tools).
+        if (tool.permissions?.length && tool.requiresGuild) {
           try {
             const token = parsed.project
               ? getTokenForProject(parsed.project, ctx.config)
               : undefined;
-            const guild = await ctx.discord.getGuild(parsed.guild_id, token);
-            const botMember = await guild.members.fetchMe();
-            const permCheck = checkPermissions(botMember, tool.permissions);
-            if (!permCheck.allowed) {
-              return {
-                content: [
-                  {
-                    type: "text" as const,
-                    text: `Bot lacks required permissions: ${permCheck.missing.join(", ")}`,
-                  },
-                ],
-                isError: true,
-              };
+            let guild;
+            if (parsed.guild_id) {
+              guild = await ctx.discord.getGuild(parsed.guild_id as string, token);
+            } else if (parsed.channel_id) {
+              const ch = await ctx.discord.getAnyChannel(parsed.channel_id as string, token);
+              guild = await ctx.discord.getGuild(ch.guild.id, token);
+            }
+            if (guild) {
+              const botMember = await guild.members.fetchMe();
+              const permCheck = checkPermissions(botMember, tool.permissions);
+              if (!permCheck.allowed) {
+                return {
+                  content: [
+                    {
+                      type: "text" as const,
+                      text: `Bot lacks required permissions: ${permCheck.missing.join(", ")}`,
+                    },
+                  ],
+                  isError: true,
+                };
+              }
             }
           } catch {
             // If we can't check perms (e.g. guild not cached yet), let the tool try and fail naturally
@@ -196,8 +203,6 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
     totalTools: allTools.length,
     profileName,
     startedAt: new Date().toISOString(),
-    standardLimiter,
-    destructiveLimiter,
   };
 
   return { server, meta };

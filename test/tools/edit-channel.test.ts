@@ -19,6 +19,7 @@ describe("edit_channel", () => {
     expect(editChannel.name).toBe("edit_channel");
     expect(editChannel.category).toBe("channels");
     expect(editChannel.permissions).toContain("ManageChannels");
+    expect(editChannel.requiresGuild).toBe(true);
   });
 
   it("edits a channel name", async () => {

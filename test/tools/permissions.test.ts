@@ -19,6 +19,7 @@ describe("set_permissions", () => {
     expect(setPermissions.category).toBe("channels");
     expect(setPermissions.destructive).toBe(true);
     expect(setPermissions.permissions).toContain("ManageRoles");
+    expect(setPermissions.requiresGuild).toBe(true);
   });
 
   it("sets allow permissions", async () => {
@@ -88,5 +89,36 @@ describe("set_permissions", () => {
       ViewChannel: true,
       SendMessages: false,
     });
+  });
+
+  it("schema rejects invalid permission flag in allow list", () => {
+    const result = setPermissions.inputSchema.safeParse({
+      channel_id: "222222222222222222",
+      target_id: "999999999999999999",
+      target_type: "role",
+      allow: ["NotARealPermission"],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("schema rejects invalid permission flag in deny list", () => {
+    const result = setPermissions.inputSchema.safeParse({
+      channel_id: "222222222222222222",
+      target_id: "999999999999999999",
+      target_type: "role",
+      deny: ["HackTheGuild"],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("schema accepts valid discord.js permission flags", () => {
+    const result = setPermissions.inputSchema.safeParse({
+      channel_id: "222222222222222222",
+      target_id: "999999999999999999",
+      target_type: "role",
+      allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"],
+      deny: ["Administrator"],
+    });
+    expect(result.success).toBe(true);
   });
 });

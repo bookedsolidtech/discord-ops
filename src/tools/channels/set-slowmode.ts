@@ -22,6 +22,7 @@ export const setSlowmode: ToolDefinition = {
   category: "channels",
   inputSchema,
   permissions: ["ManageChannels"],
+  requiresGuild: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
     const channel = await ctx.discord.getChannel(input.channel_id, token);

@@ -49,6 +49,10 @@ describe("create_channel", () => {
 });
 
 describe("delete_channel", () => {
+  it("has requiresGuild: true", () => {
+    expect(deleteChannel.requiresGuild).toBe(true);
+  });
+
   it("deletes a channel", async () => {
     const ctx = createCtx();
     const result = await deleteChannel.handle({ channel_id: "222222222222222222" }, ctx);

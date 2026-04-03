@@ -4,6 +4,7 @@ import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
+import { CHANNEL_TYPE_MAP } from "./channel-types.js";
 
 const inputSchema = z.object({
   guild_id: snowflakeId.describe("Guild ID to list channels from"),
@@ -13,15 +14,6 @@ const inputSchema = z.object({
     .optional()
     .describe("Filter by channel type"),
 });
-
-const CHANNEL_TYPE_MAP: Record<string, ChannelType> = {
-  text: ChannelType.GuildText,
-  voice: ChannelType.GuildVoice,
-  category: ChannelType.GuildCategory,
-  announcement: ChannelType.GuildAnnouncement,
-  forum: ChannelType.GuildForum,
-  stage: ChannelType.GuildStageVoice,
-};
 
 export const listChannels: ToolDefinition = {
   name: "list_channels",

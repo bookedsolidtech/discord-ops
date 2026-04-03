@@ -3,6 +3,7 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
+import { timingSafeEqual, createHash } from "node:crypto";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ServerMeta } from "../server.js";
@@ -34,15 +35,40 @@ function checkAuth(
     return { authorized: false, error: "Authorization must use Bearer scheme" };
   }
 
-  // Constant-time comparison to prevent timing attacks
-  if (value.length !== token.length) return { authorized: false, error: "Invalid token" };
-  let mismatch = 0;
-  for (let i = 0; i < value.length; i++) {
-    mismatch |= value.charCodeAt(i) ^ token.charCodeAt(i);
+  // Hash both values to fixed-length buffers before comparing.
+  // This eliminates the length oracle (early return on length mismatch) and
+  // delegates to Node's constant-time crypto.timingSafeEqual.
+  const hashValue = createHash("sha256").update(value).digest();
+  const hashToken = createHash("sha256").update(token).digest();
+  if (!timingSafeEqual(hashValue, hashToken)) {
+    return { authorized: false, error: "Invalid token" };
   }
-  if (mismatch !== 0) return { authorized: false, error: "Invalid token" };
 
   return { authorized: true };
+}
+
+// Per-IP sliding-window rate limiter for HTTP transport (H-3: per-client isolation).
+// Prevents a single client from exhausting the shared MCP tool rate limits.
+interface IpBucket {
+  count: number;
+  resetAt: number;
+}
+
+const IP_WINDOW_MS = 60_000;
+const IP_MAX_REQUESTS = 120; // generous enough for legitimate use (~2 req/s)
+
+function checkIpRateLimit(
+  ipCounters: Map<string, IpBucket>,
+  ip: string,
+): { allowed: boolean } {
+  const now = Date.now();
+  const bucket = ipCounters.get(ip);
+  if (!bucket || now > bucket.resetAt) {
+    ipCounters.set(ip, { count: 1, resetAt: now + IP_WINDOW_MS });
+    return { allowed: true };
+  }
+  bucket.count++;
+  return { allowed: bucket.count <= IP_MAX_REQUESTS };
 }
 
 export async function startHttpTransport(
@@ -61,6 +87,7 @@ export async function startHttpTransport(
 
   // Track active transports by session ID for message routing
   const transports = new Map<string, SSEServerTransport>();
+  const ipCounters = new Map<string, IpBucket>();
 
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     // Handle CORS preflight (no auth required)
@@ -75,7 +102,16 @@ export async function startHttpTransport(
       res.setHeader(key, value);
     }
 
-    // Health endpoint is exempt from auth (for load balancers / probes)
+    // Per-IP rate limiting — applied before auth to protect against enumeration
+    const ip = req.socket.remoteAddress ?? "unknown";
+    if (!checkIpRateLimit(ipCounters, ip).allowed) {
+      res.writeHead(429, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Too many requests" }));
+      return;
+    }
+
+    // Health endpoint — intentionally auth-exempt for load balancers / probes.
+    // Returns only public operational metadata (no session counts or rate limiter state).
     const url = new URL(req.url ?? "/", `http://localhost:${port}`);
     if (req.method === "GET" && url.pathname === "/health") {
       const startMs = new Date(meta.startedAt).getTime();
@@ -89,11 +125,6 @@ export async function startHttpTransport(
           toolProfile: meta.profileName,
           toolCount: meta.toolCount,
           totalTools: meta.totalTools,
-          sessions: transports.size,
-          rateLimiter: {
-            standard: meta.standardLimiter.stats(),
-            destructive: meta.destructiveLimiter.stats(),
-          },
         }),
       );
       return;

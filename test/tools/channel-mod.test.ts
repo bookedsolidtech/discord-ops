@@ -23,6 +23,7 @@ describe("purge_messages", () => {
     expect(purgeMessages.category).toBe("channels");
     expect(purgeMessages.destructive).toBe(true);
     expect(purgeMessages.permissions).toContain("ManageMessages");
+    expect(purgeMessages.requiresGuild).toBe(true);
   });
 
   it("purges messages from a channel", async () => {
@@ -105,6 +106,7 @@ describe("set_slowmode", () => {
     expect(setSlowmode.name).toBe("set_slowmode");
     expect(setSlowmode.category).toBe("channels");
     expect(setSlowmode.permissions).toContain("ManageChannels");
+    expect(setSlowmode.requiresGuild).toBe(true);
   });
 
   it("sets slowmode on a channel", async () => {

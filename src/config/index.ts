@@ -47,8 +47,14 @@ export function getTokenForProject(projectName: string, config: LoadedConfig): s
  *  3. Direct params always work regardless
  */
 export function loadConfig(): LoadedConfig {
-  // Option A: DISCORD_OPS_TOKEN_ENV lets callers specify which env var holds the default token
+  // Option A: DISCORD_OPS_TOKEN_ENV lets callers specify which env var holds the default token.
+  // Validate the name to prevent arbitrary env var exfiltration (C-2).
   const tokenEnvName = process.env.DISCORD_OPS_TOKEN_ENV ?? "DISCORD_TOKEN";
+  if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(tokenEnvName)) {
+    throw new Error(
+      `DISCORD_OPS_TOKEN_ENV must be a valid env var name (uppercase letters, digits, underscores, max 64 chars). Got: "${tokenEnvName}"`,
+    );
+  }
   const defaultToken = process.env[tokenEnvName] || undefined;
 
   const global = loadGlobalConfig();
@@ -99,7 +105,14 @@ function loadGlobalConfig(): GlobalConfig {
     return GlobalConfigSchema.parse(raw);
   }
 
-  const configPath = configEnv ?? resolve(homedir(), ".discord-ops.json");
+  // H-4: Resolve to absolute path and require .json extension to guard against path traversal
+  // or accidental reads of sensitive non-JSON files.
+  const configPath = resolve(configEnv ?? join(homedir(), ".discord-ops.json"));
+  if (!configPath.endsWith(".json")) {
+    throw new Error(
+      `DISCORD_OPS_CONFIG path must end in ".json". Got: "${configPath}"`,
+    );
+  }
 
   if (!existsSync(configPath)) {
     logger.debug("No global config found", { path: configPath });
