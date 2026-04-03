@@ -1,5 +1,14 @@
 # discord-ops
 
+## 0.14.3
+
+### Patch Changes
+
+- 6bd5a54: fix: add "alert" to NotificationType enum — global config with alert in notify_owners_on caused config parse failure and MCP startup crash
+- 6bd5a54: Fix stale npx cache — use `discord-ops@latest` in MCP config
+
+  Without `@latest`, npx may serve a cached older version indefinitely, causing MCP clients to run stale code even after new releases are published. All MCP config examples in the README updated to use `discord-ops@latest`.
+
 ## 0.14.2
 
 ### Patch Changes
