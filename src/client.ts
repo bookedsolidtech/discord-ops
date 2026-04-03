@@ -1,4 +1,10 @@
-import { Client, GatewayIntentBits, type Guild, type TextChannel, type GuildChannel } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  type Guild,
+  type TextChannel,
+  type GuildChannel,
+} from "discord.js";
 import { logger } from "./utils/logger.js";
 import { validateTokenFormat } from "./security/token-validator.js";
 import { TTLCache } from "./utils/cache.js";
@@ -126,7 +132,11 @@ export class DiscordClient {
     return guild;
   }
 
-  async getChannel(channelIdOrName: string, token?: string, guildId?: string): Promise<TextChannel> {
+  async getChannel(
+    channelIdOrName: string,
+    token?: string,
+    guildId?: string,
+  ): Promise<TextChannel> {
     const resolvedId = /^\d{17,20}$/.test(channelIdOrName)
       ? channelIdOrName
       : await this.resolveChannelName(channelIdOrName, token, guildId);
@@ -138,7 +148,11 @@ export class DiscordClient {
     return channel as TextChannel;
   }
 
-  async getAnyChannel(channelIdOrName: string, token?: string, guildId?: string): Promise<GuildChannel> {
+  async getAnyChannel(
+    channelIdOrName: string,
+    token?: string,
+    guildId?: string,
+  ): Promise<GuildChannel> {
     const resolvedId = /^\d{17,20}$/.test(channelIdOrName)
       ? channelIdOrName
       : await this.resolveChannelName(channelIdOrName, token, guildId);
@@ -150,7 +164,11 @@ export class DiscordClient {
     return channel as GuildChannel;
   }
 
-  private async resolveChannelName(name: string, token?: string, guildId?: string): Promise<string> {
+  private async resolveChannelName(
+    name: string,
+    token?: string,
+    guildId?: string,
+  ): Promise<string> {
     if (guildId) {
       const id = await this.findChannelByName(guildId, name, token);
       if (!id) throw new Error(`Channel "${name}" not found in guild ${guildId}`);

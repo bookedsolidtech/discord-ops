@@ -281,32 +281,32 @@ Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich pr
 
 ### Messaging (11 tools)
 
-| Tool              | Description                                                |
-| ----------------- | ---------------------------------------------------------- |
-| `send_message`    | Send a message with project routing (auto-embed by default)|
-| `send_embed`      | Fetch OG metadata from a URL and post a rich embed         |
-| `get_messages`    | Fetch recent messages (supports ISO 8601 timestamps)       |
-| `edit_message`    | Edit a bot message                                         |
-| `delete_message`  | Delete a message                                           |
-| `add_reaction`    | React to a message                                         |
-| `pin_message`     | Pin a message in a channel                                 |
-| `unpin_message`   | Unpin a message                                            |
-| `search_messages` | Search messages by content, author, or date range          |
-| `send_template`   | Send a styled embed using a built-in template              |
-| `list_templates`  | List available templates with required variables           |
+| Tool              | Description                                                 |
+| ----------------- | ----------------------------------------------------------- |
+| `send_message`    | Send a message with project routing (auto-embed by default) |
+| `send_embed`      | Fetch OG metadata from a URL and post a rich embed          |
+| `get_messages`    | Fetch recent messages (supports ISO 8601 timestamps)        |
+| `edit_message`    | Edit a bot message                                          |
+| `delete_message`  | Delete a message                                            |
+| `add_reaction`    | React to a message                                          |
+| `pin_message`     | Pin a message in a channel                                  |
+| `unpin_message`   | Unpin a message                                             |
+| `search_messages` | Search messages by content, author, or date range           |
+| `send_template`   | Send a styled embed using a built-in template               |
+| `list_templates`  | List available templates with required variables            |
 
 ### Channels (8 tools)
 
-| Tool              | Description                                                                 |
-| ----------------- | --------------------------------------------------------------------------- |
-| `list_channels`   | List guild channels                                                         |
-| `get_channel`     | Get channel details                                                         |
-| `create_channel`  | Create a channel                                                            |
+| Tool              | Description                                                                   |
+| ----------------- | ----------------------------------------------------------------------------- |
+| `list_channels`   | List guild channels                                                           |
+| `get_channel`     | Get channel details                                                           |
+| `create_channel`  | Create a channel                                                              |
 | `edit_channel`    | Edit channel name, topic, category, or position (text, voice, and categories) |
-| `delete_channel`  | Delete a channel                                                            |
-| `purge_messages`  | Bulk-delete messages (max 100, < 14 days old)                               |
-| `set_slowmode`    | Set or disable slowmode                                                     |
-| `set_permissions` | Set channel permission overrides for a role or member                       |
+| `delete_channel`  | Delete a channel                                                              |
+| `purge_messages`  | Bulk-delete messages (max 100, < 14 days old)                                 |
+| `set_slowmode`    | Set or disable slowmode                                                       |
+| `set_permissions` | Set channel permission overrides for a role or member                         |
 
 ### Moderation (4 tools)
 
@@ -376,12 +376,12 @@ Load only the tools an agent needs. Reduces schema token overhead by up to 85% f
 
 ### Built-in profiles
 
-| Profile      | Tools | Description                                         |
-| ------------ | ----- | --------------------------------------------------- |
-| `monitoring` | 6     | health_check, list_guilds, get_guild, get_messages, list_channels, list_members |
-| `readonly`   | 6     | get_messages, get_channel, get_guild, get_member, list_roles, search_messages   |
+| Profile      | Tools | Description                                                                                        |
+| ------------ | ----- | -------------------------------------------------------------------------------------------------- |
+| `monitoring` | 6     | health_check, list_guilds, get_guild, get_messages, list_channels, list_members                    |
+| `readonly`   | 6     | get_messages, get_channel, get_guild, get_member, list_roles, search_messages                      |
 | `moderation` | 7     | kick_member, ban_member, unban_member, timeout_member, purge_messages, get_member, query_audit_log |
-| `full`       | 46    | All tools (default)                                 |
+| `full`       | 46    | All tools (default)                                                                                |
 
 ### Using profiles
 
@@ -435,16 +435,16 @@ discord-ops --version    Show version
 
 ## Environment Variables
 
-| Variable                | Required | Description                                                                 |
-| ----------------------- | -------- | --------------------------------------------------------------------------- |
-| `DISCORD_TOKEN`         | No\*     | Default Discord bot token (\*required unless all projects have `token_env`) |
-| `DISCORD_OPS_TOKEN_ENV` | No       | Override which env var holds the default token (default: `DISCORD_TOKEN`)   |
-| `<PROJECT>_TOKEN`       | No       | Per-project bot tokens (configured via `token_env` in project config)       |
-| `DISCORD_OPS_CONFIG`    | No       | Path to global config file (default: `~/.discord-ops.json`)                 |
-| `DISCORD_OPS_LOG_LEVEL` | No       | `debug`, `info`, `warn`, `error` (default: `info`)                          |
-| `DISCORD_OPS_DRY_RUN`   | No       | Enable dry-run mode (any truthy value)                                      |
-| `DRY_RUN`               | No       | Enable dry-run mode (any truthy value, alias)                               |
-| `DISCORD_OPS_HTTP_TOKEN`| No       | Bearer token for HTTP transport authentication (strongly recommended)        |
+| Variable                 | Required | Description                                                                 |
+| ------------------------ | -------- | --------------------------------------------------------------------------- |
+| `DISCORD_TOKEN`          | No\*     | Default Discord bot token (\*required unless all projects have `token_env`) |
+| `DISCORD_OPS_TOKEN_ENV`  | No       | Override which env var holds the default token (default: `DISCORD_TOKEN`)   |
+| `<PROJECT>_TOKEN`        | No       | Per-project bot tokens (configured via `token_env` in project config)       |
+| `DISCORD_OPS_CONFIG`     | No       | Path to global config file (default: `~/.discord-ops.json`)                 |
+| `DISCORD_OPS_LOG_LEVEL`  | No       | `debug`, `info`, `warn`, `error` (default: `info`)                          |
+| `DISCORD_OPS_DRY_RUN`    | No       | Enable dry-run mode (any truthy value)                                      |
+| `DRY_RUN`                | No       | Enable dry-run mode (any truthy value, alias)                               |
+| `DISCORD_OPS_HTTP_TOKEN` | No       | Bearer token for HTTP transport authentication (strongly recommended)       |
 
 ### Token resolution
 
@@ -653,18 +653,18 @@ Full `~/.discord-ops.json` schema with all options:
 }
 ```
 
-| Field                          | Description                                                           |
-| ------------------------------ | --------------------------------------------------------------------- |
-| `guild_id`                     | Discord server (guild) snowflake ID                                   |
-| `token_env`                    | Env var name for this project's bot token                             |
-| `channels`                     | Alias → channel ID map; `channel: "builds"` resolves here first       |
-| `default_channel`              | Channel used when no `channel` param is provided                      |
-| `owners`                       | User snowflake IDs to mention on matching notification types          |
-| `notify_owners_on`             | Notification types that trigger owner pings (`"dev"` never pings)     |
-| `tool_profile`                 | Base tool profile for this project (`full`, `monitoring`, etc.)       |
-| `tool_profile_add`             | Additional tools to load on top of the base profile                   |
-| `tool_profile_remove`          | Tools to exclude from the base profile                                |
-| `notification_routing`         | Per-project override of global notification → channel routing         |
+| Field                  | Description                                                       |
+| ---------------------- | ----------------------------------------------------------------- |
+| `guild_id`             | Discord server (guild) snowflake ID                               |
+| `token_env`            | Env var name for this project's bot token                         |
+| `channels`             | Alias → channel ID map; `channel: "builds"` resolves here first   |
+| `default_channel`      | Channel used when no `channel` param is provided                  |
+| `owners`               | User snowflake IDs to mention on matching notification types      |
+| `notify_owners_on`     | Notification types that trigger owner pings (`"dev"` never pings) |
+| `tool_profile`         | Base tool profile for this project (`full`, `monitoring`, etc.)   |
+| `tool_profile_add`     | Additional tools to load on top of the base profile               |
+| `tool_profile_remove`  | Tools to exclude from the base profile                            |
+| `notification_routing` | Per-project override of global notification → channel routing     |
 
 ## Multi-Organization Troubleshooting
 
