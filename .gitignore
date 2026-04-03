@@ -9,3 +9,4 @@ coverage/
 *.log
 RESTART.md
 .mcp.json
+.claude/

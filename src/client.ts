@@ -162,6 +162,7 @@ export class DiscordClient {
   }
 
   get isConnected(): boolean {
+    if (!this.defaultToken) return false;
     return this.getConnection().isReady;
   }
 }

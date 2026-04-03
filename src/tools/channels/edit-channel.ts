@@ -11,11 +11,17 @@ const inputSchema = z.object({
   name: z.string().min(1).max(100).optional().describe("New channel name"),
   topic: z.string().max(1024).optional().describe("New channel topic"),
   parent_id: snowflakeId.optional().describe("New category ID"),
+  position: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe("New position (0-indexed) within the category or guild"),
 });
 
 export const editChannel: ToolDefinition = {
   name: "edit_channel",
-  description: "Edit a channel's name, topic, or category.",
+  description: "Edit a channel's name, topic, category, or position.",
   category: "channels",
   inputSchema,
   permissions: ["ManageChannels"],
@@ -27,6 +33,7 @@ export const editChannel: ToolDefinition = {
       ...(input.name ? { name: input.name } : {}),
       ...(input.topic !== undefined ? { topic: input.topic } : {}),
       ...(input.parent_id ? { parent: input.parent_id } : {}),
+      ...(input.position !== undefined ? { position: input.position } : {}),
     });
 
     return toolResultJson({
