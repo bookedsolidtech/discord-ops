@@ -421,17 +421,48 @@ Profiles can be set per project in `~/.discord-ops.json` so each agent gets only
 ## CLI
 
 ```
-discord-ops              Start MCP server (stdio transport)
-discord-ops serve        Start MCP server (HTTP/SSE transport)
-discord-ops setup        Interactive setup wizard (single + multi-bot)
-discord-ops health       Run health check + permission audit
-discord-ops validate     Validate config without connecting to Discord
-discord-ops --profile    Load a built-in tool profile (monitoring/readonly/moderation/full)
-discord-ops --tools      Load specific tools by name (comma-separated)
-discord-ops --dry-run    Simulate destructive operations
-discord-ops --help       Show help
-discord-ops --version    Show version
+discord-ops                        Start MCP server (stdio transport)
+discord-ops serve                  Start MCP server (HTTP/SSE transport)
+discord-ops run <tool> --args '{…}' Run any tool directly (no AI/MCP required)
+discord-ops setup                  Interactive setup wizard (single + multi-bot)
+discord-ops health                 Run health check + permission audit
+discord-ops validate               Validate config without connecting to Discord
+discord-ops --profile              Load a built-in tool profile (monitoring/readonly/moderation/full)
+discord-ops --tools                Load specific tools by name (comma-separated)
+discord-ops --dry-run              Simulate destructive operations
+discord-ops --help                 Show help
+discord-ops --version              Show version
 ```
+
+### `run` — call any tool without an AI agent
+
+The `run` subcommand executes any discord-ops tool directly from the shell — no MCP client, no AI. Pass all tool input as a single JSON string via `--args`.
+
+```bash
+# Send a plain message
+npx discord-ops@latest run send_message \
+  --args '{"project":"my-app","channel":"general","content":"Deployment complete."}'
+
+# Send a rich release announcement
+npx discord-ops@latest run send_template \
+  --args '{
+    "project": "my-app",
+    "channel": "releases",
+    "template": "release",
+    "vars": {
+      "name": "my-app",
+      "version": "v1.2.0",
+      "author_name": "My Org",
+      "highlights": "• New feature A\n• Bug fix B",
+      "npm": "my-app@latest",
+      "npm_url": "https://www.npmjs.com/package/my-app",
+      "link": "https://github.com/my-org/my-app/releases/tag/v1.2.0",
+      "footer": "Published 2026-04-03"
+    }
+  }'
+```
+
+Any tool name accepted by the MCP server works here — `send_message`, `send_template`, `send_embed`, `list_channels`, etc. The same input schema applies; validation errors are printed with field paths and exit code 1.
 
 ## Environment Variables
 
@@ -440,7 +471,7 @@ discord-ops --version    Show version
 | `DISCORD_TOKEN`          | No\*     | Default Discord bot token (\*required unless all projects have `token_env`) |
 | `DISCORD_OPS_TOKEN_ENV`  | No       | Override which env var holds the default token (default: `DISCORD_TOKEN`)   |
 | `<PROJECT>_TOKEN`        | No       | Per-project bot tokens (configured via `token_env` in project config)       |
-| `DISCORD_OPS_CONFIG`     | No       | Path to global config file (default: `~/.discord-ops.json`)                 |
+| `DISCORD_OPS_CONFIG`     | No       | Path to global config file, or inline JSON string (default: `~/.discord-ops.json`) |
 | `DISCORD_OPS_LOG_LEVEL`  | No       | `debug`, `info`, `warn`, `error` (default: `info`)                          |
 | `DISCORD_OPS_DRY_RUN`    | No       | Enable dry-run mode (any truthy value)                                      |
 | `DRY_RUN`                | No       | Enable dry-run mode (any truthy value, alias)                               |
@@ -452,6 +483,65 @@ discord-ops --version    Show version
 2. Otherwise, the default token comes from `DISCORD_TOKEN`.
 3. Per-project tokens override the default: if a project config has `"token_env": "ORG_A_TOKEN"`, that project's bot uses `ORG_A_TOKEN`.
 4. If all projects have `token_env` set with valid values, no default token is needed at all.
+
+## CI/CD Integration
+
+Use `discord-ops run` in GitHub Actions (or any CI) to post rich Discord notifications after a publish, deploy, or build — no AI agent required.
+
+### Config shape for CI
+
+In CI you typically have one bot token and one project. Pass a minimal config as an inline JSON string via `DISCORD_OPS_CONFIG`. No file writing needed.
+
+```json
+{
+  "projects": {
+    "my-app": {
+      "guild_id": "123456789012345678",
+      "channels": {
+        "releases": "987654321098765432",
+        "builds": "111222333444555666"
+      },
+      "default_channel": "releases"
+    }
+  },
+  "default_project": "my-app"
+}
+```
+
+- No `token_env` needed — omitting it means the project uses `DISCORD_TOKEN` (the default).
+- `owners` and `notify_owners_on` are optional — include them if you want owner pings on errors.
+- Channel values are Discord snowflake IDs. Channel names (aliases) resolve to these IDs.
+
+### GitHub Actions example
+
+Store two secrets in your repo:
+- `BOOKED_DISCORD_BOT_TOKEN` — your bot token
+- `DISCORD_OPS_CONFIG` — the inline JSON string above
+
+```yaml
+- name: Notify Discord
+  run: |
+    npx discord-ops@latest run send_template --args '{
+      "project": "my-app",
+      "channel": "releases",
+      "template": "release",
+      "vars": {
+        "name": "my-app",
+        "version": "${{ steps.version.outputs.version }}",
+        "author_name": "My Org",
+        "highlights": "${{ steps.changelog.outputs.highlights }}",
+        "npm": "my-app@latest",
+        "npm_url": "https://www.npmjs.com/package/my-app",
+        "link": "${{ steps.release.outputs.url }}",
+        "footer": "Published ${{ steps.date.outputs.date }}"
+      }
+    }'
+  env:
+    DISCORD_TOKEN: ${{ secrets.BOOKED_DISCORD_BOT_TOKEN }}
+    DISCORD_OPS_CONFIG: ${{ secrets.DISCORD_OPS_CONFIG }}
+```
+
+`DISCORD_TOKEN` is the default token variable — no additional configuration needed. The bot token from your secret is used directly.
 
 ## HTTP Transport Security
 

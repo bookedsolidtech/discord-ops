@@ -83,7 +83,23 @@ export function loadConfig(): LoadedConfig {
 }
 
 function loadGlobalConfig(): GlobalConfig {
-  const configPath = process.env.DISCORD_OPS_CONFIG ?? resolve(homedir(), ".discord-ops.json");
+  const configEnv = process.env.DISCORD_OPS_CONFIG;
+
+  // Support inline JSON — useful for CI where writing files is inconvenient.
+  // If DISCORD_OPS_CONFIG starts with '{', treat it as a JSON string directly.
+  if (configEnv?.trimStart().startsWith("{")) {
+    try {
+      const raw = JSON.parse(configEnv);
+      return GlobalConfigSchema.parse(raw);
+    } catch (err) {
+      logger.warn("Failed to parse inline DISCORD_OPS_CONFIG JSON, using empty config", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return { projects: {} };
+    }
+  }
+
+  const configPath = configEnv ?? resolve(homedir(), ".discord-ops.json");
 
   if (!existsSync(configPath)) {
     logger.debug("No global config found", { path: configPath });
