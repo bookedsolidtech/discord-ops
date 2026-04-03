@@ -1,5 +1,21 @@
 # discord-ops
 
+## 0.12.0
+
+### Minor Changes
+
+- e70b6ac: Auto-embed for send_message and health endpoint version field
+  - **Auto-embed for `send_message`**: Messages are now automatically wrapped in a polished embed (color bar, description, timestamp) via the new `simple` template. Set `raw: true` to send plain text. Every message looks professional by default.
+  - **`simple` template**: New minimal utility template — just a branded embed with optional title, color, author, and footer. Used automatically by `send_message`, also available via `send_template`.
+  - **Health endpoint `version` field**: `GET /health` now includes the `discord-ops` package version for deployment verification.
+
+- e70b6ac: Live channel name resolution — fuzzy.ts was dead code, now it works
+  - **Channel fuzzy resolution**: The `channel` param now resolves in four layers — exact alias match, fuzzy alias match (e.g. `"build"` hits `"builds"`), then a live Discord API lookup that finds channels by their actual Discord name (e.g. `channel: "general"` now works even with no configured alias).
+  - **Fuzzy alias matching**: Configured channel aliases are now fuzzy-matched before falling back to Discord, so near-misses on alias names resolve correctly.
+  - **`list_templates` fix**: Internal `simple` template (used for auto-embed) no longer appears in `list_templates` output — count now correctly shows 23.
+
+- e70b6ac: New send_embed tool with server-side OG metadata fetching
+
 ## 0.11.0
 
 ### Minor Changes
