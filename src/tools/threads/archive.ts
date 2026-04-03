@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ThreadChannel } from "discord.js";
 import type { ToolDefinition } from "../types.js";
 import { toolResult } from "../types.js";
 import { snowflakeId } from "../schema.js";
@@ -19,21 +20,18 @@ export const archiveThread: ToolDefinition = {
   permissions: ["ManageThreads"],
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
-    const channel = await ctx.discord.getChannel(input.thread_id, token);
+    const channel = await ctx.discord.getAnyChannel(input.thread_id, token);
 
-    if (!("setArchived" in channel)) {
-      return {
-        content: [{ type: "text", text: `Channel ${input.thread_id} is not a thread` }],
-        isError: true,
-      };
+    if (!channel.isThread()) {
+      return toolResult(`Channel ${input.thread_id} is not a thread`, true);
     }
 
-    const thread = channel as any;
+    const thread = channel as ThreadChannel;
     await thread.setArchived(true);
     if (input.locked) {
       await thread.setLocked(true);
     }
 
-    return toolResult(`Archived thread "${channel.name}"${input.locked ? " (locked)" : ""}`);
+    return toolResult(`Archived thread "${thread.name}"${input.locked ? " (locked)" : ""}`);
   },
 };

@@ -30,16 +30,11 @@ export const createThread: ToolDefinition = {
 
     const channel = await ctx.discord.getChannel(target.channelId, target.token);
 
-    const thread = input.message_id
-      ? await channel.threads.create({
-          name: input.name,
-          startMessage: input.message_id,
-          autoArchiveDuration: Number(input.auto_archive_duration) as 60 | 1440 | 4320 | 10080,
-        })
-      : await channel.threads.create({
-          name: input.name,
-          autoArchiveDuration: Number(input.auto_archive_duration) as 60 | 1440 | 4320 | 10080,
-        });
+    const thread = await channel.threads.create({
+      name: input.name,
+      ...(input.message_id ? { startMessage: input.message_id } : {}),
+      autoArchiveDuration: Number(input.auto_archive_duration) as 60 | 1440 | 4320 | 10080,
+    });
 
     return toolResultJson({
       id: thread.id,

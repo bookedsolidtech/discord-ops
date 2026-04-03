@@ -15,6 +15,7 @@ const NOTIFICATION_TYPES: NotificationType[] = [
   "deploy",
   "release",
   "error",
+  "alert",
   "announcement",
   "dev",
 ];

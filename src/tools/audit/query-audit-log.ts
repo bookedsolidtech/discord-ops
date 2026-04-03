@@ -42,9 +42,18 @@ export const queryAuditLog: ToolDefinition = {
 
     if (input.action_type) {
       const eventValue = AuditLogEvent[input.action_type as keyof typeof AuditLogEvent];
-      if (eventValue !== undefined) {
-        options.type = eventValue as number;
+      if (eventValue === undefined) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Unknown action_type "${input.action_type}". Valid values include: ${auditLogEventNames.slice(0, 15).join(", ")}...`,
+            },
+          ],
+          isError: true,
+        };
       }
+      options.type = eventValue as number;
     }
 
     const auditLog = await guild.fetchAuditLogs(options);
@@ -53,7 +62,9 @@ export const queryAuditLog: ToolDefinition = {
       id: entry.id,
       action: AuditLogEvent[entry.action] ?? entry.action,
       executor: entry.executor ? { id: entry.executor.id, tag: entry.executor.tag } : null,
-      target: entry.target ? { id: (entry.target as any).id ?? null } : null,
+      target: entry.target
+        ? { id: "id" in entry.target ? (entry.target as { id: string }).id : null }
+        : null,
       reason: entry.reason,
       created_at: entry.createdAt.toISOString(),
       changes: entry.changes.map((c) => ({

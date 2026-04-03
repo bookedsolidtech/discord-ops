@@ -29,7 +29,10 @@ export const getWebhook: ToolDefinition = {
       avatar: webhook.avatar,
       created_at: webhook.createdAt?.toISOString(),
       owner: webhook.owner
-        ? { id: webhook.owner.id, tag: (webhook.owner as any).tag ?? webhook.owner.id }
+        ? {
+            id: webhook.owner.id,
+            tag: "tag" in webhook.owner ? (webhook.owner as { tag: string }).tag : webhook.owner.id,
+          }
         : null,
     });
   },

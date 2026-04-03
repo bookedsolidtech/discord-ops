@@ -7,8 +7,11 @@ const CHANNEL_ID = "222222222222222222";
 const BEFORE_ID = "333333333333333333";
 const AFTER_ID = "444444444444444444";
 
+// GuildText = 0 in discord.js ChannelType enum — needed for NON_THREAD_TYPES filter
+const GUILD_TEXT_TYPE = 0;
+
 function makeChannel(id: string, position: number, parentId: string | null = null) {
-  return { id, name: `channel-${position}`, position, parentId };
+  return { id, name: `channel-${position}`, position, parentId, type: GUILD_TEXT_TYPE };
 }
 
 function createCtx(channelOverrides: Record<string, unknown> = {}): ToolContext {
@@ -16,7 +19,7 @@ function createCtx(channelOverrides: Record<string, unknown> = {}): ToolContext 
   const channelBefore = makeChannel(BEFORE_ID, 1);
   const channelAfter = makeChannel(AFTER_ID, 3);
 
-  const channelCache = new Map([
+  const allChannelsMap = new Map([
     [CHANNEL_ID, channelA],
     [BEFORE_ID, channelBefore],
     [AFTER_ID, channelAfter],
@@ -24,11 +27,11 @@ function createCtx(channelOverrides: Record<string, unknown> = {}): ToolContext 
 
   const guild = {
     channels: {
-      cache: channelCache,
-      fetch: vi.fn().mockImplementation(async (id: string) => {
-        if (id === BEFORE_ID) return { ...channelBefore, position: 1 };
-        if (id === AFTER_ID) return { ...channelAfter, position: 3 };
-        if (id === CHANNEL_ID) return { ...channelA, position: 1, name: "channel-2" };
+      fetch: vi.fn().mockImplementation(async (id?: string) => {
+        if (id === BEFORE_ID) return { ...channelBefore };
+        if (id === AFTER_ID) return { ...channelAfter };
+        if (id === CHANNEL_ID) return { ...channelA, name: "channel-2" };
+        if (!id) return allChannelsMap;
         return null;
       }),
       setPositions: vi.fn().mockResolvedValue(undefined),
@@ -104,10 +107,7 @@ describe("move_channel", () => {
   });
 
   it("returns error when reference channel is in a different category", async () => {
-    const ctx = createCtx();
-    // Make the channel in a different parent
-    const mockChannel = await ctx.discord.getAnyChannel(CHANNEL_ID);
-    mockChannel.parentId = "different-parent";
+    const ctx = createCtx({ parentId: "different-parent" });
     const result = await moveChannel.handle({ channel_id: CHANNEL_ID, before_id: BEFORE_ID }, ctx);
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toContain("same category");

@@ -65,10 +65,9 @@ export function validateConfig(config: LoadedConfig): ConfigValidationResult {
 
     // Track channel ID usage
     for (const [alias, channelId] of Object.entries(project.channels)) {
-      const key = channelId;
-      const channelProjects = channelToProjects.get(key) ?? [];
+      const channelProjects = channelToProjects.get(channelId) ?? [];
       channelProjects.push(`${name}/${alias}`);
-      channelToProjects.set(key, channelProjects);
+      channelToProjects.set(channelId, channelProjects);
     }
 
     // Validate default_channel references a real alias

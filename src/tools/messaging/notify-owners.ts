@@ -31,6 +31,10 @@ export const notifyOwners: ToolDefinition = {
   handle: async (input, ctx) => {
     const mentions = buildOwnerMentions(input.project, input.notification_type, ctx.config);
 
+    if (mentions === null) {
+      return toolResult(`Project "${input.project}" not found in config.`, true);
+    }
+
     if (!mentions) {
       return toolResult(
         `No ping sent — "${input.notification_type}" is not in notify_owners_on for project "${input.project}", or no owners configured.`,

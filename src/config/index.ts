@@ -88,15 +88,15 @@ function loadGlobalConfig(): GlobalConfig {
   // Support inline JSON — useful for CI where writing files is inconvenient.
   // If DISCORD_OPS_CONFIG starts with '{', treat it as a JSON string directly.
   if (configEnv?.trimStart().startsWith("{")) {
+    let raw: unknown;
     try {
-      const raw = JSON.parse(configEnv);
-      return GlobalConfigSchema.parse(raw);
+      raw = JSON.parse(configEnv);
     } catch (err) {
-      logger.warn("Failed to parse inline DISCORD_OPS_CONFIG JSON, using empty config", {
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return { projects: {} };
+      throw new Error(
+        `DISCORD_OPS_CONFIG contains invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
+    return GlobalConfigSchema.parse(raw);
   }
 
   const configPath = configEnv ?? resolve(homedir(), ".discord-ops.json");

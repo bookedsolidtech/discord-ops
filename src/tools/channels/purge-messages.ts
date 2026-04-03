@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { TextChannel } from "discord.js";
 import type { ToolDefinition } from "../types.js";
 import { toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
@@ -35,7 +36,7 @@ export const purgeMessages: ToolDefinition = {
       return toolResult("Channel does not support bulk delete", true);
     }
 
-    const deleted = await (channel as any).bulkDelete(input.count, true);
+    const deleted = await (channel as TextChannel).bulkDelete(input.count, true);
 
     return toolResultJson({
       channel_id: input.channel_id,

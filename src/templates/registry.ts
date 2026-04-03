@@ -6,14 +6,6 @@ import type {
 } from "./types.js";
 import { Colors, toDiscordTimestamp, discordCountdown } from "./types.js";
 
-/**
- * All built-in templates.
- * Each template is a function that takes string key-value vars and returns embeds.
- *
- * v0.7.0: Every template now uses author branding, footer icons, clickable titles,
- * Discord timestamps, and link buttons where applicable.
- */
-
 // ─── Helpers ──────────────────────────────────────────────────────
 
 const STATUS_ICONS: Record<string, string> = {
@@ -65,7 +57,7 @@ const release: TemplateRenderer = (vars) => ({
       ],
       footer: {
         text: vars.footer ?? "Release Pipeline",
-        ...(STATUS_ICONS.success ? { icon_url: STATUS_ICONS.success } : {}),
+        icon_url: STATUS_ICONS.success,
       },
       timestamp: new Date().toISOString(),
     },
