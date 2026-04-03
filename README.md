@@ -8,13 +8,19 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **46 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, project introspection
+- **46 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
-- **Notification routing** — map notification types (ci_build, deploy, error) to channels per project
+- **Notification routing** — map notification types (`ci_build`, `deploy`, `error`) to channels per project
+- **Owner pings** — configure project owners so releases, errors, and alerts auto-mention the right people
 - **Multi-bot support** — manage multiple Discord bots from a single MCP server with per-project tokens
-- **Flexible token configuration** — configurable default token env var, optional default token when all projects use per-project tokens
+- **Tool profiles** — load only the tools an agent needs; cut schema overhead by 85% with slim profiles
+- **Smart channel resolution** — channel params accept channel name or snowflake ID, with 4-layer fuzzy fallback
+- **Auto-embed for send_message** — every message gets a branded embed by default; `raw: true` for plain text
+- **OG metadata unfurling** — `send_embed` fetches Open Graph metadata server-side and renders rich link previews
+- **Flexible token configuration** — configurable default token env var, optional default when all projects use per-project tokens
 - **Config validation** — `discord-ops validate` detects duplicate guilds, missing tokens, invalid channel refs without connecting to Discord
 - **HTTP/SSE + stdio transports** — stdio for Claude Code, HTTP/SSE for remote MCP clients
+- **HTTP transport auth** — bearer token auth via `DISCORD_OPS_HTTP_TOKEN` with constant-time comparison
 - **Dry-run mode** — simulate destructive operations without calling Discord API
 - **Interactive setup wizard** — `discord-ops setup` supports single-bot and multi-bot configuration
 - **Security hardening** — rate limiting, permission pre-flight checks, snowflake ID validation, self-protection guards
@@ -22,7 +28,6 @@ Agency-grade Discord MCP server with multi-guild project routing.
 - **Zod validation** — all inputs validated before execution
 - **Error sanitization** — tokens, webhook URLs, and snowflake IDs stripped from error output
 - **Audit logging** — every tool call logged to stderr
-- **Fuzzy name resolution** — find channels/roles/members by name, normalized name, or substring
 
 ## Quick Start
 
@@ -136,7 +141,8 @@ The killer feature: route messages by project name and channel alias instead of 
       "channels": {
         "dev": "CHANNEL_ID",
         "builds": "CHANNEL_ID",
-        "alerts": "CHANNEL_ID"
+        "alerts": "CHANNEL_ID",
+        "releases": "CHANNEL_ID"
       },
       "default_channel": "dev"
     }
@@ -144,6 +150,8 @@ The killer feature: route messages by project name and channel alias instead of 
   "default_project": "my-app",
   "notification_routing": {
     "ci_build": "builds",
+    "deploy": "builds",
+    "release": "releases",
     "error": "alerts",
     "dev": "dev"
   }
@@ -175,6 +183,40 @@ Projects can specify their own bot token via `token_env`:
 
 When all projects have `token_env`, the default `DISCORD_TOKEN` is optional. Each project connects with its own bot.
 
+### Owner pings
+
+Configure project owners so that releases, errors, and alerts automatically prepend `@mentions`. This ensures the right people are always paged for critical events without hardcoding mentions in every message.
+
+```json
+{
+  "projects": {
+    "my-app": {
+      "guild_id": "123456789012345678",
+      "channels": { "releases": "CHANNEL_ID", "alerts": "CHANNEL_ID" },
+      "owners": ["820027414902079548"],
+      "notify_owners_on": ["release", "error", "alert"]
+    }
+  }
+}
+```
+
+**`notify_owners_on` values:** any notification type (`release`, `error`, `alert`, `ci_build`, `deploy`, etc.)
+
+**Safety:** `"dev"` is hardcoded to never trigger owner pings regardless of config — dev noise stays quiet.
+
+When a `send_message` or `send_embed` call uses a matching `notification_type`, the owner mentions are automatically prepended to the message. No other changes needed.
+
+### Smart channel resolution
+
+The `channel` param accepts a channel name or snowflake ID anywhere a channel is needed. Resolution happens in four layers:
+
+1. **Exact alias match** — `"builds"` hits the `builds` alias in your project config
+2. **Fuzzy alias match** — `"build"` or `"blds"` resolves to the closest alias
+3. **Live Discord API lookup** — `"general"` resolves even with no configured alias
+4. **Error** — if none of the above find a match
+
+This means you can pass `channel: "general"` and it will work even for channels that aren't in your config. You can also pass a raw snowflake ID directly — `channel: "1234567890"` bypasses alias resolution entirely.
+
 ### Per-project config (`.discord-ops.json` in repo root)
 
 ```json
@@ -193,42 +235,78 @@ When all projects have `token_env`, the default `DISCORD_TOKEN` is optional. Eac
 # By project + channel alias
 send_message({ project: "my-app", channel: "builds", content: "Build passed!" })
 
-# By notification type (auto-routed)
-send_message({ notification_type: "ci_build", content: "CI green" })
+# By notification type (auto-routed to channel, owner pinged if configured)
+send_message({ project: "my-app", notification_type: "release", content: "v1.0.0 shipped" })
 
 # Direct channel ID (always works)
 send_message({ channel_id: "123456789", content: "Hello" })
+
+# Channel by name (live lookup — no alias needed)
+send_message({ project: "my-app", channel: "general", content: "Hello" })
 ```
+
+## Messaging
+
+### Auto-embed
+
+`send_message` automatically wraps messages in a polished embed with a color bar, description, and timestamp. Pass `raw: true` to send plain text instead.
+
+```
+# Branded embed (default)
+send_message({ project: "my-app", channel: "dev", content: "Deploy complete" })
+
+# Plain text
+send_message({ project: "my-app", channel: "dev", content: "pong", raw: true })
+```
+
+### send_embed — OG metadata unfurling
+
+`send_embed` fetches Open Graph metadata server-side from any URL and renders a rich preview embed. All OG fields can be overridden.
+
+```
+send_embed({
+  url: "https://www.npmjs.com/package/discord-ops/v/0.14.0",
+  project: "my-app",
+  channel: "releases",
+  title: "discord-ops v0.14.0",
+  description: "Owner pings, smart channel resolution, category editing",
+  color: 5763719,
+  footer: "Released April 3, 2026"
+})
+```
+
+Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich previews — the bot fetches the metadata so Discord's CDN doesn't cache-bust client-side unfurls.
 
 ## Tools
 
-### Messaging (10 tools)
+### Messaging (11 tools)
 
-| Tool              | Description                                       |
-| ----------------- | ------------------------------------------------- |
-| `send_message`    | Send a message with project routing               |
-| `get_messages`    | Fetch recent messages                             |
-| `edit_message`    | Edit a bot message                                |
-| `delete_message`  | Delete a message                                  |
-| `add_reaction`    | React to a message                                |
-| `pin_message`     | Pin a message in a channel                        |
-| `unpin_message`   | Unpin a message                                   |
-| `search_messages` | Search messages by content, author, or date range |
-| `send_template`   | Send a styled embed using a built-in template     |
-| `list_templates`  | List available templates with required variables  |
+| Tool              | Description                                                 |
+| ----------------- | ----------------------------------------------------------- |
+| `send_message`    | Send a message with project routing (auto-embed by default) |
+| `send_embed`      | Fetch OG metadata from a URL and post a rich embed          |
+| `get_messages`    | Fetch recent messages (supports ISO 8601 timestamps)        |
+| `edit_message`    | Edit a bot message                                          |
+| `delete_message`  | Delete a message                                            |
+| `add_reaction`    | React to a message                                          |
+| `pin_message`     | Pin a message in a channel                                  |
+| `unpin_message`   | Unpin a message                                             |
+| `search_messages` | Search messages by content, author, or date range           |
+| `send_template`   | Send a styled embed using a built-in template               |
+| `list_templates`  | List available templates with required variables            |
 
 ### Channels (8 tools)
 
-| Tool              | Description                                           |
-| ----------------- | ----------------------------------------------------- |
-| `list_channels`   | List guild channels                                   |
-| `get_channel`     | Get channel details                                   |
-| `create_channel`  | Create a channel                                      |
-| `edit_channel`    | Edit channel properties                               |
-| `delete_channel`  | Delete a channel                                      |
-| `purge_messages`  | Bulk-delete messages (max 100, < 14 days old)         |
-| `set_slowmode`    | Set or disable slowmode                               |
-| `set_permissions` | Set channel permission overrides for a role or member |
+| Tool              | Description                                                                   |
+| ----------------- | ----------------------------------------------------------------------------- |
+| `list_channels`   | List guild channels                                                           |
+| `get_channel`     | Get channel details                                                           |
+| `create_channel`  | Create a channel                                                              |
+| `edit_channel`    | Edit channel name, topic, category, or position (text, voice, and categories) |
+| `delete_channel`  | Delete a channel                                                              |
+| `purge_messages`  | Bulk-delete messages (max 100, < 14 days old)                                 |
+| `set_slowmode`    | Set or disable slowmode                                                       |
+| `set_permissions` | Set channel permission overrides for a role or member                         |
 
 ### Moderation (4 tools)
 
@@ -289,8 +367,56 @@ send_message({ channel_id: "123456789", content: "Hello" })
 
 | Tool            | Description                                                         |
 | --------------- | ------------------------------------------------------------------- |
-| `health_check`  | Bot status + permissions                                            |
+| `health_check`  | Bot status, version, connected guilds, and permission audit         |
 | `list_projects` | List all projects with guild mappings, token status, and validation |
+
+## Tool Profiles
+
+Load only the tools an agent needs. Reduces schema token overhead by up to 85% for narrow use cases.
+
+### Built-in profiles
+
+| Profile      | Tools | Description                                                                                        |
+| ------------ | ----- | -------------------------------------------------------------------------------------------------- |
+| `monitoring` | 6     | health_check, list_guilds, get_guild, get_messages, list_channels, list_members                    |
+| `readonly`   | 6     | get_messages, get_channel, get_guild, get_member, list_roles, search_messages                      |
+| `moderation` | 7     | kick_member, ban_member, unban_member, timeout_member, purge_messages, get_member, query_audit_log |
+| `full`       | 46    | All tools (default)                                                                                |
+
+### Using profiles
+
+```bash
+# Via CLI flag
+discord-ops --profile monitoring
+
+# Load specific tools
+discord-ops --tools "send_message,send_template,health_check"
+
+# Combined (profile as base + add tools)
+discord-ops --profile readonly --tools "send_message"
+```
+
+### Per-project profile config
+
+Profiles can be set per project in `~/.discord-ops.json` so each agent gets only what it needs:
+
+```json
+{
+  "projects": {
+    "my-app": {
+      "guild_id": "123456789012345678",
+      "channels": { "dev": "CHANNEL_ID", "alerts": "CHANNEL_ID" },
+      "tool_profile": "monitoring",
+      "tool_profile_add": ["send_message"],
+      "tool_profile_remove": ["list_members"]
+    }
+  }
+}
+```
+
+- **`tool_profile`** — base profile to use for this project
+- **`tool_profile_add`** — add tools not included in the base profile
+- **`tool_profile_remove`** — remove tools from the base profile
 
 ## CLI
 
@@ -300,6 +426,8 @@ discord-ops serve        Start MCP server (HTTP/SSE transport)
 discord-ops setup        Interactive setup wizard (single + multi-bot)
 discord-ops health       Run health check + permission audit
 discord-ops validate     Validate config without connecting to Discord
+discord-ops --profile    Load a built-in tool profile (monitoring/readonly/moderation/full)
+discord-ops --tools      Load specific tools by name (comma-separated)
 discord-ops --dry-run    Simulate destructive operations
 discord-ops --help       Show help
 discord-ops --version    Show version
@@ -307,15 +435,16 @@ discord-ops --version    Show version
 
 ## Environment Variables
 
-| Variable                | Required | Description                                                                 |
-| ----------------------- | -------- | --------------------------------------------------------------------------- |
-| `DISCORD_TOKEN`         | No\*     | Default Discord bot token (\*required unless all projects have `token_env`) |
-| `DISCORD_OPS_TOKEN_ENV` | No       | Override which env var holds the default token (default: `DISCORD_TOKEN`)   |
-| `<PROJECT>_TOKEN`       | No       | Per-project bot tokens (configured via `token_env` in project config)       |
-| `DISCORD_OPS_CONFIG`    | No       | Path to global config file (default: `~/.discord-ops.json`)                 |
-| `DISCORD_OPS_LOG_LEVEL` | No       | `debug`, `info`, `warn`, `error` (default: `info`)                          |
-| `DISCORD_OPS_DRY_RUN`   | No       | Enable dry-run mode (any truthy value)                                      |
-| `DRY_RUN`               | No       | Enable dry-run mode (any truthy value, alias)                               |
+| Variable                 | Required | Description                                                                 |
+| ------------------------ | -------- | --------------------------------------------------------------------------- |
+| `DISCORD_TOKEN`          | No\*     | Default Discord bot token (\*required unless all projects have `token_env`) |
+| `DISCORD_OPS_TOKEN_ENV`  | No       | Override which env var holds the default token (default: `DISCORD_TOKEN`)   |
+| `<PROJECT>_TOKEN`        | No       | Per-project bot tokens (configured via `token_env` in project config)       |
+| `DISCORD_OPS_CONFIG`     | No       | Path to global config file (default: `~/.discord-ops.json`)                 |
+| `DISCORD_OPS_LOG_LEVEL`  | No       | `debug`, `info`, `warn`, `error` (default: `info`)                          |
+| `DISCORD_OPS_DRY_RUN`    | No       | Enable dry-run mode (any truthy value)                                      |
+| `DRY_RUN`                | No       | Enable dry-run mode (any truthy value, alias)                               |
+| `DISCORD_OPS_HTTP_TOKEN` | No       | Bearer token for HTTP transport authentication (strongly recommended)       |
 
 ### Token resolution
 
@@ -323,6 +452,24 @@ discord-ops --version    Show version
 2. Otherwise, the default token comes from `DISCORD_TOKEN`.
 3. Per-project tokens override the default: if a project config has `"token_env": "ORG_A_TOKEN"`, that project's bot uses `ORG_A_TOKEN`.
 4. If all projects have `token_env` set with valid values, no default token is needed at all.
+
+## HTTP Transport Security
+
+When running `discord-ops serve`, the HTTP endpoint is unauthenticated by default with a loud startup warning. Set `DISCORD_OPS_HTTP_TOKEN` to require bearer auth:
+
+```bash
+DISCORD_OPS_HTTP_TOKEN=your-secret-token discord-ops serve --port 3000
+```
+
+All requests must include:
+
+```
+Authorization: Bearer your-secret-token
+```
+
+The health endpoint (`GET /health`) is always exempt from auth — load balancers and Docker healthchecks can reach it without a token.
+
+Token comparison uses constant-time comparison to prevent timing attacks.
 
 ## Dry-Run Mode
 
@@ -357,7 +504,7 @@ In dry-run mode, destructive tools return a simulated success response showing w
 - **Syntax-highlighted code** — code examples with language-specific highlighting
 - **Progress bars** — visual Unicode block progress indicators
 
-### DevOps Templates (10)
+### DevOps Templates (11)
 
 | Template            | Description                                    | Key Features                                 |
 | ------------------- | ---------------------------------------------- | -------------------------------------------- |
@@ -390,27 +537,29 @@ In dry-run mode, destructive tools return a simulated success response showing w
 | `standup`      | Daily standup summary                   | Yesterday/today/blockers sections             |
 | `retro`        | Sprint retrospective                    | Went-well/improve/actions, velocity           |
 
-### Example
+### Examples
+
+**Release announcement:**
 
 ```
 send_template({
   template: "release",
   vars: {
-    version: "0.7.0",
+    version: "v0.14.0",
     name: "discord-ops",
-    notes: "Cutting-edge template system with native Discord features",
-    highlights: "23 templates, native polls, link buttons, Discord timestamps",
-    npm: "discord-ops@0.7.0",
-    link: "https://github.com/bookedsolidtech/discord-ops/releases",
-    author_name: "Clarity CI",
-    author_icon: "https://example.com/logo.png"
+    highlights: "• Owner pings\n• Smart channel resolution\n• Category channel editing",
+    npm: "npm install discord-ops@0.14.0",
+    npm_url: "https://www.npmjs.com/package/discord-ops/v/0.14.0",
+    link: "https://github.com/bookedsolidtech/discord-ops/pull/20",
+    footer: "Released April 3, 2026",
+    author_name: "Booked Solid Technology"
   },
   project: "my-app",
   channel: "releases"
 })
 ```
 
-### Native Discord Poll
+**Native Discord Poll:**
 
 ```
 send_template({
@@ -426,7 +575,7 @@ send_template({
 })
 ```
 
-### Multi-Embed Dashboard
+**Multi-Embed Status Dashboard:**
 
 ```
 send_template({
@@ -442,7 +591,80 @@ send_template({
 })
 ```
 
+**On-call handoff:**
+
+```
+send_template({
+  template: "oncall",
+  vars: {
+    outgoing: "alice",
+    incoming: "bob",
+    shift_start: "2026-04-04T09:00:00Z",
+    notes: "Payment service latency elevated — watch grafana/d/payments",
+    active_incidents: "INC-342: elevated error rate on /checkout",
+    runbook_url: "https://wiki.example.com/oncall",
+    mention: "<@BOB_USER_ID>"
+  },
+  project: "my-app",
+  channel: "team-chat"
+})
+```
+
 All templates support project routing (`project`, `channel`, `notification_type`, `channel_id`) and author branding (`author_name`, `author_icon`).
+
+## Advanced Config Reference
+
+Full `~/.discord-ops.json` schema with all options:
+
+```json
+{
+  "projects": {
+    "my-app": {
+      "guild_id": "123456789012345678",
+      "token_env": "MY_APP_DISCORD_TOKEN",
+      "channels": {
+        "dev": "CHANNEL_ID",
+        "builds": "CHANNEL_ID",
+        "releases": "CHANNEL_ID",
+        "alerts": "CHANNEL_ID"
+      },
+      "default_channel": "dev",
+      "owners": ["USER_SNOWFLAKE_ID"],
+      "notify_owners_on": ["release", "error", "alert"],
+      "tool_profile": "full",
+      "tool_profile_add": [],
+      "tool_profile_remove": [],
+      "notification_routing": {
+        "ci_build": "builds",
+        "deploy": "builds",
+        "release": "releases",
+        "error": "alerts"
+      }
+    }
+  },
+  "default_project": "my-app",
+  "notification_routing": {
+    "ci_build": "builds",
+    "deploy": "builds",
+    "release": "releases",
+    "error": "alerts",
+    "dev": "dev"
+  }
+}
+```
+
+| Field                  | Description                                                       |
+| ---------------------- | ----------------------------------------------------------------- |
+| `guild_id`             | Discord server (guild) snowflake ID                               |
+| `token_env`            | Env var name for this project's bot token                         |
+| `channels`             | Alias → channel ID map; `channel: "builds"` resolves here first   |
+| `default_channel`      | Channel used when no `channel` param is provided                  |
+| `owners`               | User snowflake IDs to mention on matching notification types      |
+| `notify_owners_on`     | Notification types that trigger owner pings (`"dev"` never pings) |
+| `tool_profile`         | Base tool profile for this project (`full`, `monitoring`, etc.)   |
+| `tool_profile_add`     | Additional tools to load on top of the base profile               |
+| `tool_profile_remove`  | Tools to exclude from the base profile                            |
+| `notification_routing` | Per-project override of global notification → channel routing     |
 
 ## Multi-Organization Troubleshooting
 
@@ -477,6 +699,9 @@ If a project uses `token_env` for a different bot, that bot must be invited to t
 
 **Token rotation**
 Update the env var value and restart the MCP server. No config changes needed — `token_env` reads from the environment at runtime.
+
+**Channel not found**
+Channel resolution tries 4 layers in order: exact alias → fuzzy alias → live Discord name lookup → error. If a channel is still not found, verify the bot has access to the channel and `list_channels` returns it.
 
 ## Development
 
