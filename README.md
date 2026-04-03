@@ -51,14 +51,14 @@ discord-ops serve --port 3000
 
 ## Claude Code Integration
 
-Add to your project's `.mcp.json`. Use `npx` without a version pin so every session automatically uses the latest published release:
+Add to your project's `.mcp.json`. Use `npx` with `@latest` so every session automatically uses the latest published release — without it, npx may serve a stale cached version indefinitely:
 
 ```json
 {
   "mcpServers": {
     "discord-ops": {
       "command": "npx",
-      "args": ["-y", "discord-ops"],
+      "args": ["-y", "discord-ops@latest"],
       "env": {
         "DISCORD_TOKEN": "${DISCORD_TOKEN}"
       }
@@ -78,7 +78,7 @@ When each project has its own bot, pass all token env vars and let `~/.discord-o
   "mcpServers": {
     "discord-ops": {
       "command": "npx",
-      "args": ["-y", "discord-ops"],
+      "args": ["-y", "discord-ops@latest"],
       "env": {
         "ORG_A_DISCORD_TOKEN": "${ORG_A_DISCORD_TOKEN}",
         "ORG_B_DISCORD_TOKEN": "${ORG_B_DISCORD_TOKEN}"
@@ -99,7 +99,7 @@ If all your projects share one bot, just pass that token:
   "mcpServers": {
     "discord-ops": {
       "command": "npx",
-      "args": ["-y", "discord-ops"],
+      "args": ["-y", "discord-ops@latest"],
       "env": {
         "DISCORD_TOKEN": "${DISCORD_TOKEN}"
       }
@@ -117,7 +117,7 @@ If another tool already claims `DISCORD_TOKEN`, use `DISCORD_OPS_TOKEN_ENV` to p
   "mcpServers": {
     "discord-ops": {
       "command": "npx",
-      "args": ["-y", "discord-ops"],
+      "args": ["-y", "discord-ops@latest"],
       "env": {
         "DISCORD_OPS_TOKEN_ENV": "MY_BOT_TOKEN",
         "MY_BOT_TOKEN": "${MY_BOT_TOKEN}"
