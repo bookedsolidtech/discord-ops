@@ -34,7 +34,7 @@ export const listMembers: ToolDefinition = {
     return toolResultJson({
       guild_id: input.guild_id,
       count: result.length,
-      members: [...result],
+      members: result,
     });
   },
 };

@@ -9,6 +9,7 @@ import { RateLimiter } from "./security/rate-limiter.js";
 import { checkPermissions } from "./security/permissions.js";
 import { filterTools } from "./profiles/index.js";
 import { logger } from "./utils/logger.js";
+import { getTokenForProject } from "./config/index.js";
 
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
@@ -18,9 +19,8 @@ const { version: PKG_VERSION } = require("../package.json") as { version: string
  * The SDK expects Record<string, ZodType> (the shape), not the ZodObject itself.
  */
 function getZodShape(schema: z.ZodType): Record<string, z.ZodType> | undefined {
-  const def = (schema as any)._def;
-  if (def?.typeName === "ZodObject") {
-    return def.shape();
+  if (schema instanceof z.ZodObject) {
+    return schema.shape as Record<string, z.ZodType>;
   }
   return undefined;
 }
@@ -106,7 +106,7 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
         if (tool.permissions?.length && tool.requiresGuild && parsed.guild_id) {
           try {
             const token = parsed.project
-              ? (await import("./config/index.js")).getTokenForProject(parsed.project, ctx.config)
+              ? getTokenForProject(parsed.project, ctx.config)
               : undefined;
             const guild = await ctx.discord.getGuild(parsed.guild_id, token);
             const botMember = await guild.members.fetchMe();

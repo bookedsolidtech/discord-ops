@@ -25,10 +25,11 @@ describe("archive_thread", () => {
     const mockThread = createMockChannel({
       id: "555555555555555555",
       name: "test-thread",
+      isThread: () => true,
       setArchived: vi.fn().mockResolvedValue(undefined),
       setLocked: vi.fn().mockResolvedValue(undefined),
     });
-    (ctx.discord.getChannel as any).mockResolvedValue(mockThread);
+    (ctx.discord.getAnyChannel as any).mockResolvedValue(mockThread);
 
     const result = await archiveThread.handle(
       { thread_id: "555555555555555555", locked: false },
@@ -46,10 +47,11 @@ describe("archive_thread", () => {
     const mockThread = createMockChannel({
       id: "555555555555555555",
       name: "test-thread",
+      isThread: () => true,
       setArchived: vi.fn().mockResolvedValue(undefined),
       setLocked: vi.fn().mockResolvedValue(undefined),
     });
-    (ctx.discord.getChannel as any).mockResolvedValue(mockThread);
+    (ctx.discord.getAnyChannel as any).mockResolvedValue(mockThread);
 
     const result = await archiveThread.handle(
       { thread_id: "555555555555555555", locked: true },
@@ -64,10 +66,11 @@ describe("archive_thread", () => {
 
   it("errors on non-thread channel", async () => {
     const ctx = createCtx();
-    // Channel without setArchived = not a thread
-    const mockChannel = createMockChannel({ id: "222222222222222222" });
-    delete (mockChannel as any).setArchived;
-    (ctx.discord.getChannel as any).mockResolvedValue(mockChannel);
+    const mockChannel = createMockChannel({
+      id: "222222222222222222",
+      isThread: () => false,
+    });
+    (ctx.discord.getAnyChannel as any).mockResolvedValue(mockChannel);
 
     const result = await archiveThread.handle(
       { thread_id: "222222222222222222", locked: false },

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ChannelType, type TextChannel } from "discord.js";
+import { ChannelType, type GuildChannel, type TextChannel } from "discord.js";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
@@ -29,7 +29,7 @@ export const editChannel: ToolDefinition = {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
     const channel = await ctx.discord.getAnyChannel(input.channel_id, token);
 
-    const edited = await (channel as unknown as TextChannel).edit({
+    const edited = await (channel as GuildChannel).edit({
       ...(input.name ? { name: input.name } : {}),
       ...(input.topic !== undefined ? { topic: input.topic } : {}),
       ...(input.parent_id ? { parent: input.parent_id } : {}),

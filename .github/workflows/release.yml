@@ -13,7 +13,6 @@ jobs:
       contents: write
       packages: write
       pull-requests: write
-      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,12 +51,16 @@ jobs:
           PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
           REPO: ${{ github.repository }}
         run: |
-          git checkout main
           node - <<'NOTIFY'
-            const { execSync } = require('child_process');
+            const { execFileSync } = require('child_process');
             const fs = require('fs');
 
-            const pkgs = JSON.parse(process.env.PUBLISHED_PACKAGES || '[]');
+            let pkgs;
+            try {
+              pkgs = JSON.parse(process.env.PUBLISHED_PACKAGES || '[]');
+            } catch {
+              process.exit(0);
+            }
             const pkg = pkgs.find(p => p.name === 'discord-ops');
             if (!pkg) process.exit(0);
 
@@ -104,7 +107,8 @@ jobs:
               }
             });
 
-            execSync(`node dist/cli/index.js run send_template --args '${args.replace(/'/g, "'\\''")}'`, {
+            // Use execFileSync with argv array — no shell interpolation, safe for any changelog content
+            execFileSync('node', ['dist/cli/index.js', 'run', 'send_template', '--args', args], {
               stdio: 'inherit',
               env: process.env
             });

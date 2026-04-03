@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { TextChannel } from "discord.js";
 import type { ToolDefinition } from "../types.js";
 import { toolResult, toolResultJson } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
@@ -25,7 +26,7 @@ export const createWebhook: ToolDefinition = {
       return toolResult("Channel does not support webhooks", true);
     }
 
-    const webhook = await (channel as any).createWebhook({
+    const webhook = await (channel as TextChannel).createWebhook({
       name: input.name,
       reason: input.reason,
     });

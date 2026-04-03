@@ -2,15 +2,16 @@ import { describe, it, expect } from "vitest";
 import { notifyOwners } from "../../src/tools/messaging/notify-owners.js";
 import { createMockDiscordClient, createMockConfig } from "../mocks/discord-client.js";
 import type { ToolContext } from "../../src/tools/types.js";
+import type { NotificationType } from "../../src/config/schema.js";
 
 const OWNER_ID = "820027414902079548";
 
-function createCtx(notifyOn: string[] = ["error", "alert", "release"]): ToolContext {
+function createCtx(notifyOn: NotificationType[] = ["error", "alert", "release"]): ToolContext {
   const config = createMockConfig();
   config.global.projects["test-project"] = {
     ...config.global.projects["test-project"],
     owners: [OWNER_ID],
-    notify_owners_on: notifyOn as any,
+    notify_owners_on: notifyOn,
   };
   return { discord: createMockDiscordClient() as any, config };
 }
@@ -139,5 +140,15 @@ describe("notify_owners", () => {
       message: "x".repeat(1801),
     });
     expect(result.success).toBe(false);
+  });
+
+  it("returns error when project does not exist in config", async () => {
+    const ctx = createCtx();
+    const result = await notifyOwners.handle(
+      { project: "nonexistent-project", notification_type: "error", channel: "dev" },
+      ctx,
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("not found");
   });
 });

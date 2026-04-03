@@ -22,7 +22,6 @@ export async function fetchOgMetadata(url: string): Promise<OgMetadata> {
     const text = (await response.text()).slice(0, 50000);
     const result: OgMetadata = {};
 
-    const properties = ["title", "description", "image", "site_name"] as const;
     const ogKeys: Record<string, keyof OgMetadata> = {
       "og:title": "title",
       "og:description": "description",
@@ -44,8 +43,6 @@ export async function fetchOgMetadata(url: string): Promise<OgMetadata> {
         result[key] = value;
       }
     }
-
-    void properties; // suppress unused warning
 
     return result;
   } catch (err) {

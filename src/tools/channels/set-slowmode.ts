@@ -33,7 +33,7 @@ export const setSlowmode: ToolDefinition = {
 
     return toolResultJson({
       channel_id: updated.id,
-      name: (updated as any).name,
+      name: "name" in updated ? (updated as { name: string }).name : null,
       slowmode_seconds: input.seconds,
       action: input.seconds > 0 ? "slowmode_set" : "slowmode_disabled",
     });

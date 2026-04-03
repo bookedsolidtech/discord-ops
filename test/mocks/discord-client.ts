@@ -294,7 +294,9 @@ export function createMockDiscordClient(overrides: Record<string, unknown> = {})
     getChannel: vi.fn().mockResolvedValue(mockChannel),
     getAnyChannel: vi.fn().mockResolvedValue(mockChannel),
     getGuild: vi.fn().mockResolvedValue(mockGuild),
+    findChannelByName: vi.fn().mockResolvedValue(undefined),
     destroy: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
   };
 }
 

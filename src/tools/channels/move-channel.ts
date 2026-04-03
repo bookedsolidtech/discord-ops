@@ -1,9 +1,19 @@
 import { z } from "zod";
-import type { NonThreadGuildBasedChannel } from "discord.js";
+import { ChannelType, type NonThreadGuildBasedChannel } from "discord.js";
 import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
+
+const NON_THREAD_TYPES = new Set([
+  ChannelType.GuildText,
+  ChannelType.GuildVoice,
+  ChannelType.GuildCategory,
+  ChannelType.GuildAnnouncement,
+  ChannelType.GuildForum,
+  ChannelType.GuildStageVoice,
+  ChannelType.GuildMedia,
+]);
 
 const inputSchema = z
   .object({
@@ -17,11 +27,22 @@ const inputSchema = z
       .optional()
       .describe("Project name (resolves bot token for multi-bot setups)"),
   })
-  .refine((d) => d.before_id ?? d.after_id, {
-    message: "Provide either before_id or after_id",
-  })
-  .refine((d) => !(d.before_id && d.after_id), {
-    message: "Provide before_id or after_id, not both",
+  .superRefine((d, ctx) => {
+    if (d.before_id === undefined && d.after_id === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide either before_id or after_id",
+        path: ["before_id"],
+      });
+      return;
+    }
+    if (d.before_id !== undefined && d.after_id !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide before_id or after_id, not both",
+        path: ["before_id"],
+      });
+    }
   });
 
 export const moveChannel: ToolDefinition = {
@@ -31,35 +52,32 @@ export const moveChannel: ToolDefinition = {
   category: "channels",
   inputSchema,
   permissions: ["ManageChannels"],
+  requiresGuild: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
     const channel = await ctx.discord.getAnyChannel(input.channel_id, token);
 
     const guild = channel.guild;
-    const refId = (input.before_id ?? input.after_id)!;
+    const refId = (input.before_id ?? input.after_id) as string;
 
-    // Fetch the reference channel to get its current position
+    // Fetch the reference channel live to get its current position
     const refChannel = (await guild.channels.fetch(refId)) as NonThreadGuildBasedChannel | null;
     if (!refChannel) {
-      return {
-        content: [{ type: "text", text: `Reference channel ${refId} not found` }],
-        isError: true,
-      };
+      return toolResult(`Reference channel ${refId} not found`, true);
     }
 
-    // Collect siblings — channels in the same parent (or top-level if no parent)
-    const siblings = [...guild.channels.cache.values()]
+    // Collect siblings via live fetch — consistent with the already-fetched refChannel
+    const allChannels = await guild.channels.fetch();
+    const siblings = [...allChannels.values()]
       .filter(
-        (c): c is NonThreadGuildBasedChannel => "position" in c && c.parentId === channel.parentId,
+        (c): c is NonThreadGuildBasedChannel =>
+          c !== null && NON_THREAD_TYPES.has(c.type) && c.parentId === channel.parentId,
       )
       .sort((a, b) => a.position - b.position);
 
     const refIndex = siblings.findIndex((c) => c.id === refId);
     if (refIndex === -1) {
-      return {
-        content: [{ type: "text", text: `Reference channel ${refId} is not in the same category` }],
-        isError: true,
-      };
+      return toolResult(`Reference channel ${refId} is not in the same category`, true);
     }
 
     // before_id → insert at ref's position; after_id → insert at ref's position + 1
