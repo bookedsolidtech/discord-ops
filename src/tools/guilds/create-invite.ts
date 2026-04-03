@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { TextChannel } from "discord.js";
 import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
@@ -39,9 +40,9 @@ export const createInvite = defineTool({
   requiresGuild: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
-    const channel = await ctx.discord.getChannel(input.channel_id, token);
+    const channel = await ctx.discord.getAnyChannel(input.channel_id, token);
 
-    const invite = await channel.createInvite({
+    const invite = await (channel as unknown as TextChannel).createInvite({
       maxAge: input.max_age,
       maxUses: input.max_uses,
       temporary: input.temporary,

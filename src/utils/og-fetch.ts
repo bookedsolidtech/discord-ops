@@ -19,9 +19,9 @@ function isPublicHttpUrl(urlStr: string): boolean {
     // Strip them before applying checks so string comparisons work uniformly.
     const raw = url.hostname.toLowerCase();
     const h = raw.startsWith("[") && raw.endsWith("]") ? raw.slice(1, -1) : raw;
-    // Loopback — full 127.0.0.0/8 range + IPv6 loopback
-    if (h === "localhost" || h === "::1") return false;
-    if (h === "127.0.0.1" || /^127\./.test(h)) return false;
+    // Loopback — full 127.0.0.0/8 range + IPv6 loopback + unspecified addresses
+    if (h === "localhost" || h === "::1" || h === "::") return false;
+    if (h === "0.0.0.0" || h === "127.0.0.1" || /^127\./.test(h)) return false;
     // Link-local — AWS/Azure/GCP metadata endpoints
     if (h === "169.254.169.254" || h.startsWith("169.254.")) return false;
     // RFC-1918 private IPv4

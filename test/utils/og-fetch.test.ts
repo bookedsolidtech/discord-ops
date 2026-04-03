@@ -172,4 +172,19 @@ describe("fetchOgMetadata — SSRF protection (M-2)", () => {
     expect(result).toEqual({});
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  // Unspecified addresses
+  it("blocks 0.0.0.0 (unspecified IPv4 — routes to localhost on many systems)", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const result = await fetchOgMetadata("http://0.0.0.0/secret");
+    expect(result).toEqual({});
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("blocks :: (IPv6 unspecified address)", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const result = await fetchOgMetadata("http://[::]/secret");
+    expect(result).toEqual({});
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
