@@ -1,5 +1,35 @@
 # discord-ops
 
+## 0.13.0
+
+### Minor Changes
+
+- 4928e5e: Auto-embed for send_message and health endpoint version field
+  - **Auto-embed for `send_message`**: Messages are now automatically wrapped in a polished embed (color bar, description, timestamp) via the new `simple` template. Set `raw: true` to send plain text. Every message looks professional by default.
+  - **`simple` template**: New minimal utility template — just a branded embed with optional title, color, author, and footer. Used automatically by `send_message`, also available via `send_template`.
+  - **Health endpoint `version` field**: `GET /health` now includes the `discord-ops` package version for deployment verification.
+
+- 4928e5e: feat: add position parameter to edit_channel
+
+  `edit_channel` now accepts an optional `position` integer (0-indexed) to reorder channels and categories within a guild. This enables programmatic channel ordering without needing separate Discord admin UI access.
+
+- 4928e5e: Live channel name resolution — fuzzy.ts was dead code, now it works
+  - **Channel fuzzy resolution**: The `channel` param now resolves in four layers — exact alias match, fuzzy alias match (e.g. `"build"` hits `"builds"`), then a live Discord API lookup that finds channels by their actual Discord name (e.g. `channel: "general"` now works even with no configured alias).
+  - **Fuzzy alias matching**: Configured channel aliases are now fuzzy-matched before falling back to Discord, so near-misses on alias names resolve correctly.
+  - **`list_templates` fix**: Internal `simple` template (used for auto-embed) no longer appears in `list_templates` output — count now correctly shows 23.
+
+- 4928e5e: New send_embed tool with server-side OG metadata fetching
+
+### Patch Changes
+
+- 4928e5e: fix: isConnected no longer throws in multi-bot setups
+
+  `DiscordClient.isConnected` was calling `getConnection()` with no token, which throws when no default `DISCORD_TOKEN` is set. Any setup that uses only per-project `token_env` (the standard multi-bot pattern) would immediately crash with "No Discord token available" on the first `health_check` call — before per-project tokens were ever checked. `isConnected` now returns `false` instead of throwing when there is no default token.
+
+- 4928e5e: fix: resolver now includes bot token when channel_id is provided directly
+
+  When `channel_id` was passed directly to `resolveTarget`, the returned `ResolvedTarget` was missing the `token` field even if a `project` was specified. This caused direct-channel-ID calls in multi-bot setups to fall back to the default bot token instead of the project-specific one.
+
 ## 0.12.0
 
 ### Minor Changes
