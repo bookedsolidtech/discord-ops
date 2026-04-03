@@ -492,6 +492,8 @@ Use `discord-ops run` in GitHub Actions (or any CI) to post rich Discord notific
 
 In CI you typically have one bot token and one project. Pass a minimal config as an inline JSON string via `DISCORD_OPS_CONFIG`. No file writing needed.
 
+**When storing as a GitHub secret, minify to a single line** — multiline strings break secret injection. The shape (pretty-printed for readability):
+
 ```json
 {
   "projects": {
@@ -516,7 +518,11 @@ In CI you typically have one bot token and one project. Pass a minimal config as
 
 Store two secrets in your repo:
 - `BOOKED_DISCORD_BOT_TOKEN` — your bot token
-- `DISCORD_OPS_CONFIG` — the inline JSON string above
+- `DISCORD_OPS_CONFIG` — the config JSON **minified to a single line** (multiline strings break GitHub secrets)
+
+```
+{"projects":{"my-app":{"guild_id":"123456789012345678","channels":{"releases":"987654321098765432"},"default_channel":"releases"}},"default_project":"my-app"}
+```
 
 ```yaml
 - name: Notify Discord
