@@ -3,13 +3,13 @@ import { defineTool, toolResultJson, toolResult } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { buildOwnerMentions } from "../../config/owners.js";
-import { NotificationType } from "../../config/schema.js";
+import { notificationType } from "../../config/schema.js";
 
 const inputSchema = z.object({
   project: z
     .string()
     .describe("Project name — owners and notify_owners_on are read from this project's config"),
-  notification_type: NotificationType.describe(
+  notification_type: notificationType.describe(
     "Notification type — must be in the project's notify_owners_on list or no ping is sent",
   ),
   channel_id: snowflakeId.optional().describe("Direct channel ID (overrides project default)"),

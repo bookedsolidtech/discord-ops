@@ -6,19 +6,73 @@ import {
 import { timingSafeEqual, createHash } from "node:crypto";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ServerMeta } from "../server.js";
 import { logger } from "../utils/logger.js";
 
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+const DEFAULT_ALLOWED_ORIGIN = "http://localhost";
+
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Content-Security-Policy": "default-src 'none'",
+  "Referrer-Policy": "no-referrer",
 };
+
+function buildCorsHeaders(allowedOrigin: string): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  };
+}
 
 export interface HttpTransportOptions {
   port?: number;
   /** Bearer token required for all requests. Read from DISCORD_OPS_HTTP_TOKEN env if not set. */
   authToken?: string;
+  /** Allowed CORS origin. Defaults to "http://localhost". Set to "*" to allow all origins (not recommended). */
+  allowedOrigin?: string;
+  /**
+   * Allow the server to start without any auth token configured.
+   * Must be explicitly set to true — the default is to refuse startup when no token is present.
+   */
+  allowUnauthenticated?: boolean;
+  /**
+   * When true, extract the real client IP from the leftmost non-private IP in X-Forwarded-For.
+   * Only enable when the server is behind a trusted reverse proxy (nginx, Caddy, AWS ALB).
+   * Defaults to false — uses req.socket.remoteAddress directly.
+   */
+  trustProxy?: boolean;
+}
+
+// Private IP ranges that should never appear as "real" client IPs in X-Forwarded-For.
+// Covers loopback, link-local, RFC-1918 private, and IPv4-mapped IPv6.
+const PRIVATE_IP_RE =
+  /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|::1$|fc[0-9a-f]{2}:|fd[0-9a-f]{2}:|::ffff:)/i;
+
+/**
+ * Returns the best available client IP address for rate limiting.
+ *
+ * When trustProxy is false (default): uses req.socket.remoteAddress.
+ * When trustProxy is true: reads X-Forwarded-For and returns the leftmost
+ * non-private IP. Falls back to remoteAddress if no public IP is found.
+ */
+export function getClientIp(req: IncomingMessage, trustProxy: boolean): string {
+  const remote = req.socket.remoteAddress ?? "unknown";
+  if (!trustProxy) return remote;
+
+  const header = req.headers["x-forwarded-for"];
+  if (!header) return remote;
+
+  const raw = Array.isArray(header) ? header[0] : header;
+  const candidates = raw.split(",").map((s) => s.trim());
+
+  for (const candidate of candidates) {
+    if (candidate && !PRIVATE_IP_RE.test(candidate)) {
+      return candidate;
+    }
+  }
+
+  return remote;
 }
 
 function checkAuth(
@@ -47,7 +101,7 @@ function checkAuth(
   return { authorized: true };
 }
 
-// Per-IP sliding-window rate limiter for HTTP transport (H-3: per-client isolation).
+// Per-IP sliding-window rate limiter for HTTP transport.
 // Prevents a single client from exhausting the shared MCP tool rate limits.
 interface IpBucket {
   count: number;
@@ -70,15 +124,29 @@ function checkIpRateLimit(ipCounters: Map<string, IpBucket>, ip: string): { allo
 
 export async function startHttpTransport(
   server: McpServer,
-  meta: ServerMeta,
   options: HttpTransportOptions = {},
 ): Promise<void> {
   const port = options.port ?? 3000;
   const authToken = options.authToken ?? process.env.DISCORD_OPS_HTTP_TOKEN;
+  const allowedOrigin = options.allowedOrigin ?? DEFAULT_ALLOWED_ORIGIN;
+  const trustProxy = options.trustProxy ?? false;
+  const corsHeaders = buildCorsHeaders(allowedOrigin);
 
   if (!authToken) {
+    if (!options.allowUnauthenticated) {
+      // Refuse to start: unauthenticated HTTP exposes full bot capabilities.
+      // Operator must either set DISCORD_OPS_HTTP_TOKEN or pass --allow-unauthenticated.
+      console.error(
+        "ERROR: HTTP transport requires an auth token. " +
+          "Set the DISCORD_OPS_HTTP_TOKEN environment variable, " +
+          "or pass --allow-unauthenticated to explicitly opt in to unauthenticated access.",
+      );
+      process.exit(1);
+    }
+
     logger.warn(
-      "HTTP transport running WITHOUT authentication. Set DISCORD_OPS_HTTP_TOKEN to require bearer auth.",
+      "HTTP transport running WITHOUT authentication (--allow-unauthenticated). " +
+        "Set DISCORD_OPS_HTTP_TOKEN to require bearer auth.",
     );
   }
 
@@ -98,18 +166,21 @@ export async function startHttpTransport(
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     // Handle CORS preflight (no auth required)
     if (req.method === "OPTIONS") {
-      res.writeHead(204, CORS_HEADERS);
+      res.writeHead(204, corsHeaders);
       res.end();
       return;
     }
 
-    // Apply CORS headers to all responses
-    for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    // Apply CORS and security headers to all non-OPTIONS responses
+    for (const [key, value] of Object.entries(corsHeaders)) {
+      res.setHeader(key, value);
+    }
+    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
       res.setHeader(key, value);
     }
 
     // Per-IP rate limiting — applied before auth to protect against enumeration
-    const ip = req.socket.remoteAddress ?? "unknown";
+    const ip = getClientIp(req, trustProxy);
     if (!checkIpRateLimit(ipCounters, ip).allowed) {
       res.writeHead(429, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Too many requests" }));
@@ -117,22 +188,10 @@ export async function startHttpTransport(
     }
 
     // Health endpoint — intentionally auth-exempt for load balancers / probes.
-    // Returns only public operational metadata (no session counts or rate limiter state).
     const url = new URL(req.url ?? "/", `http://localhost:${port}`);
     if (req.method === "GET" && url.pathname === "/health") {
-      const startMs = new Date(meta.startedAt).getTime();
-      const uptimeSeconds = Math.floor((Date.now() - startMs) / 1000);
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({
-          status: "ok",
-          version: meta.version,
-          uptime: uptimeSeconds,
-          toolProfile: meta.profileName,
-          toolCount: meta.toolCount,
-          totalTools: meta.totalTools,
-        }),
-      );
+      res.end(JSON.stringify({ status: "ok" }));
       return;
     }
 

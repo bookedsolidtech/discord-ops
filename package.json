@@ -35,6 +35,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "default": "./dist/config/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "default": "./dist/tools/index.js"
     }
   },
   "files": [
@@ -54,7 +66,7 @@
     "test:coverage": "vitest run --coverage",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepublishOnly": "node scripts/block-local-publish.mjs && npm run build",
+    "prepublishOnly": "node scripts/block-local-publish.mjs && npm audit --audit-level=high && npm run build",
     "changeset": "changeset",
     "release": "changeset publish"
   },

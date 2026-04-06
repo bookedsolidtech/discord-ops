@@ -25,8 +25,15 @@ function redactSensitiveParams(params: Record<string, unknown>): Record<string, 
   for (const [key, value] of Object.entries(params)) {
     if (SENSITIVE_KEYS.some((sk) => key.toLowerCase().includes(sk))) {
       redacted[key] = "[REDACTED]";
-    } else if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-      // Recurse into nested objects so nested sensitive fields are also redacted (M-4)
+    } else if (Array.isArray(value)) {
+      redacted[key] = (value as unknown[]).map((element) =>
+        element !== null && typeof element === "object" && !Array.isArray(element)
+          ? redactSensitiveParams(element as Record<string, unknown>)
+          : Array.isArray(element)
+            ? redactSensitiveParams({ __arr: element }).__arr
+            : element,
+      );
+    } else if (value !== null && typeof value === "object") {
       redacted[key] = redactSensitiveParams(value as Record<string, unknown>);
     } else {
       redacted[key] = value;

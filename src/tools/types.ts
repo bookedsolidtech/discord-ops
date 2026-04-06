@@ -14,41 +14,52 @@ export interface ToolResult {
   [key: string]: unknown;
 }
 
+export type ToolCategory =
+  | "messaging"
+  | "channels"
+  | "moderation"
+  | "roles"
+  | "webhooks"
+  | "guilds"
+  | "members"
+  | "threads"
+  | "system";
+
 export interface ToolDefinition {
   name: string;
   description: string;
-  category: string;
+  category: ToolCategory;
   inputSchema: z.ZodType;
   permissions?: PermissionResolvable[];
   destructive?: boolean;
   requiresGuild?: boolean;
+  /**
+   * The erased handle type at the interface level. `input` is typed as `any`
+   * here because `ToolDefinition` is not generic over its input schema — the
+   * schema type parameter is lost when tools are collected into `ToolDefinition[]`.
+   * Use `defineTool` to author new tools: it captures `z.infer<TSchema>` at the
+   * call site and narrows `input` inside `handle` before casting the result down
+   * to this interface.
+   */
   handle: (input: any, ctx: ToolContext) => Promise<ToolResult>;
 }
 
 /**
- * Type-safe tool factory. Use instead of `const x: ToolDefinition = {...}` to get
- * a properly typed `handle` function without `any` on the input parameter.
- *
- * @example
- * const myTool = defineTool({
- *   name: "my_tool",
- *   inputSchema: z.object({ id: snowflakeId }),
- *   handle: async (input, ctx) => { // input is typed as { id: string }
- *     ...
- *   },
- * });
+ * Type-safe tool factory. Authors receive a properly-typed `input: z.infer<TSchema>`
+ * inside `handle`, while the returned object satisfies `ToolDefinition` via a
+ * single cast that erases the schema type parameter.
  */
-export function defineTool<TSchema extends z.ZodType>(def: {
+export function defineTool<TSchema extends z.ZodType>(definition: {
   name: string;
   description: string;
-  category: string;
+  category: ToolCategory;
   inputSchema: TSchema;
   permissions?: PermissionResolvable[];
   destructive?: boolean;
   requiresGuild?: boolean;
   handle: (input: z.infer<TSchema>, ctx: ToolContext) => Promise<ToolResult>;
 }): ToolDefinition {
-  return def as ToolDefinition;
+  return definition as ToolDefinition;
 }
 
 export function toolResult(text: string, isError?: boolean): ToolResult {

@@ -18,7 +18,7 @@ function createCtx(): ToolContext {
 describe("query_audit_log", () => {
   it("has correct metadata", () => {
     expect(queryAuditLog.name).toBe("query_audit_log");
-    expect(queryAuditLog.category).toBe("audit");
+    expect(queryAuditLog.category).toBe("moderation");
     expect(queryAuditLog.permissions).toContain("ViewAuditLog");
     expect(queryAuditLog.requiresGuild).toBe(true);
   });

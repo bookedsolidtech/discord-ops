@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
-import { NotificationType } from "../../config/schema.js";
+import { notificationType } from "../../config/schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { renderTemplate } from "../../templates/registry.js";
 import { buildOwnerMentions } from "../../config/owners.js";
@@ -12,7 +12,7 @@ const inputSchema = z.object({
   guild_id: snowflakeId.optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
-  notification_type: NotificationType.optional().describe("Notification type for auto-routing"),
+  notification_type: notificationType.optional().describe("Notification type for auto-routing"),
   reply_to: snowflakeId.optional().describe("Message ID to reply to"),
   raw: z
     .boolean()

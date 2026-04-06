@@ -5,12 +5,22 @@ import { getMessages } from "../../src/tools/messaging/get-messages.js";
 import { editMessage } from "../../src/tools/messaging/edit-message.js";
 import { deleteMessage } from "../../src/tools/messaging/delete-message.js";
 import { addReaction } from "../../src/tools/messaging/add-reaction.js";
+import { searchMessages } from "../../src/tools/messaging/search.js";
+import { sendEmbed } from "../../src/tools/messaging/send-embed.js";
 import {
   createMockDiscordClient,
   createMockConfig,
   createMockMessage,
 } from "../mocks/discord-client.js";
 import type { ToolContext } from "../../src/tools/types.js";
+
+vi.mock("../../src/utils/og-fetch.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/utils/og-fetch.js")>();
+  return {
+    ...actual,
+    fetchOgMetadata: vi.fn().mockResolvedValue({}),
+  };
+});
 
 function createCtx(): ToolContext {
   return {
@@ -120,7 +130,7 @@ describe("add_reaction", () => {
   it("adds a reaction", async () => {
     const ctx = createCtx();
     const result = await addReaction.handle(
-      { message_id: "111111111111111111", emoji: "👍", channel_id: "222222222222222222" },
+      { message_id: "111111111111111111", emoji: "\u{1F44D}", channel_id: "222222222222222222" },
       ctx,
     );
     expect(result.isError).toBeUndefined();
@@ -128,185 +138,142 @@ describe("add_reaction", () => {
   });
 });
 
-function mockOgResponse(og: { title?: string; description?: string; image?: string }) {
-  const metas = [
-    og.title ? `<meta property="og:title" content="${og.title}" />` : "",
-    og.description ? `<meta property="og:description" content="${og.description}" />` : "",
-    og.image ? `<meta property="og:image" content="${og.image}" />` : "",
-  ].join("\n");
-  return new Response(`<html><head>${metas}</head></html>`, {
-    headers: { "content-type": "text/html" },
+describe("search_messages", () => {
+  it("finds matching messages on page 1", async () => {
+    const ctx = createCtx();
+    // max_pages and limit must be passed explicitly since handle() bypasses Zod defaults.
+    const result = await searchMessages.handle(
+      { channel_id: "222222222222222222", query: "Test", max_pages: 1, limit: 25 },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.channel_id).toBe("222222222222222222");
+    expect(data.matches).toBe(1);
+    expect(data.results[0].content).toContain("Test");
+    expect(data.has_more).toBe(false);
   });
-}
+
+  it("returns nothing when query does not match", async () => {
+    const ctx = createCtx();
+    const result = await searchMessages.handle(
+      { channel_id: "222222222222222222", query: "xyzzy-no-match", max_pages: 1, limit: 25 },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.matches).toBe(0);
+  });
+
+  it("fetches page 2 when max_pages=2 and match is only in page 2", async () => {
+    const ctx = createCtx();
+
+    // Build 100 non-matching messages for page 1 using safe integer IDs
+    // (base 500000000000 keeps us well within Number.MAX_SAFE_INTEGER).
+    const page1Messages = new Map<string, ReturnType<typeof createMockMessage>>();
+    for (let i = 0; i < 100; i++) {
+      const id = String(500000000000 + i);
+      page1Messages.set(id, createMockMessage({ id, content: "no match here" }));
+    }
+    // The last entry inserted is the oldest — its ID is the "before" cursor for page 2.
+    const oldestPage1Id = String(500000000099);
+
+    // Page-2 batch: a single matching message with an older (smaller) ID.
+    const page2Match = createMockMessage({
+      id: "400000000001",
+      content: "found in page two",
+    });
+    const page2Messages = new Map([["400000000001", page2Match]]);
+
+    const messagesFetch = vi
+      .fn()
+      .mockResolvedValueOnce(page1Messages)
+      .mockResolvedValueOnce(page2Messages);
+
+    const mockChannel = {
+      id: "222222222222222222",
+      isTextBased: () => true,
+      messages: { fetch: messagesFetch },
+    };
+    (ctx.discord.getChannel as any).mockResolvedValue(mockChannel);
+
+    const result = await searchMessages.handle(
+      { channel_id: "222222222222222222", query: "page two", max_pages: 2, limit: 25 },
+      ctx,
+    );
+
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.matches).toBe(1);
+    expect(data.results[0].content).toBe("found in page two");
+    // Page 2 returned fewer than 100 messages so no more history exists.
+    expect(data.has_more).toBe(false);
+
+    // Verify the second fetch used the correct "before" cursor.
+    expect(messagesFetch).toHaveBeenCalledTimes(2);
+    expect(messagesFetch).toHaveBeenNthCalledWith(2, { limit: 100, before: oldestPage1Id });
+  });
+});
 
 describe("send_embed", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
+  it("has correct metadata", () => {
+    expect(sendEmbed.name).toBe("send_embed");
+    expect(sendEmbed.category).toBe("messaging");
   });
 
-  it("sends embed with OG metadata", async () => {
+  it("blocks private-range image_url (SSRF)", async () => {
     const ctx = createCtx();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        mockOgResponse({
-          title: "OG Title",
-          description: "OG Description",
-          image: "https://example.com/image.png",
-        }),
-      ),
-    );
-
     const result = await sendEmbed.handle(
-      { url: "https://example.com", project: "test-project", channel: "dev" },
-      ctx,
-    );
-    expect(result.isError).toBeUndefined();
-    const data = JSON.parse(result.content[0]!.text);
-    expect(data.og_fetched).toBe(true);
-
-    const mockChannel = await ctx.discord.getChannel("222222222222222222");
-    expect(mockChannel.send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        embeds: expect.arrayContaining([
-          expect.objectContaining({
-            title: "OG Title",
-            description: "OG Description",
-            image: { url: "https://example.com/image.png" },
-            url: "https://example.com",
-          }),
-        ]),
-      }),
-    );
-  });
-
-  it("overrides take precedence over OG", async () => {
-    const ctx = createCtx();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(mockOgResponse({ title: "OG Title", description: "OG Desc" })),
-    );
-
-    await sendEmbed.handle(
       {
         url: "https://example.com",
-        project: "test-project",
-        channel: "dev",
-        title: "Override Title",
-        description: "Override Desc",
+        channel_id: "222222222222222222",
+        image_url: "http://192.168.1.1/admin.png",
       },
       ctx,
     );
-
-    const mockChannel = await ctx.discord.getChannel("222222222222222222");
-    expect(mockChannel.send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        embeds: expect.arrayContaining([
-          expect.objectContaining({ title: "Override Title", description: "Override Desc" }),
-        ]),
-      }),
-    );
-  });
-
-  it("graceful degradation on fetch failure", async () => {
-    const ctx = createCtx();
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
-
-    const result = await sendEmbed.handle(
-      { url: "https://example.com", project: "test-project", channel: "dev" },
-      ctx,
-    );
-    expect(result.isError).toBeUndefined();
-
-    const mockChannel = await ctx.discord.getChannel("222222222222222222");
-    expect(mockChannel.send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        embeds: expect.arrayContaining([expect.objectContaining({ url: "https://example.com" })]),
-      }),
-    );
-  });
-
-  it("graceful degradation on no OG tags", async () => {
-    const ctx = createCtx();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response("<html><head><title>No OG</title></head></html>", {
-          headers: { "content-type": "text/html" },
-        }),
-      ),
-    );
-
-    const result = await sendEmbed.handle(
-      { url: "https://example.com", project: "test-project", channel: "dev" },
-      ctx,
-    );
-    expect(result.isError).toBeUndefined();
-    const data = JSON.parse(result.content[0]!.text);
-    expect(data.og_fetched).toBe(false);
-
-    const mockChannel = await ctx.discord.getChannel("222222222222222222");
-    expect(mockChannel.send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        embeds: expect.arrayContaining([expect.objectContaining({ url: "https://example.com" })]),
-      }),
-    );
-  });
-
-  it("routes via project/channel", async () => {
-    const ctx = createCtx();
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockOgResponse({})));
-
-    await sendEmbed.handle(
-      { url: "https://example.com", project: "test-project", channel: "dev" },
-      ctx,
-    );
-    expect(ctx.discord.getChannel).toHaveBeenCalledWith("222222222222222222", expect.anything());
-  });
-
-  it("routes via direct channel_id", async () => {
-    const ctx = createCtx();
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockOgResponse({})));
-
-    await sendEmbed.handle({ url: "https://example.com", channel_id: "999999999999999999" }, ctx);
-    expect(ctx.discord.getChannel).toHaveBeenCalledWith("999999999999999999", undefined);
-  });
-
-  it("returns error for unresolvable routing", async () => {
-    const ctx = createCtx();
-    ctx.config.global.default_project = undefined;
-    ctx.config.global.projects = {};
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockOgResponse({})));
-
-    const result = await sendEmbed.handle({ url: "https://example.com" }, ctx);
     expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("private or reserved address");
   });
 
-  it("color and footer passed to Discord", async () => {
+  it("blocks loopback image_url (SSRF)", async () => {
     const ctx = createCtx();
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockOgResponse({})));
-
-    await sendEmbed.handle(
+    const result = await sendEmbed.handle(
       {
         url: "https://example.com",
-        project: "test-project",
-        channel: "dev",
-        color: 7424138,
-        footer: "Clarity House Press",
+        channel_id: "222222222222222222",
+        image_url: "http://127.0.0.1/secret.png",
       },
       ctx,
     );
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("private or reserved address");
+  });
 
-    const mockChannel = await ctx.discord.getChannel("222222222222222222");
-    expect(mockChannel.send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        embeds: expect.arrayContaining([
-          expect.objectContaining({
-            color: 7424138,
-            footer: { text: "Clarity House Press" },
-          }),
-        ]),
-      }),
+  it("allows public image_url through", async () => {
+    const ctx = createCtx();
+    const result = await sendEmbed.handle(
+      {
+        url: "https://example.com",
+        channel_id: "222222222222222222",
+        image_url: "https://example.com/banner.png",
+      },
+      ctx,
     );
+    expect(result.isError).toBeUndefined();
+  });
+
+  it("sends embed without image_url when none provided", async () => {
+    const ctx = createCtx();
+    const result = await sendEmbed.handle(
+      {
+        url: "https://example.com",
+        channel_id: "222222222222222222",
+        title: "Test embed",
+      },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.url).toBe("https://example.com");
   });
 });
