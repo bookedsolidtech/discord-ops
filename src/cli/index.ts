@@ -7,6 +7,7 @@ import { startStdioTransport } from "../transport/stdio.js";
 import { startHttpTransport } from "../transport/http.js";
 import { logger, setLogLevel } from "../utils/logger.js";
 import type { LogLevel } from "../utils/logger.js";
+import { runInit } from "./init.js";
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -21,6 +22,12 @@ async function main(): Promise<void> {
   if (args.includes("--version") || args.includes("-v")) {
     console.log("discord-ops 0.1.0");
     process.exit(0);
+  }
+
+  // Handle init subcommand (does not require DISCORD_TOKEN)
+  if (args[0] === "init") {
+    await runInit(args.slice(1));
+    return;
   }
 
   // Handle health subcommand
@@ -146,6 +153,7 @@ USAGE:
   discord-ops              Start MCP server (stdio transport)
   discord-ops serve        Start MCP server (HTTP/SSE transport)
   discord-ops health       Run health check + permission audit
+  discord-ops init         Scaffold a per-project .discord-ops.json
   discord-ops --help       Show this help
   discord-ops --version    Show version
 
@@ -153,6 +161,14 @@ OPTIONS:
   --port <port>              HTTP port for serve mode (default: 3000)
   --allowed-origin <origin>  Allowed CORS origin (default: http://localhost)
   --allow-unauthenticated    Allow serve mode without DISCORD_OPS_HTTP_TOKEN (insecure)
+
+INIT FLAGS:
+  --project <name>         Project name (required)
+  --guild-id <snowflake>   Discord guild/server ID (required)
+  --token-env <VAR>        Env var for bot token (default: DISCORD_TOKEN)
+  --channel <alias>=<id>   Channel alias, repeatable (e.g. builds=1234567890)
+  --force                  Overwrite existing .discord-ops.json
+  --default                Mark this project as default_project
 
 ENVIRONMENT:
   DISCORD_TOKEN            Default Discord bot token (required)
@@ -163,7 +179,7 @@ ENVIRONMENT:
 
 CONFIG FILES:
   ~/.discord-ops.json      Global project routing config
-  .discord-ops.json        Per-project overrides (in repo root)
+  .discord-ops.json        Per-project config (created by discord-ops init)
 
 DOCUMENTATION:
   https://github.com/bookedsolidtech/discord-ops
