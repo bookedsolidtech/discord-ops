@@ -87,9 +87,9 @@ describe("filterTools", () => {
   });
 
   it("throws when add references unknown tool", () => {
-    expect(() =>
-      filterTools(tools, { add: ["NONEXISTENT_TOOL"], profile: "monitoring" }),
-    ).toThrow(/tool_profile_add references unknown tools/);
+    expect(() => filterTools(tools, { add: ["NONEXISTENT_TOOL"], profile: "monitoring" })).toThrow(
+      /tool_profile_add references unknown tools/,
+    );
   });
 
   it("throws when remove references unknown tool", () => {
