@@ -4,6 +4,7 @@ import { loadConfig } from "../config/index.js";
 import { DiscordClient } from "../client.js";
 import { createServer } from "../server.js";
 import { startStdioTransport } from "../transport/stdio.js";
+import { startHttpTransport } from "../transport/http.js";
 import { logger, setLogLevel } from "../utils/logger.js";
 import type { LogLevel } from "../utils/logger.js";
 
@@ -18,7 +19,7 @@ async function main(): Promise<void> {
 
   // Handle --version
   if (args.includes("--version") || args.includes("-v")) {
-    console.log("discord-ops 0.1.0");
+    console.log("discord-ops 0.2.0");
     process.exit(0);
   }
 
@@ -41,7 +42,34 @@ async function main(): Promise<void> {
   // Create MCP server with tool context
   const server = createServer({ discord, config });
 
-  // Start stdio transport
+  // Handle serve subcommand (HTTP/SSE transport)
+  if (args[0] === "serve") {
+    const portIndex = args.indexOf("--port");
+    const portStr = portIndex !== -1 ? args[portIndex + 1] : undefined;
+    const port = portStr !== undefined ? parseInt(portStr, 10) : undefined;
+
+    if (port !== undefined && (isNaN(port) || port < 1 || port > 65535)) {
+      console.error("Invalid --port value: must be between 1 and 65535");
+      process.exit(1);
+    }
+
+    const allowUnauthenticated = args.includes("--allow-unauthenticated");
+
+    await startHttpTransport(server, { port, allowUnauthenticated });
+
+    // Graceful shutdown
+    const shutdown = async () => {
+      logger.info("Shutting down...");
+      await discord.destroy();
+      process.exit(0);
+    };
+
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+    return;
+  }
+
+  // Default: start stdio transport
   await startStdioTransport(server);
 
   // Graceful shutdown
@@ -113,12 +141,18 @@ discord-ops - Agency-grade Discord MCP server
 
 USAGE:
   discord-ops              Start MCP server (stdio transport)
+  discord-ops serve        Start MCP server (HTTP/SSE transport)
   discord-ops health       Run health check + permission audit
   discord-ops --help       Show this help
   discord-ops --version    Show version
 
+OPTIONS:
+  --port <port>              HTTP port for serve mode (default: 3000)
+  --allow-unauthenticated    Allow serve mode without DISCORD_OPS_HTTP_TOKEN (insecure)
+
 ENVIRONMENT:
   DISCORD_TOKEN            Default Discord bot token (required)
+  DISCORD_OPS_HTTP_TOKEN   Bearer token for HTTP transport auth (required for serve mode)
   <PROJECT>_TOKEN          Per-project bot tokens (configured via token_env in config)
   DISCORD_OPS_CONFIG       Path to global config file (default: ~/.discord-ops.json)
   DISCORD_OPS_LOG_LEVEL    Log level: debug, info, warn, error (default: info)
