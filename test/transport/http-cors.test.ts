@@ -21,7 +21,7 @@ function getHeaderFromPort(port: number, path = "/health"): Promise<string | und
 describe("HTTP transport CORS origin", () => {
   it("defaults to http://localhost when no allowedOrigin is set", async () => {
     const port = 19800;
-    await startHttpTransport(makeMockServer(), { port });
+    await startHttpTransport(makeMockServer(), { port, allowUnauthenticated: true });
     const origin = await getHeaderFromPort(port);
     expect(origin).toBe("http://localhost");
   });
@@ -31,6 +31,7 @@ describe("HTTP transport CORS origin", () => {
     await startHttpTransport(makeMockServer(), {
       port,
       allowedOrigin: "https://my-app.example.com",
+      allowUnauthenticated: true,
     });
     const origin = await getHeaderFromPort(port);
     expect(origin).toBe("https://my-app.example.com");
@@ -38,7 +39,7 @@ describe("HTTP transport CORS origin", () => {
 
   it("does NOT use wildcard * by default", async () => {
     const port = 19802;
-    await startHttpTransport(makeMockServer(), { port });
+    await startHttpTransport(makeMockServer(), { port, allowUnauthenticated: true });
     const origin = await getHeaderFromPort(port);
     expect(origin).not.toBe("*");
   });
