@@ -71,6 +71,13 @@ export function createMockChannel(overrides: Record<string, unknown> = {}) {
       createdAt: new Date("2026-01-01T00:00:00Z"),
     }),
     fetchWebhooks: vi.fn().mockResolvedValue(new Map()),
+    createInvite: vi.fn().mockResolvedValue({
+      code: "abc123",
+      maxAge: 86400,
+      maxUses: 1,
+      temporary: false,
+      expiresAt: new Date("2026-04-06T00:00:00Z"),
+    }),
     threads: {
       create: vi.fn().mockResolvedValue({
         id: "555555555555555555",

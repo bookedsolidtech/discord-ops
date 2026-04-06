@@ -19,6 +19,7 @@ import { setSlowmode } from "./channels/set-slowmode.js";
 // Guilds
 import { listGuilds } from "./guilds/list-guilds.js";
 import { getGuild } from "./guilds/get-guild.js";
+import { createInvite } from "./guilds/create-invite.js";
 
 // Members
 import { listMembers } from "./members/list-members.js";
@@ -75,6 +76,7 @@ export const allTools: ToolDefinition[] = [
   // Guilds
   listGuilds,
   getGuild,
+  createInvite,
 
   // Members
   listMembers,
