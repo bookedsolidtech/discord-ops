@@ -43,13 +43,7 @@ export const PROFILES: Record<ProfileName, string[] | "all"> = {
     "purge_messages",
     "query_audit_log",
   ],
-  messaging: [
-    "add_reaction",
-    "delete_message",
-    "edit_message",
-    "get_messages",
-    "send_message",
-  ],
+  messaging: ["add_reaction", "delete_message", "edit_message", "get_messages", "send_message"],
   channels: [
     "create_channel",
     "delete_channel",
