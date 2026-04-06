@@ -26,13 +26,23 @@ const inputSchema = z.object({
           .object({ url: z.string().url().describe("Image URL — must be a public HTTP/HTTPS URL") })
           .optional(),
         thumbnail: z
-          .object({ url: z.string().url().describe("Thumbnail URL — must be a public HTTP/HTTPS URL") })
+          .object({
+            url: z.string().url().describe("Thumbnail URL — must be a public HTTP/HTTPS URL"),
+          })
           .optional(),
         author: z
           .object({
             name: z.string(),
-            url: z.string().url().optional().describe("Author URL — must be a public HTTP/HTTPS URL"),
-            icon_url: z.string().url().optional().describe("Author icon URL — must be a public HTTP/HTTPS URL"),
+            url: z
+              .string()
+              .url()
+              .optional()
+              .describe("Author URL — must be a public HTTP/HTTPS URL"),
+            icon_url: z
+              .string()
+              .url()
+              .optional()
+              .describe("Author icon URL — must be a public HTTP/HTTPS URL"),
           })
           .optional(),
         fields: z
