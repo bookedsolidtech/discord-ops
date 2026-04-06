@@ -11,6 +11,7 @@ import { logger, setLogLevel } from "../utils/logger.js";
 import type { LogLevel } from "../utils/logger.js";
 import { runSetup } from "./setup.js";
 import { runTool } from "./run.js";
+import { runInit } from "./init.js";
 import { validateConfig, type ConfigValidationResult } from "../config/validate.js";
 
 const require = createRequire(import.meta.url);
@@ -29,6 +30,12 @@ async function main(): Promise<void> {
   if (args.includes("--version") || args.includes("-v")) {
     console.log(`discord-ops ${PKG_VERSION}`);
     process.exit(0);
+  }
+
+  // Handle init subcommand (does not require DISCORD_TOKEN)
+  if (args[0] === "init") {
+    await runInit(args.slice(1));
+    return;
   }
 
   // Handle health subcommand
@@ -306,6 +313,7 @@ USAGE:
   discord-ops setup                  Interactive setup wizard
   discord-ops health                 Run health check + permission audit
   discord-ops validate               Validate config without connecting to Discord
+  discord-ops init                   Scaffold a per-project .discord-ops.json
   discord-ops --help                 Show this help
   discord-ops --version              Show version
 
@@ -319,6 +327,14 @@ OPTIONS:
   --profile <name>         Load a tool subset: full, monitoring, readonly, moderation
   --tools "t1,t2,..."      Load only the listed tools (overrides --profile)
 
+INIT FLAGS:
+  --project <name>         Project name (required)
+  --guild-id <snowflake>   Discord guild/server ID (required)
+  --token-env <VAR>        Env var for bot token (default: DISCORD_TOKEN)
+  --channel <alias>=<id>   Channel alias, repeatable (e.g. builds=1234567890)
+  --force                  Overwrite existing .discord-ops.json
+  --default                Mark this project as default_project
+
 ENVIRONMENT:
   DISCORD_TOKEN            Default Discord bot token (required unless all projects have token_env)
   DISCORD_OPS_TOKEN_ENV    Override which env var holds the default token (default: DISCORD_TOKEN)
@@ -330,7 +346,7 @@ ENVIRONMENT:
 
 CONFIG FILES:
   ~/.discord-ops.json      Global project routing config
-  .discord-ops.json        Per-project overrides (in repo root)
+  .discord-ops.json        Per-project config (created by discord-ops init)
 
 DOCUMENTATION:
   https://github.com/bookedsolidtech/discord-ops
