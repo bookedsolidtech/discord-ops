@@ -23,9 +23,7 @@ export function validateFlags(args: string[]): void {
     if (arg === "--") break;
     if (arg.startsWith("--")) {
       if (!KNOWN_FLAGS.has(arg)) {
-        throw new Error(
-          `Unknown flag: ${arg}. Valid flags: ${[...KNOWN_FLAGS].join(", ")}`,
-        );
+        throw new Error(`Unknown flag: ${arg}. Valid flags: ${[...KNOWN_FLAGS].join(", ")}`);
       }
     }
   }

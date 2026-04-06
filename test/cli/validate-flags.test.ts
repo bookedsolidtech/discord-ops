@@ -27,7 +27,9 @@ describe("validateFlags", () => {
   });
 
   it("throws for an unknown flag mixed with known ones", () => {
-    expect(() => validateFlags(["--port", "9000", "--bogus"])).toThrowError(/Unknown flag: --bogus/);
+    expect(() => validateFlags(["--port", "9000", "--bogus"])).toThrowError(
+      /Unknown flag: --bogus/,
+    );
   });
 
   it("stops scanning at -- separator and does not throw for flags after it", () => {

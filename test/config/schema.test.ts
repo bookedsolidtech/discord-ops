@@ -1,9 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { notificationType, GlobalConfigSchema, PerProjectConfigSchema } from "../../src/config/schema.js";
+import {
+  notificationType,
+  GlobalConfigSchema,
+  PerProjectConfigSchema,
+} from "../../src/config/schema.js";
 
 describe("notificationType", () => {
   it("accepts built-in types", () => {
-    for (const builtin of ["ci_build", "deploy", "release", "error", "alert", "announcement", "dev"]) {
+    for (const builtin of [
+      "ci_build",
+      "deploy",
+      "release",
+      "error",
+      "alert",
+      "announcement",
+      "dev",
+    ]) {
       expect(notificationType.safeParse(builtin).success).toBe(true);
     }
   });
