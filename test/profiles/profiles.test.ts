@@ -35,8 +35,9 @@ describe("filterTools", () => {
     for (const [profileName, profileTools] of Object.entries(PROFILES)) {
       if (profileTools === "all") continue;
       for (const toolName of profileTools) {
-        expect(realNames.has(toolName),
-          `Profile "${profileName}" references unknown tool "${toolName}"`
+        expect(
+          realNames.has(toolName),
+          `Profile "${profileName}" references unknown tool "${toolName}"`,
         ).toBe(true);
       }
     }

@@ -22,13 +22,7 @@ export const PROFILES: Record<string, readonly string[] | "all"> = {
     "list_webhooks",
     "query_audit_log",
   ],
-  messaging: [
-    "add_reaction",
-    "delete_message",
-    "edit_message",
-    "get_messages",
-    "send_message",
-  ],
+  messaging: ["add_reaction", "delete_message", "edit_message", "get_messages", "send_message"],
   moderation: [
     "ban_member",
     "kick_member",
