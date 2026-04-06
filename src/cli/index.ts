@@ -4,6 +4,7 @@ import { loadConfig } from "../config/index.js";
 import { DiscordClient } from "../client.js";
 import { createServer } from "../server.js";
 import { startStdioTransport } from "../transport/stdio.js";
+import { startHttpTransport } from "../transport/http.js";
 import { logger, setLogLevel } from "../utils/logger.js";
 import type { LogLevel } from "../utils/logger.js";
 
@@ -40,6 +41,34 @@ async function main(): Promise<void> {
 
   // Create MCP server with tool context
   const server = createServer({ discord, config });
+
+  // Handle serve subcommand (HTTP/SSE transport)
+  if (args[0] === "serve") {
+    const portIndex = args.indexOf("--port");
+    const portStr = portIndex !== -1 ? args[portIndex + 1] : undefined;
+    const port = portStr !== undefined ? parseInt(portStr, 10) : undefined;
+
+    if (port !== undefined && (isNaN(port) || port < 1 || port > 65535)) {
+      console.error("Invalid --port value: must be between 1 and 65535");
+      process.exit(1);
+    }
+
+    const originIndex = args.indexOf("--allowed-origin");
+    const allowedOrigin = originIndex !== -1 ? args[originIndex + 1] : undefined;
+
+    await startHttpTransport(server, { port, allowedOrigin });
+
+    // Graceful shutdown
+    const shutdown = async () => {
+      logger.info("Shutting down...");
+      await discord.destroy();
+      process.exit(0);
+    };
+
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+    return;
+  }
 
   // Start stdio transport
   await startStdioTransport(server);
@@ -113,6 +142,7 @@ discord-ops - Agency-grade Discord MCP server
 
 USAGE:
   discord-ops              Start MCP server (stdio transport)
+  discord-ops serve        Start MCP server (HTTP/SSE transport)
   discord-ops health       Run health check + permission audit
   discord-ops --help       Show this help
   discord-ops --version    Show version
