@@ -5,7 +5,15 @@
 
 import type { ToolDefinition } from "../tools/types.js";
 
-export const PROFILE_NAMES = ["full", "monitoring", "readonly", "moderation"] as const;
+export const PROFILE_NAMES = [
+  "full",
+  "monitoring",
+  "readonly",
+  "moderation",
+  "messaging",
+  "channels",
+  "webhooks",
+] as const;
 export type ProfileName = (typeof PROFILE_NAMES)[number];
 
 export const PROFILES: Record<ProfileName, string[] | "all"> = {
@@ -34,6 +42,24 @@ export const PROFILES: Record<ProfileName, string[] | "all"> = {
     "delete_message",
     "purge_messages",
     "query_audit_log",
+  ],
+  messaging: ["add_reaction", "delete_message", "edit_message", "get_messages", "send_message"],
+  channels: [
+    "create_channel",
+    "delete_channel",
+    "edit_channel",
+    "get_channel",
+    "list_channels",
+    "purge_messages",
+    "set_slowmode",
+  ],
+  webhooks: [
+    "create_webhook",
+    "delete_webhook",
+    "edit_webhook",
+    "execute_webhook",
+    "get_webhook",
+    "list_webhooks",
   ],
 };
 
