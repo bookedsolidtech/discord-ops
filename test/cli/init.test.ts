@@ -20,10 +20,7 @@ describe("parseChannelArgs", () => {
   });
 
   it("parses multiple valid alias=id pairs", () => {
-    const result = parseChannelArgs([
-      "builds=123456789012345678",
-      "alerts=987654321098765432",
-    ]);
+    const result = parseChannelArgs(["builds=123456789012345678", "alerts=987654321098765432"]);
     expect(result).toEqual({
       builds: "123456789012345678",
       alerts: "987654321098765432",
@@ -55,15 +52,13 @@ describe("parseChannelArgs", () => {
 
 describe("parseInitArgs", () => {
   it("throws when --project is missing", () => {
-    expect(() =>
-      parseInitArgs(["--guild-id", "444444444444444444"]),
-    ).toThrow(/--project .* is required/i);
+    expect(() => parseInitArgs(["--guild-id", "444444444444444444"])).toThrow(
+      /--project .* is required/i,
+    );
   });
 
   it("throws when --guild-id is missing", () => {
-    expect(() => parseInitArgs(["--project", "my-app"])).toThrow(
-      /--guild-id .* is required/i,
-    );
+    expect(() => parseInitArgs(["--project", "my-app"])).toThrow(/--guild-id .* is required/i);
   });
 
   it("throws when both required flags are missing", () => {
@@ -71,12 +66,7 @@ describe("parseInitArgs", () => {
   });
 
   it("returns defaults for optional flags when not supplied", () => {
-    const opts = parseInitArgs([
-      "--project",
-      "my-app",
-      "--guild-id",
-      "444444444444444444",
-    ]);
+    const opts = parseInitArgs(["--project", "my-app", "--guild-id", "444444444444444444"]);
     expect(opts.tokenEnv).toBe("DISCORD_TOKEN");
     expect(opts.channels).toEqual({});
     expect(opts.force).toBe(false);
