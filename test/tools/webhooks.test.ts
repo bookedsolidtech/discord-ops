@@ -401,4 +401,86 @@ describe("execute_webhook", () => {
     expect(data.id).toBeTruthy();
     expect(data.webhook_id).toBe("888888888888888888");
   });
+
+  it("blocks private-range embed.url (SSRF)", async () => {
+    const mockWebhook = createMockWebhook();
+    const mockClient = { fetchWebhook: vi.fn().mockResolvedValue(mockWebhook) };
+    const ctx = createCtx();
+    (ctx.discord.getClient as any).mockResolvedValue(mockClient);
+
+    const result = await executeWebhook.handle(
+      {
+        webhook_id: "888888888888888888",
+        guild_id: "444444444444444444",
+        embeds: [{ title: "Test", url: "http://192.168.1.1/admin" }],
+      },
+      ctx,
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("private or reserved address");
+    expect(mockWebhook.send).not.toHaveBeenCalled();
+  });
+
+  it("blocks private-range embed image.url (SSRF)", async () => {
+    const mockWebhook = createMockWebhook();
+    const mockClient = { fetchWebhook: vi.fn().mockResolvedValue(mockWebhook) };
+    const ctx = createCtx();
+    (ctx.discord.getClient as any).mockResolvedValue(mockClient);
+
+    const result = await executeWebhook.handle(
+      {
+        webhook_id: "888888888888888888",
+        guild_id: "444444444444444444",
+        embeds: [{ title: "Test", image: { url: "http://10.0.0.1/secret.png" } }],
+      },
+      ctx,
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("private or reserved address");
+    expect(mockWebhook.send).not.toHaveBeenCalled();
+  });
+
+  it("allows public embed URLs through", async () => {
+    const mockWebhook = createMockWebhook();
+    const mockClient = { fetchWebhook: vi.fn().mockResolvedValue(mockWebhook) };
+    const ctx = createCtx();
+    (ctx.discord.getClient as any).mockResolvedValue(mockClient);
+
+    const result = await executeWebhook.handle(
+      {
+        webhook_id: "888888888888888888",
+        guild_id: "444444444444444444",
+        embeds: [
+          {
+            title: "Deploy",
+            url: "https://example.com/deploy",
+            image: { url: "https://example.com/banner.png" },
+          },
+        ],
+      },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+    expect(mockWebhook.send).toHaveBeenCalled();
+  });
+
+  it("blocks private-range avatar_url (SSRF)", async () => {
+    const mockWebhook = createMockWebhook();
+    const mockClient = { fetchWebhook: vi.fn().mockResolvedValue(mockWebhook) };
+    const ctx = createCtx();
+    (ctx.discord.getClient as any).mockResolvedValue(mockClient);
+
+    const result = await executeWebhook.handle(
+      {
+        webhook_id: "888888888888888888",
+        guild_id: "444444444444444444",
+        content: "Test",
+        avatar_url: "http://169.254.169.254/latest/meta-data/",
+      },
+      ctx,
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("private or reserved address");
+    expect(mockWebhook.send).not.toHaveBeenCalled();
+  });
 });

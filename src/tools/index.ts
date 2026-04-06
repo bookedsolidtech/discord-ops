@@ -7,6 +7,7 @@ import { editMessage } from "./messaging/edit-message.js";
 import { deleteMessage } from "./messaging/delete-message.js";
 import { addReaction } from "./messaging/add-reaction.js";
 import { searchMessages } from "./messaging/search.js";
+import { sendEmbed } from "./messaging/send-embed.js";
 
 // Channels
 import { listChannels } from "./channels/list-channels.js";
@@ -65,6 +66,7 @@ export const allTools: ToolDefinition[] = [
   deleteMessage,
   addReaction,
   searchMessages,
+  sendEmbed,
 
   // Channels
   listChannels,
