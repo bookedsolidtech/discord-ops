@@ -125,12 +125,13 @@ describe("notify_owners", () => {
     ).toBe(true);
   });
 
-  it("schema rejects invalid notification_type", () => {
+  it("schema accepts any string as notification_type (open union)", () => {
+    // notificationType is an open union — built-in types are suggestions, not an enforced enum
     const result = notifyOwners.inputSchema.safeParse({
       project: "test-project",
-      notification_type: "invalid-type",
+      notification_type: "custom-type",
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("schema rejects message over 1800 chars", () => {

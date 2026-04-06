@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type TextChannel } from "discord.js";
 import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
@@ -14,6 +15,10 @@ const inputSchema = z.object({
     .enum(["60", "1440", "4320", "10080"])
     .default("1440")
     .describe("Auto-archive duration in minutes (60, 1440, 4320, 10080)"),
+  initial_message: z
+    .string()
+    .optional()
+    .describe("Initial message to post when creating the thread"),
 });
 
 export const createThread = defineTool({
@@ -29,11 +34,29 @@ export const createThread = defineTool({
 
     const channel = await ctx.discord.getChannel(target.channelId, target.token);
 
-    const thread = await channel.threads.create({
-      name: input.name,
-      ...(input.message_id ? { startMessage: input.message_id } : {}),
-      autoArchiveDuration: Number(input.auto_archive_duration) as 60 | 1440 | 4320 | 10080,
-    });
+    if (!("threads" in channel)) {
+      return {
+        content: [{ type: "text", text: "Cannot create a thread inside another thread" }],
+        isError: true,
+      };
+    }
+
+    const textChannel = channel as TextChannel;
+
+    const thread = input.message_id
+      ? await textChannel.threads.create({
+          name: input.name,
+          startMessage: input.message_id,
+          autoArchiveDuration: Number(input.auto_archive_duration) as 60 | 1440 | 4320 | 10080,
+        })
+      : await textChannel.threads.create({
+          name: input.name,
+          autoArchiveDuration: Number(input.auto_archive_duration) as 60 | 1440 | 4320 | 10080,
+        });
+
+    if (input.initial_message) {
+      await thread.send({ content: input.initial_message });
+    }
 
     return toolResultJson({
       id: thread.id,

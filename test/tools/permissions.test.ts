@@ -25,7 +25,7 @@ describe("set_permissions", () => {
   it("sets allow permissions", async () => {
     const ctx = createCtx();
     const mockCh = createMockChannel();
-    (ctx.discord.getChannel as any).mockResolvedValue(mockCh);
+    (ctx.discord.getAnyChannel as any).mockResolvedValue(mockCh);
 
     const result = await setPermissions.handle(
       {
@@ -49,7 +49,7 @@ describe("set_permissions", () => {
   it("sets deny permissions", async () => {
     const ctx = createCtx();
     const mockCh = createMockChannel();
-    (ctx.discord.getChannel as any).mockResolvedValue(mockCh);
+    (ctx.discord.getAnyChannel as any).mockResolvedValue(mockCh);
 
     const result = await setPermissions.handle(
       {
@@ -71,7 +71,7 @@ describe("set_permissions", () => {
   it("sets both allow and deny", async () => {
     const ctx = createCtx();
     const mockCh = createMockChannel();
-    (ctx.discord.getChannel as any).mockResolvedValue(mockCh);
+    (ctx.discord.getAnyChannel as any).mockResolvedValue(mockCh);
 
     const result = await setPermissions.handle(
       {

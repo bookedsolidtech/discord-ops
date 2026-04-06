@@ -74,16 +74,16 @@ export function createMockChannel(overrides: Record<string, unknown> = {}) {
       createdAt: new Date("2026-01-01T00:00:00Z"),
     }),
     fetchWebhooks: vi.fn().mockResolvedValue(new Map()),
-    permissionOverwrites: {
-      edit: vi.fn().mockResolvedValue(undefined),
-    },
     createInvite: vi.fn().mockResolvedValue({
       code: "abc123",
       maxAge: 86400,
-      maxUses: 0,
+      maxUses: 1,
       temporary: false,
-      expiresAt: new Date("2026-01-02T00:00:00Z"),
+      expiresAt: new Date("2026-04-06T00:00:00Z"),
     }),
+    permissionOverwrites: {
+      edit: vi.fn().mockResolvedValue(undefined),
+    },
     threads: {
       create: vi.fn().mockResolvedValue({
         id: "555555555555555555",
@@ -91,6 +91,31 @@ export function createMockChannel(overrides: Record<string, unknown> = {}) {
         parentId: "222222222222222222",
         archived: false,
         autoArchiveDuration: 1440,
+        send: vi.fn().mockResolvedValue(createMockMessage()),
+      }),
+    },
+    ...overrides,
+  };
+}
+
+export function createMockThreadChannel(overrides: Record<string, unknown> = {}) {
+  const mockMessage = createMockMessage();
+  return {
+    id: "555555555555555555",
+    name: "test-thread",
+    type: 11, // PublicThread
+    parentId: "222222222222222222",
+    guildId: "444444444444444444",
+    archived: false,
+    autoArchiveDuration: 1440,
+    isTextBased: () => true,
+    send: vi.fn().mockResolvedValue(mockMessage),
+    messages: {
+      fetch: vi.fn().mockImplementation(async (idOrOptions?: unknown) => {
+        if (typeof idOrOptions === "string") {
+          return createMockMessage({ id: idOrOptions });
+        }
+        return new Map([["111111111111111111", mockMessage]]);
       }),
     },
     ...overrides,

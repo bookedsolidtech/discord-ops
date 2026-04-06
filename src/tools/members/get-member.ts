@@ -24,7 +24,7 @@ export const getMember = defineTool({
       id: member.id,
       username: member.user.username,
       display_name: member.displayName,
-      discriminator: member.user.discriminator,
+      ...(member.user.discriminator !== "0" ? { discriminator: member.user.discriminator } : {}),
       bot: member.user.bot,
       avatar: member.user.avatarURL(),
       roles: member.roles.cache.map((r) => ({ id: r.id, name: r.name, color: r.hexColor })),

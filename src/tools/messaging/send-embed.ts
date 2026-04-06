@@ -1,18 +1,17 @@
 import { z } from "zod";
-import { defineTool, toolResultJson } from "../types.js";
-import { snowflakeId } from "../schema.js";
-import { NotificationType } from "../../config/schema.js";
+import type { ToolDefinition } from "../types.js";
+import { toolResult, toolResultJson } from "../types.js";
+import { notificationType } from "../../config/schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
-import { fetchOgMetadata } from "../../utils/og-fetch.js";
-import { buildOwnerMentions } from "../../config/owners.js";
+import { fetchOgMetadata, isPublicHttpUrl } from "../../utils/og-fetch.js";
 
 const inputSchema = z.object({
   url: z.string().url().describe("URL to unfurl as a rich embed"),
-  channel_id: snowflakeId.optional().describe("Direct channel ID"),
-  guild_id: snowflakeId.optional().describe("Direct guild ID"),
+  channel_id: z.string().optional().describe("Direct channel ID"),
+  guild_id: z.string().optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
-  notification_type: NotificationType.optional().describe("Notification type for auto-routing"),
+  notification_type: notificationType.optional().describe("Notification type for auto-routing"),
   title: z.string().max(256).optional().describe("Override OG title"),
   description: z.string().max(4096).optional().describe("Override OG description"),
   image_url: z.string().url().optional().describe("Override OG image URL"),
@@ -20,16 +19,25 @@ const inputSchema = z.object({
   footer: z.string().max(2048).optional().describe("Footer text"),
 });
 
-export const sendEmbed = defineTool({
+export const sendEmbed: ToolDefinition = {
   name: "send_embed",
   description:
     "Send a rich Discord embed by fetching Open Graph metadata from a URL. Automatically extracts title, description, and image from the page. Supports overrides for all OG fields plus color and footer.",
   category: "messaging",
   inputSchema,
   handle: async (input, ctx) => {
-    const target = await resolveTarget(input, ctx.config, ctx.discord);
+    const target = await resolveTarget(input, ctx.config);
     if ("error" in target) {
       return { content: [{ type: "text", text: target.error }], isError: true };
+    }
+
+    // Validate caller-supplied image_url before fetching OG metadata so we
+    // can reject private-range URLs early without making any network requests.
+    if (input.image_url !== undefined && !isPublicHttpUrl(input.image_url)) {
+      return toolResult(
+        `image_url references a private or reserved address and cannot be used in an embed: ${input.image_url}`,
+        true,
+      );
     }
 
     const og = await fetchOgMetadata(input.url);
@@ -46,15 +54,23 @@ export const sendEmbed = defineTool({
 
     if (input.color !== undefined) embed.color = input.color;
 
+    // image_url already validated above; og.image came from our SSRF-guarded fetcher
+    // but we apply isPublicHttpUrl as a defence-in-depth check on the resolved value.
     const imageUrl = input.image_url ?? og.image;
-    if (imageUrl) embed.image = { url: imageUrl };
+    if (imageUrl) {
+      if (!isPublicHttpUrl(imageUrl)) {
+        return toolResult(
+          `Resolved image URL references a private or reserved address and cannot be used in an embed: ${imageUrl}`,
+          true,
+        );
+      }
+      embed.image = { url: imageUrl };
+    }
 
     if (input.footer) embed.footer = { text: input.footer };
 
     const channel = await ctx.discord.getChannel(target.channelId, target.token);
-    const mentions = buildOwnerMentions(target.project, input.notification_type, ctx.config);
     const message = await channel.send({
-      ...(mentions ? { content: mentions } : {}),
       embeds: [embed],
     });
 
@@ -66,4 +82,4 @@ export const sendEmbed = defineTool({
       ...(target.project ? { project: target.project } : {}),
     });
   },
-});
+};

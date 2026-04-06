@@ -2,8 +2,9 @@ import {
   Client,
   GatewayIntentBits,
   type Guild,
-  type TextChannel,
   type GuildChannel,
+  type TextChannel,
+  type ThreadChannel,
 } from "discord.js";
 import { logger } from "./utils/logger.js";
 import { validateTokenFormat } from "./security/token-validator.js";
@@ -86,6 +87,7 @@ export class DiscordClient {
   private connections = new Map<string, BotConnection>();
   private defaultToken?: string;
   private guildCache = new TTLCache<Guild>(300);
+  private channelCache = new TTLCache<TextChannel | ThreadChannel>(60);
 
   constructor(defaultToken?: string) {
     if (defaultToken) {
@@ -137,20 +139,33 @@ export class DiscordClient {
     return guild;
   }
 
-  async getChannel(
-    channelIdOrName: string,
-    token?: string,
-    guildId?: string,
-  ): Promise<TextChannel> {
-    const resolvedId = /^\d{17,20}$/.test(channelIdOrName)
-      ? channelIdOrName
-      : await this.resolveChannelName(channelIdOrName, token, guildId);
+  async getChannel(channelId: string, token?: string): Promise<TextChannel | ThreadChannel> {
+    const cacheKey = `${token ?? "default"}:${channelId}`;
+    const cached = this.channelCache.get(cacheKey);
+    if (cached) return cached;
+
     const client = await this.getClient(token);
-    const channel = await client.channels.fetch(resolvedId);
-    if (!channel || !channel.isTextBased()) {
-      throw new Error(`Channel "${channelIdOrName}" not found or not a text channel`);
+    let channel: TextChannel | ThreadChannel;
+    try {
+      const fetched = await client.channels.fetch(channelId);
+      if (!fetched || !fetched.isTextBased()) {
+        throw new Error(`Channel ${channelId} not found or not a text channel`);
+      }
+      channel = fetched as TextChannel | ThreadChannel;
+    } catch (err: unknown) {
+      if (
+        err !== null &&
+        typeof err === "object" &&
+        "code" in err &&
+        (err as { code: unknown }).code === 10003
+      ) {
+        this.channelCache.delete(cacheKey);
+      }
+      throw err;
     }
-    return channel as TextChannel;
+
+    this.channelCache.set(cacheKey, channel);
+    return channel;
   }
 
   async getAnyChannel(
