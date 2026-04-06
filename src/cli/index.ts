@@ -8,9 +8,15 @@ import { startHttpTransport } from "../transport/http.js";
 import { logger, setLogLevel } from "../utils/logger.js";
 import type { LogLevel } from "../utils/logger.js";
 import { runInit } from "./init.js";
+import { validateFlags } from "./validate-flags.js";
+
+export { validateFlags } from "./validate-flags.js";
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
+
+  // Reject unrecognised flags early
+  validateFlags(args);
 
   // Handle --help
   if (args.includes("--help") || args.includes("-h")) {
@@ -33,6 +39,12 @@ async function main(): Promise<void> {
   // Handle health subcommand
   if (args[0] === "health") {
     await runHealthCheck();
+    return;
+  }
+
+  // Handle init subcommand (does not require DISCORD_TOKEN)
+  if (args[0] === "init") {
+    await runInit(args.slice(1));
     return;
   }
 
