@@ -56,7 +56,7 @@ export const createInvite: ToolDefinition = {
     }
 
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
-    const channel = await ctx.discord.getChannel(input.channel_id, token);
+    const channel = await ctx.discord.getAnyChannel(input.channel_id, token);
 
     const invite = await (channel as unknown as TextChannel).createInvite({
       maxAge: input.max_age,

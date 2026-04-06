@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
 import { toolResult, toolResultJson } from "../types.js";
-import { NotificationType } from "../../config/schema.js";
+import { notificationType } from "../../config/schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { fetchOgMetadata, isPublicHttpUrl } from "../../utils/og-fetch.js";
 
@@ -11,7 +11,7 @@ const inputSchema = z.object({
   guild_id: z.string().optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
-  notification_type: NotificationType.optional().describe("Notification type for auto-routing"),
+  notification_type: notificationType.optional().describe("Notification type for auto-routing"),
   title: z.string().max(256).optional().describe("Override OG title"),
   description: z.string().max(4096).optional().describe("Override OG description"),
   image_url: z.string().url().optional().describe("Override OG image URL"),
@@ -26,7 +26,7 @@ export const sendEmbed: ToolDefinition = {
   category: "messaging",
   inputSchema,
   handle: async (input, ctx) => {
-    const target = resolveTarget(input, ctx.config);
+    const target = await resolveTarget(input, ctx.config);
     if ("error" in target) {
       return { content: [{ type: "text", text: target.error }], isError: true };
     }

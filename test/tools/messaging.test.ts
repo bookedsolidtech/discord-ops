@@ -149,8 +149,8 @@ describe("search_messages", () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0]!.text);
     expect(data.channel_id).toBe("222222222222222222");
-    expect(data.count).toBe(1);
-    expect(data.messages[0].content).toContain("Test");
+    expect(data.matches).toBe(1);
+    expect(data.results[0].content).toContain("Test");
     expect(data.has_more).toBe(false);
   });
 
@@ -162,7 +162,7 @@ describe("search_messages", () => {
     );
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0]!.text);
-    expect(data.count).toBe(0);
+    expect(data.matches).toBe(0);
   });
 
   it("fetches page 2 when max_pages=2 and match is only in page 2", async () => {
@@ -204,8 +204,8 @@ describe("search_messages", () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0]!.text);
-    expect(data.count).toBe(1);
-    expect(data.messages[0].content).toBe("found in page two");
+    expect(data.matches).toBe(1);
+    expect(data.results[0].content).toBe("found in page two");
     // Page 2 returned fewer than 100 messages so no more history exists.
     expect(data.has_more).toBe(false);
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { createRequire } from "node:module";
 import { loadConfig } from "../config/index.js";
 import { DiscordClient } from "../client.js";
 import { createServer } from "../server.js";
@@ -78,7 +77,7 @@ async function main(): Promise<void> {
   const discord = new DiscordClient(config.defaultToken);
 
   // Create MCP server with tool context
-  const { server, meta } = createServer({ discord, config }, serverOptions);
+  const { server } = createServer({ discord, config }, serverOptions);
 
   // Handle serve subcommand (HTTP/SSE transport)
   if (args[0] === "serve") {
@@ -215,53 +214,6 @@ async function runHealthCheck(): Promise<void> {
   } catch (err) {
     console.error("Health check failed:", err instanceof Error ? err.message : err);
     process.exit(1);
-  }
-}
-
-async function runValidate(): Promise<void> {
-  try {
-    const config = loadConfig();
-    const result = validateConfig(config);
-    printValidationResult(result);
-    process.exit(result.errors.length > 0 ? 1 : 0);
-  } catch (err) {
-    console.error("Validation failed:", err instanceof Error ? err.message : err);
-    process.exit(1);
-  }
-}
-
-function printValidationResult(result: ConfigValidationResult): void {
-  console.log(`\ndiscord-ops config validation\n`);
-  console.log(`Projects: ${result.projects.length}`);
-
-  for (const p of result.projects) {
-    const tokenStatus = p.tokenEnv
-      ? p.tokenSet
-        ? `[${p.tokenEnv}] ✓`
-        : `[${p.tokenEnv}] ✗ NOT SET`
-      : "(default token)";
-    console.log(`\n  ${p.name}:`);
-    console.log(`    Guild: ${p.guildId}`);
-    console.log(`    Token: ${tokenStatus}`);
-    console.log(`    Channels: ${Object.keys(p.channels).join(", ")}`);
-    if (p.defaultChannel) console.log(`    Default: ${p.defaultChannel}`);
-  }
-
-  if (result.warnings.length > 0) {
-    console.log("\nWarnings:");
-    for (const w of result.warnings) {
-      console.log(`  ⚠ ${w}`);
-    }
-  }
-
-  if (result.errors.length > 0) {
-    console.log("\nErrors:");
-    for (const e of result.errors) {
-      console.log(`  ✗ ${e}`);
-    }
-    console.log("\nValidation FAILED.");
-  } else {
-    console.log("\nValidation passed.");
   }
 }
 

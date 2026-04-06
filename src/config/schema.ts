@@ -20,7 +20,7 @@ export const ProjectConfigSchema = z.object({
   default_channel: z.string().optional(),
   token_env: z.string().optional(),
   owners: z.array(z.string().regex(/^\d{17,20}$/)).optional(),
-  notify_owners_on: z.array(NotificationType).optional(),
+  notify_owners_on: z.array(notificationType).optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;

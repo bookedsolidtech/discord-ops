@@ -81,6 +81,9 @@ export function createMockChannel(overrides: Record<string, unknown> = {}) {
       temporary: false,
       expiresAt: new Date("2026-04-06T00:00:00Z"),
     }),
+    permissionOverwrites: {
+      edit: vi.fn().mockResolvedValue(undefined),
+    },
     threads: {
       create: vi.fn().mockResolvedValue({
         id: "555555555555555555",
