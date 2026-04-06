@@ -52,9 +52,7 @@ export function buildInitConfig(opts: InitOptions): InitResult {
   const filePath = join(cwd, ".discord-ops.json");
 
   if (existsSync(filePath) && !opts.force) {
-    throw new Error(
-      `.discord-ops.json already exists in ${cwd}. Use --force to overwrite.`,
-    );
+    throw new Error(`.discord-ops.json already exists in ${cwd}. Use --force to overwrite.`);
   }
 
   const raw: GlobalConfig = {
