@@ -1,5 +1,24 @@
 # discord-ops
 
+## 0.21.0
+
+### Minor Changes
+
+- b1d687e: Add `discord-ops init` CLI subcommand for non-interactive scaffolding of per-project `.discord-ops.json` config files. Accepts `--project`, `--guild-id`, `--token-env`, `--channel`, `--force`, and `--default` flags. Runs without a Discord connection.
+- b1d687e: Add `max_pages` parameter to `search_messages` (1–5, default 1). When set above 1, the tool paginates through results using the `before` cursor and returns up to `max_pages × 100` messages. Response now includes `has_more: boolean` to indicate further pages exist.
+- b1d687e: Add `initial_message` parameter to `create_thread`. When provided, the message is posted into the thread immediately after creation, eliminating the need for a follow-up `send_message` call.
+
+### Patch Changes
+
+- f5441f0: Fix audit log redaction to recurse into arrays of objects. Previously, sensitive keys inside array elements (e.g. embed fields with a `token` or `webhook_url` key) passed through unredacted.
+- 774d97b: Restrict CORS `Access-Control-Allow-Origin` from wildcard `*` to `http://localhost` by default. The HTTP transport now accepts an `allowedOrigin` option (and `--allowed-origin` CLI flag) to configure the allowed origin explicitly, preventing arbitrary web pages from fingerprinting the `/health` endpoint or establishing unauthenticated SSE connections.
+- 3e7faab: Make `guild_id` optional in `execute_webhook`. The parameter was declared required but never used in the handler body. Callers that omit it no longer receive a validation error, while existing callers that provide it continue to work unchanged.
+- b1d687e: Enforce auth token requirement on HTTP serve mode startup. The server now refuses to start without `DISCORD_OPS_HTTP_TOKEN` unless `--allow-unauthenticated` is explicitly passed, preventing accidental unauthenticated exposure of the bot API.
+- bcc2627: Add `trustProxy` option to HTTP transport for proxy-aware per-IP rate limiting. When enabled, extracts the real client IP from the leftmost non-private address in `X-Forwarded-For` instead of using `req.socket.remoteAddress`. Defaults to `false` so existing behavior is unchanged.
+- eca9978: Add standard security response headers to HTTP transport. All non-OPTIONS responses now include `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Content-Security-Policy: default-src 'none'`, and `Referrer-Policy: no-referrer`. OPTIONS preflight responses are intentionally excluded.
+- 3b82f09: Fix SSRF vulnerability in og-fetch: resolve hostname via DNS before fetching and re-validate the resolved IP against the blocklist to prevent DNS rebinding attacks. Also adds 100.64.0.0/10 (shared address space) and 198.18.0.0/15 (benchmarking) to the blocked ranges.
+- c27e2f4: Validate embed image and URL fields against private/reserved IP ranges before passing to Discord API. Caller-supplied `image_url` in `send_embed` and all URL fields in `execute_webhook` embeds (url, image.url, thumbnail.url, author.url, author.icon_url, avatar_url) are now checked with `isPublicHttpUrl()` to prevent SSRF via Discord's CDN proxy.
+
 ## 0.20.2
 
 ### Patch Changes
