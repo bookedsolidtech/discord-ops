@@ -123,7 +123,10 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
-    await startHttpTransport(server, meta, { port });
+    const originIndex = args.indexOf("--allowed-origin");
+    const allowedOrigin = originIndex !== -1 ? args[originIndex + 1] : undefined;
+
+    await startHttpTransport(server, meta, { port, allowedOrigin });
 
     // Graceful shutdown
     const shutdown = async () => {

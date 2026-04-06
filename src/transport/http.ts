@@ -9,16 +9,22 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ServerMeta } from "../server.js";
 import { logger } from "../utils/logger.js";
 
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+const DEFAULT_ALLOWED_ORIGIN = "http://localhost";
+
+function buildCorsHeaders(allowedOrigin: string): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  };
+}
 
 export interface HttpTransportOptions {
   port?: number;
   /** Bearer token required for all requests. Read from DISCORD_OPS_HTTP_TOKEN env if not set. */
   authToken?: string;
+  /** Allowed CORS origin. Defaults to "http://localhost". Set to "*" to allow all origins (not recommended). */
+  allowedOrigin?: string;
 }
 
 function checkAuth(
@@ -75,6 +81,8 @@ export async function startHttpTransport(
 ): Promise<void> {
   const port = options.port ?? 3000;
   const authToken = options.authToken ?? process.env.DISCORD_OPS_HTTP_TOKEN;
+  const allowedOrigin = options.allowedOrigin ?? DEFAULT_ALLOWED_ORIGIN;
+  const corsHeaders = buildCorsHeaders(allowedOrigin);
 
   if (!authToken) {
     logger.warn(
@@ -98,13 +106,13 @@ export async function startHttpTransport(
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     // Handle CORS preflight (no auth required)
     if (req.method === "OPTIONS") {
-      res.writeHead(204, CORS_HEADERS);
+      res.writeHead(204, corsHeaders);
       res.end();
       return;
     }
 
     // Apply CORS headers to all responses
-    for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    for (const [key, value] of Object.entries(corsHeaders)) {
       res.setHeader(key, value);
     }
 
