@@ -1,5 +1,11 @@
 # discord-ops
 
+## 0.21.1
+
+### Patch Changes
+
+- e34f143: Add messaging, channels, and webhooks tool profiles; consolidate duplicate filterTools implementation; improve HTTP transport branch coverage (70.45% → 88.88%)
+
 ## 0.21.0
 
 ### Minor Changes
