@@ -24,6 +24,16 @@ function redactSensitiveParams(params: Record<string, unknown>): Record<string, 
   for (const key of Object.keys(redacted)) {
     if (sensitiveKeys.some((sk) => key.toLowerCase().includes(sk))) {
       redacted[key] = "[REDACTED]";
+    } else if (Array.isArray(redacted[key])) {
+      redacted[key] = (redacted[key] as unknown[]).map((element) =>
+        element !== null && typeof element === "object" && !Array.isArray(element)
+          ? redactSensitiveParams(element as Record<string, unknown>)
+          : Array.isArray(element)
+            ? redactSensitiveParams({ __arr: element }).__arr
+            : element,
+      );
+    } else if (redacted[key] !== null && typeof redacted[key] === "object") {
+      redacted[key] = redactSensitiveParams(redacted[key] as Record<string, unknown>);
     }
   }
 
