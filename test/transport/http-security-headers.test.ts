@@ -25,35 +25,35 @@ function getHeaders(
 describe("HTTP transport security headers", () => {
   it("sets X-Content-Type-Options: nosniff on /health", async () => {
     const port = 19810;
-    await startHttpTransport(makeMockServer(), { port });
+    await startHttpTransport(makeMockServer(), { port, allowUnauthenticated: true });
     const headers = await getHeaders(port, "/health");
     expect(headers["x-content-type-options"]).toBe("nosniff");
   });
 
   it("sets X-Frame-Options: DENY on /health", async () => {
     const port = 19811;
-    await startHttpTransport(makeMockServer(), { port });
+    await startHttpTransport(makeMockServer(), { port, allowUnauthenticated: true });
     const headers = await getHeaders(port, "/health");
     expect(headers["x-frame-options"]).toBe("DENY");
   });
 
   it("sets Content-Security-Policy: default-src 'none' on /health", async () => {
     const port = 19812;
-    await startHttpTransport(makeMockServer(), { port });
+    await startHttpTransport(makeMockServer(), { port, allowUnauthenticated: true });
     const headers = await getHeaders(port, "/health");
     expect(headers["content-security-policy"]).toBe("default-src 'none'");
   });
 
   it("sets Referrer-Policy: no-referrer on /health", async () => {
     const port = 19813;
-    await startHttpTransport(makeMockServer(), { port });
+    await startHttpTransport(makeMockServer(), { port, allowUnauthenticated: true });
     const headers = await getHeaders(port, "/health");
     expect(headers["referrer-policy"]).toBe("no-referrer");
   });
 
   it("omits security headers on OPTIONS preflight", async () => {
     const port = 19814;
-    await startHttpTransport(makeMockServer(), { port });
+    await startHttpTransport(makeMockServer(), { port, allowUnauthenticated: true });
     const headers = await getHeaders(port, "/sse", "OPTIONS");
     expect(headers["x-content-type-options"]).toBeUndefined();
     expect(headers["x-frame-options"]).toBeUndefined();
