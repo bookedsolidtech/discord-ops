@@ -364,6 +364,29 @@ describe("execute_webhook", () => {
     expect(result.content[0]!.text).toContain("no token");
   });
 
+  it("works without guild_id", async () => {
+    const mockWebhook = createMockWebhook();
+    const mockClient = { fetchWebhook: vi.fn().mockResolvedValue(mockWebhook) };
+    const ctx = createCtx();
+    (ctx.discord.getClient as any).mockResolvedValue(mockClient);
+
+    const result = await executeWebhook.handle(
+      { webhook_id: "888888888888888888", content: "No guild needed" },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.webhook_id).toBe("888888888888888888");
+  });
+
+  it("guild_id is optional in schema", () => {
+    const result = executeWebhook.inputSchema.safeParse({
+      webhook_id: "888888888888888888",
+      content: "Hello",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("returns message details on success", async () => {
     const mockWebhook = createMockWebhook();
     const mockClient = { fetchWebhook: vi.fn().mockResolvedValue(mockWebhook) };
