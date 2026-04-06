@@ -29,9 +29,7 @@ describe("DiscordClient channel cache", () => {
 
     // Override getClient directly on the instance so internal this.getClient()
     // calls also use the mock.
-    (discord as any).getClient = vi.fn().mockResolvedValue(
-      makeMockDiscordJsClient(channelFetch),
-    );
+    (discord as any).getClient = vi.fn().mockResolvedValue(makeMockDiscordJsClient(channelFetch));
   });
 
   it("returns cached channel on second call without calling channels.fetch again", async () => {

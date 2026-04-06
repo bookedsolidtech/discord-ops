@@ -9,7 +9,12 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
   query: z.string().min(1).describe("Text to search for (case-insensitive substring match)"),
-  limit: z.number().min(1).max(100).default(25).describe("Maximum number of matching messages to return"),
+  limit: z
+    .number()
+    .min(1)
+    .max(100)
+    .default(25)
+    .describe("Maximum number of matching messages to return"),
   max_pages: z
     .number()
     .min(1)
