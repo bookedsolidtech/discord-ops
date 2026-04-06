@@ -17,12 +17,13 @@ export function auditToolCall(entry: AuditEntry): void {
   });
 }
 
-function redactSensitiveParams(params: Record<string, unknown>): Record<string, unknown> {
-  const redacted = { ...params };
-  const sensitiveKeys = ["token", "secret", "password", "webhook_url"];
+const SENSITIVE_KEYS = ["token", "secret", "password", "webhook_url"];
 
-  for (const key of Object.keys(redacted)) {
-    if (sensitiveKeys.some((sk) => key.toLowerCase().includes(sk))) {
+function redactSensitiveParams(params: Record<string, unknown>): Record<string, unknown> {
+  const redacted: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(params)) {
+    if (SENSITIVE_KEYS.some((sk) => key.toLowerCase().includes(sk))) {
       redacted[key] = "[REDACTED]";
     } else if (Array.isArray(redacted[key])) {
       redacted[key] = (redacted[key] as unknown[]).map((element) =>

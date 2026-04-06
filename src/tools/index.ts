@@ -14,9 +14,11 @@ import { listChannels } from "./channels/list-channels.js";
 import { getChannel } from "./channels/get-channel.js";
 import { createChannel } from "./channels/create-channel.js";
 import { editChannel } from "./channels/edit-channel.js";
+import { moveChannel } from "./channels/move-channel.js";
 import { deleteChannel } from "./channels/delete-channel.js";
 import { purgeMessages } from "./channels/purge-messages.js";
 import { setSlowmode } from "./channels/set-slowmode.js";
+import { setPermissions } from "./channels/permissions.js";
 
 // Guilds
 import { listGuilds } from "./guilds/list-guilds.js";
@@ -37,6 +39,7 @@ import { assignRole } from "./roles/assign-role.js";
 // Threads
 import { createThread } from "./threads/create-thread.js";
 import { listThreads } from "./threads/list-threads.js";
+import { archiveThread } from "./threads/archive.js";
 
 // Moderation
 import { kickMember } from "./moderation/kick-member.js";
@@ -57,6 +60,7 @@ import { queryAuditLog } from "./audit/query-audit-log.js";
 
 // System
 import { healthCheck } from "./health-check.js";
+import { listProjects } from "./system/list-projects.js";
 
 export const allTools: ToolDefinition[] = [
   // Messaging
@@ -73,9 +77,11 @@ export const allTools: ToolDefinition[] = [
   getChannel,
   createChannel,
   editChannel,
+  moveChannel,
   deleteChannel,
   purgeMessages,
   setSlowmode,
+  setPermissions,
 
   // Guilds
   listGuilds,
@@ -96,6 +102,7 @@ export const allTools: ToolDefinition[] = [
   // Threads
   createThread,
   listThreads,
+  archiveThread,
 
   // Moderation
   kickMember,
@@ -116,4 +123,5 @@ export const allTools: ToolDefinition[] = [
 
   // System
   healthCheck,
+  listProjects,
 ];

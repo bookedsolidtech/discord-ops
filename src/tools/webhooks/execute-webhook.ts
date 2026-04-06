@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult, toolResultJson } from "../types.js";
+import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 import { isPublicHttpUrl } from "../../utils/og-fetch.js";
@@ -16,8 +15,8 @@ const inputSchema = z.object({
   embeds: z
     .array(
       z.object({
-        title: z.string().optional(),
-        description: z.string().optional(),
+        title: z.string().max(256).optional(),
+        description: z.string().max(4096).optional(),
         color: z.number().optional(),
         url: z.string().url().optional().describe("Embed URL — must be a public HTTP/HTTPS URL"),
         footer: z.object({ text: z.string() }).optional(),
@@ -48,26 +47,31 @@ const inputSchema = z.object({
         fields: z
           .array(
             z.object({
-              name: z.string(),
-              value: z.string(),
+              name: z.string().max(256),
+              value: z.string().max(1024),
               inline: z.boolean().optional(),
             }),
           )
+          .max(25)
           .optional(),
       }),
     )
+    .max(10)
     .optional()
-    .describe("Array of embed objects"),
+    .describe(
+      "Array of embed objects (max 10, supports thumbnail, image, author, footer with icon)",
+    ),
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const executeWebhook: ToolDefinition = {
+export const executeWebhook = defineTool({
   name: "execute_webhook",
   description:
     "Send a message through a webhook. Supports content, embeds, and username/avatar overrides. Great for CI/CD notifications.",
   category: "webhooks",
   inputSchema,
   permissions: ["ManageWebhooks"],
+  requiresGuild: true,
   destructive: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
@@ -129,4 +133,4 @@ export const executeWebhook: ToolDefinition = {
       timestamp: message.createdAt?.toISOString(),
     });
   },
-};
+});

@@ -1,8 +1,13 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult, toolResultJson } from "../types.js";
+import type { Collection, Snowflake, Webhook, WebhookType } from "discord.js";
+import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
+
+type WebhookCollection = Collection<
+  Snowflake,
+  Webhook<WebhookType.ChannelFollower | WebhookType.Incoming>
+>;
 
 const inputSchema = z.object({
   guild_id: snowflakeId.describe("Guild ID to list webhooks from"),
@@ -10,7 +15,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const listWebhooks: ToolDefinition = {
+export const listWebhooks = defineTool({
   name: "list_webhooks",
   description: "List webhooks in a guild or channel. Requires ManageWebhooks permission.",
   category: "webhooks",
@@ -20,24 +25,28 @@ export const listWebhooks: ToolDefinition = {
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
 
-    let webhooks;
+    let webhooks: WebhookCollection;
     if (input.channel_id) {
       const channel = await ctx.discord.getChannel(input.channel_id, token);
       if (!("fetchWebhooks" in channel)) {
         return toolResult("Channel does not support webhooks", true);
       }
-      webhooks = await (channel as any).fetchWebhooks();
+      webhooks = await (
+        channel as { fetchWebhooks: () => Promise<WebhookCollection> }
+      ).fetchWebhooks();
     } else {
       const guild = await ctx.discord.getGuild(input.guild_id, token);
       webhooks = await guild.fetchWebhooks();
     }
 
-    const result = [...webhooks.values()].map((wh: any) => ({
+    const result = [...webhooks.values()].map((wh) => ({
       id: wh.id,
       name: wh.name,
       channel_id: wh.channelId,
       type: wh.type,
-      owner: wh.owner ? { id: wh.owner.id, tag: wh.owner.tag ?? wh.owner.id } : null,
+      owner: wh.owner
+        ? { id: wh.owner.id, tag: "tag" in wh.owner ? wh.owner.tag : wh.owner.id }
+        : null,
       created_at: wh.createdAt?.toISOString(),
     }));
 
@@ -48,4 +57,4 @@ export const listWebhooks: ToolDefinition = {
       webhooks: result,
     });
   },
-};
+});

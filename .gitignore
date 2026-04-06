@@ -8,3 +8,5 @@ coverage/
 .DS_Store
 *.log
 RESTART.md
+.mcp.json
+.claude/

@@ -12,9 +12,11 @@ jobs:
     permissions:
       contents: write
       packages: write
-      id-token: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -23,9 +25,91 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Create Release Pull Request or Publish
+        id: changesets
         uses: changesets/action@v1
         with:
-          publish: npx changeset publish --provenance
+          publish: npx changeset publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.CHANGESET_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Sync main back to staging
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin staging
+          git checkout staging
+          git merge origin/main --no-edit
+          git push origin staging
+
+      - name: Notify Discord on publish
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          DISCORD_TOKEN: ${{ secrets.BOOKED_DISCORD_BOT_TOKEN }}
+          DISCORD_OPS_CONFIG: ${{ secrets.DISCORD_OPS_CONFIG }}
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
+          REPO: ${{ github.repository }}
+        run: |
+          node - <<'NOTIFY'
+            const { execFileSync } = require('child_process');
+            const fs = require('fs');
+
+            let pkgs;
+            try {
+              pkgs = JSON.parse(process.env.PUBLISHED_PACKAGES || '[]');
+            } catch {
+              process.exit(0);
+            }
+            const pkg = pkgs.find(p => p.name === 'discord-ops');
+            if (!pkg) process.exit(0);
+
+            const version = pkg.version;
+
+            // Extract and format latest changelog section for Discord
+            let highlights = 'See changelog for full details.';
+            try {
+              const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+              const match = changelog.match(new RegExp(`## ${version.replace(/\./g, '\\.')}[\\s\\S]*?(?=\\n## |$)`));
+              if (match) {
+                const formatted = match[0]
+                  .split('\n')
+                  .slice(1) // drop the "## version" line
+                  .map(l => l
+                    .replace(/^### (.+)$/, '**$1**')      // ### Minor Changes → **Minor Changes**
+                    .replace(/^(- )[a-f0-9]{7,}: /, '$1') // strip commit hash from bullet lines
+                  )
+                  .filter(l => l.trim())
+                  .slice(0, 12)
+                  .join('\n')
+                  .slice(0, 1000); // Discord embed field limit is 1024; leave headroom
+                if (formatted) highlights = formatted;
+              }
+            } catch {}
+
+            const date = new Date().toISOString().slice(0, 10);
+            const npmUrl = `https://www.npmjs.com/package/discord-ops/v/${version}`;
+            const releaseUrl = `https://github.com/${process.env.REPO}/releases`;
+
+            const args = JSON.stringify({
+              project: 'discord-ops',
+              channel: 'releases',
+              template: 'release',
+              vars: {
+                name: 'discord-ops',
+                version: `v${version}`,
+                author_name: 'Booked Solid Technology',
+                highlights,
+                npm: 'discord-ops@latest',
+                npm_url: npmUrl,
+                link: releaseUrl,
+                footer: `Published ${date}`
+              }
+            });
+
+            // Use execFileSync with argv array — no shell interpolation, safe for any changelog content
+            execFileSync('node', ['dist/cli/index.js', 'run', 'send_template', '--args', args], {
+              stdio: 'inherit',
+              env: process.env
+            });
+          NOTIFY

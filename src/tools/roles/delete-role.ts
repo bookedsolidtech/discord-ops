@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult } from "../types.js";
+import { defineTool, toolResult } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -11,7 +10,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const deleteRole: ToolDefinition = {
+export const deleteRole = defineTool({
   name: "delete_role",
   description: "Delete a role from a guild. This is irreversible. Requires ManageRoles permission.",
   category: "roles",
@@ -34,4 +33,4 @@ export const deleteRole: ToolDefinition = {
 
     return toolResult(`Deleted role "${roleName}" (${input.role_id}) from guild ${input.guild_id}`);
   },
-};
+});

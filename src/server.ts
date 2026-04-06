@@ -1,36 +1,82 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { createRequire } from "node:module";
 import { allTools } from "./tools/index.js";
 import type { ToolContext } from "./tools/types.js";
 import { sanitizeError } from "./security/sanitizer.js";
 import { auditToolCall } from "./security/audit.js";
 import { RateLimiter } from "./security/rate-limiter.js";
 import { checkPermissions } from "./security/permissions.js";
+import { filterTools } from "./profiles/index.js";
 import { logger } from "./utils/logger.js";
+import { getTokenForProject } from "./config/index.js";
+
+const require = createRequire(import.meta.url);
+const { version: PKG_VERSION } = require("../package.json") as { version: string };
 
 /**
  * Extract the raw shape from a ZodObject for MCP SDK registration.
  * The SDK expects Record<string, ZodType> (the shape), not the ZodObject itself.
  */
 function getZodShape(schema: z.ZodType): Record<string, z.ZodType> | undefined {
-  const def = (schema as any)._def;
-  if (def?.typeName === "ZodObject") {
-    return def.shape();
+  if (schema instanceof z.ZodObject) {
+    return schema.shape as Record<string, z.ZodType>;
   }
   return undefined;
 }
 
-// Tighter limits for destructive operations
-const destructiveLimiter = new RateLimiter(10, 60);
-const standardLimiter = new RateLimiter(30, 60);
+export interface ServerOptions {
+  dryRun?: boolean;
+  profile?: string;
+  tools?: string[];
+  profileAdd?: string[];
+  profileRemove?: string[];
+}
 
-export function createServer(ctx: ToolContext): McpServer {
-  const server = new McpServer({
-    name: "discord-ops",
-    version: "0.2.0",
+export interface ServerMeta {
+  version: string;
+  toolCount: number;
+  totalTools: number;
+  profileName: string;
+  startedAt: string;
+}
+
+export interface CreateServerResult {
+  server: McpServer;
+  meta: ServerMeta;
+}
+
+function isDryRunEnabled(options?: ServerOptions): boolean {
+  if (options?.dryRun) return true;
+  return !!(process.env.DISCORD_OPS_DRY_RUN || process.env.DRY_RUN);
+}
+
+export function createServer(ctx: ToolContext, options?: ServerOptions): CreateServerResult {
+  const dryRun = isDryRunEnabled(options);
+
+  if (dryRun) {
+    logger.warn("Dry-run mode active — destructive tools will simulate execution");
+  }
+
+  // Filter tools by profile/explicit list, with optional add/remove overrides
+  const tools = filterTools(allTools, {
+    profile: options?.profile,
+    tools: options?.tools,
+    add: options?.profileAdd,
+    remove: options?.profileRemove,
   });
 
-  for (const tool of allTools) {
+  const profileName = options?.tools?.length ? "custom" : (options?.profile ?? "full");
+
+  const destructiveLimiter = new RateLimiter(10, 60);
+  const standardLimiter = new RateLimiter(30, 60);
+
+  const server = new McpServer({
+    name: "discord-ops",
+    version: PKG_VERSION,
+  });
+
+  for (const tool of tools) {
     const shape = getZodShape(tool.inputSchema);
 
     const callback = async (params: Record<string, unknown>) => {
@@ -54,29 +100,61 @@ export function createServer(ctx: ToolContext): McpServer {
 
         const parsed = tool.inputSchema.parse(params);
 
-        // Permission pre-flight — check bot has required perms before calling Discord API
-        if (tool.permissions?.length && tool.requiresGuild && parsed.guild_id) {
+        // Permission pre-flight — check bot has required perms before calling Discord API.
+        // Resolves guild from guild_id (guild tools) or channel_id (channel tools).
+        if (tool.permissions?.length && tool.requiresGuild) {
           try {
             const token = parsed.project
-              ? (await import("./config/index.js")).getTokenForProject(parsed.project, ctx.config)
+              ? getTokenForProject(parsed.project, ctx.config)
               : undefined;
-            const guild = await ctx.discord.getGuild(parsed.guild_id, token);
-            const botMember = await guild.members.fetchMe();
-            const permCheck = checkPermissions(botMember, tool.permissions);
-            if (!permCheck.allowed) {
-              return {
-                content: [
-                  {
-                    type: "text" as const,
-                    text: `Bot lacks required permissions: ${permCheck.missing.join(", ")}`,
-                  },
-                ],
-                isError: true,
-              };
+            let guild;
+            if (parsed.guild_id) {
+              guild = await ctx.discord.getGuild(parsed.guild_id as string, token);
+            } else if (parsed.channel_id) {
+              const ch = await ctx.discord.getAnyChannel(parsed.channel_id as string, token);
+              guild = await ctx.discord.getGuild(ch.guild.id, token);
+            }
+            if (guild) {
+              const botMember = await guild.members.fetchMe();
+              const permCheck = checkPermissions(botMember, tool.permissions);
+              if (!permCheck.allowed) {
+                return {
+                  content: [
+                    {
+                      type: "text" as const,
+                      text: `Bot lacks required permissions: ${permCheck.missing.join(", ")}`,
+                    },
+                  ],
+                  isError: true,
+                };
+              }
             }
           } catch {
             // If we can't check perms (e.g. guild not cached yet), let the tool try and fail naturally
           }
+        }
+
+        // Dry-run intercept — skip Discord API calls for destructive tools
+        if (dryRun && tool.destructive) {
+          const simulated = {
+            dryRun: true,
+            tool: tool.name,
+            action: "simulated",
+            params: parsed,
+            message: `[DRY RUN] Would execute ${tool.name} — no changes made`,
+          };
+
+          auditToolCall({
+            tool: tool.name,
+            params,
+            durationMs: Date.now() - start,
+            success: true,
+            error: undefined,
+          });
+
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(simulated, null, 2) }],
+          };
         }
 
         const result = await tool.handle(parsed, ctx);
@@ -117,6 +195,15 @@ export function createServer(ctx: ToolContext): McpServer {
     }
   }
 
-  logger.info(`Registered ${allTools.length} tools`);
-  return server;
+  logger.info(`Registered ${tools.length}/${allTools.length} tools (profile: ${profileName})`);
+
+  const meta: ServerMeta = {
+    version: PKG_VERSION,
+    toolCount: tools.length,
+    totalTools: allTools.length,
+    profileName,
+    startedAt: new Date().toISOString(),
+  };
+
+  return { server, meta };
 }

@@ -19,9 +19,13 @@ export const ProjectConfigSchema = z.object({
   channels: z.record(z.string(), z.string().regex(/^\d{17,20}$/)),
   default_channel: z.string().optional(),
   token_env: z.string().optional(),
+  owners: z.array(z.string().regex(/^\d{17,20}$/)).optional(),
+  notify_owners_on: z.array(NotificationType).optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
+
+export const ToolProfileEnum = z.enum(["full", "monitoring", "readonly", "moderation"]);
 
 export const GlobalConfigSchema = z.object({
   projects: z.record(z.string(), ProjectConfigSchema),
@@ -39,7 +43,9 @@ export const PerProjectConfigSchema = z.object({
 export type PerProjectConfig = z.infer<typeof PerProjectConfigSchema>;
 
 export const EnvConfigSchema = z.object({
-  DISCORD_TOKEN: z.string().min(50),
+  DISCORD_TOKEN: z.string().min(50).optional(),
+  DISCORD_OPS_TOKEN_ENV: z.string().optional(),
   DISCORD_OPS_CONFIG: z.string().optional(),
   DISCORD_OPS_LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
+  DISCORD_OPS_DRY_RUN: z.string().optional(),
 });

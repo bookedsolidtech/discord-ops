@@ -35,6 +35,16 @@ export class RateLimiter {
     return { allowed: true };
   }
 
+  stats(): { used: number; limit: number; windowMs: number } {
+    const now = Date.now();
+    let maxUsed = 0;
+    for (const entry of this.buckets.values()) {
+      const active = entry.timestamps.filter((ts) => now - ts < this.windowMs).length;
+      if (active > maxUsed) maxUsed = active;
+    }
+    return { used: maxUsed, limit: this.maxRequests, windowMs: this.windowMs };
+  }
+
   reset(bucket?: string): void {
     if (bucket) {
       this.buckets.delete(bucket);

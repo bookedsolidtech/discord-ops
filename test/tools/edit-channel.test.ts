@@ -19,6 +19,7 @@ describe("edit_channel", () => {
     expect(editChannel.name).toBe("edit_channel");
     expect(editChannel.category).toBe("channels");
     expect(editChannel.permissions).toContain("ManageChannels");
+    expect(editChannel.requiresGuild).toBe(true);
   });
 
   it("edits a channel name", async () => {
@@ -67,5 +68,21 @@ describe("edit_channel", () => {
       topic: "a".repeat(1025),
     });
     expect(tooLong.success).toBe(false);
+  });
+
+  it("edits a channel position", async () => {
+    const ctx = createCtx();
+    const result = await editChannel.handle({ channel_id: "222222222222222222", position: 3 }, ctx);
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.id).toBe("222222222222222222");
+  });
+
+  it("validates position is non-negative integer via schema", () => {
+    const negative = editChannel.inputSchema.safeParse({
+      channel_id: "222222222222222222",
+      position: -1,
+    });
+    expect(negative.success).toBe(false);
   });
 });

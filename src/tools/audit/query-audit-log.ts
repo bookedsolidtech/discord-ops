@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { AuditLogEvent } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -20,7 +19,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const queryAuditLog: ToolDefinition = {
+export const queryAuditLog = defineTool({
   name: "query_audit_log",
   description:
     "Query the guild audit log. Filter by user, action type, or fetch recent entries. Requires ViewAuditLog permission.",
@@ -42,9 +41,18 @@ export const queryAuditLog: ToolDefinition = {
 
     if (input.action_type) {
       const eventValue = AuditLogEvent[input.action_type as keyof typeof AuditLogEvent];
-      if (eventValue !== undefined) {
-        options.type = eventValue as number;
+      if (eventValue === undefined) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Unknown action_type "${input.action_type}". Valid values include: ${auditLogEventNames.slice(0, 15).join(", ")}...`,
+            },
+          ],
+          isError: true,
+        };
       }
+      options.type = eventValue as number;
     }
 
     const auditLog = await guild.fetchAuditLogs(options);
@@ -53,7 +61,9 @@ export const queryAuditLog: ToolDefinition = {
       id: entry.id,
       action: AuditLogEvent[entry.action] ?? entry.action,
       executor: entry.executor ? { id: entry.executor.id, tag: entry.executor.tag } : null,
-      target: entry.target ? { id: (entry.target as any).id ?? null } : null,
+      target: entry.target
+        ? { id: "id" in entry.target ? (entry.target as { id: string }).id : null }
+        : null,
       reason: entry.reason,
       created_at: entry.createdAt.toISOString(),
       changes: entry.changes.map((c) => ({
@@ -69,4 +79,4 @@ export const queryAuditLog: ToolDefinition = {
       entries,
     });
   },
-};
+});

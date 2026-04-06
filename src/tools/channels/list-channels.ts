@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { ChannelType } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
+import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
+import { CHANNEL_TYPE_MAP } from "./channel-types.js";
 
 const inputSchema = z.object({
-  guild_id: z.string().describe("Guild ID to list channels from"),
+  guild_id: snowflakeId.describe("Guild ID to list channels from"),
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
   type: z
     .enum(["text", "voice", "category", "announcement", "forum", "stage"])
@@ -13,16 +14,7 @@ const inputSchema = z.object({
     .describe("Filter by channel type"),
 });
 
-const CHANNEL_TYPE_MAP: Record<string, ChannelType> = {
-  text: ChannelType.GuildText,
-  voice: ChannelType.GuildVoice,
-  category: ChannelType.GuildCategory,
-  announcement: ChannelType.GuildAnnouncement,
-  forum: ChannelType.GuildForum,
-  stage: ChannelType.GuildStageVoice,
-};
-
-export const listChannels: ToolDefinition = {
+export const listChannels = defineTool({
   name: "list_channels",
   description: "List all channels in a guild, optionally filtered by type.",
   category: "channels",
@@ -54,4 +46,4 @@ export const listChannels: ToolDefinition = {
       channels: result.sort((a, b) => a.position - b.position),
     });
   },
-};
+});

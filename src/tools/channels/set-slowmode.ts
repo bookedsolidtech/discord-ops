@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { defineTool, toolResultJson } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -15,13 +14,14 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const setSlowmode: ToolDefinition = {
+export const setSlowmode = defineTool({
   name: "set_slowmode",
   description:
     "Set or disable slowmode on a channel. Set seconds to 0 to disable. Requires ManageChannels permission.",
   category: "channels",
   inputSchema,
   permissions: ["ManageChannels"],
+  requiresGuild: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
     const channel = await ctx.discord.getChannel(input.channel_id, token);
@@ -33,9 +33,9 @@ export const setSlowmode: ToolDefinition = {
 
     return toolResultJson({
       channel_id: updated.id,
-      name: (updated as any).name,
+      name: "name" in updated ? (updated as { name: string }).name : null,
       slowmode_seconds: input.seconds,
       action: input.seconds > 0 ? "slowmode_set" : "slowmode_disabled",
     });
   },
-};
+});

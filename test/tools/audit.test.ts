@@ -99,19 +99,18 @@ describe("query_audit_log", () => {
     expect(parsed.limit).toBe(25);
   });
 
-  it("handles unknown action_type gracefully", async () => {
+  it("returns error for unknown action_type", async () => {
     const guild = createMockGuild();
     const ctx = createCtx();
     (ctx.discord.getGuild as any).mockResolvedValue(guild);
 
-    await queryAuditLog.handle(
+    const result = await queryAuditLog.handle(
       { guild_id: "444444444444444444", action_type: "NonExistentAction" },
       ctx,
     );
 
-    // Should not set type if action is not recognized
-    expect(guild.fetchAuditLogs).toHaveBeenCalledWith(
-      expect.not.objectContaining({ type: expect.any(Number) }),
-    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("NonExistentAction");
+    expect(guild.fetchAuditLogs).not.toHaveBeenCalled();
   });
 });

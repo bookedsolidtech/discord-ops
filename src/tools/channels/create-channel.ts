@@ -1,11 +1,12 @@
 import { z } from "zod";
-import { ChannelType, type GuildChannelTypes } from "discord.js";
-import type { ToolDefinition } from "../types.js";
-import { toolResultJson } from "../types.js";
+import { ChannelType } from "discord.js";
+import { defineTool, toolResultJson } from "../types.js";
+import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
+import { CHANNEL_TYPE_MAP } from "./channel-types.js";
 
 const inputSchema = z.object({
-  guild_id: z.string().describe("Guild ID to create channel in"),
+  guild_id: snowflakeId.describe("Guild ID to create channel in"),
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
   name: z.string().min(1).max(100).describe("Channel name"),
   type: z
@@ -13,19 +14,10 @@ const inputSchema = z.object({
     .default("text")
     .describe("Channel type"),
   topic: z.string().max(1024).optional().describe("Channel topic"),
-  parent_id: z.string().optional().describe("Category ID to place channel under"),
+  parent_id: snowflakeId.optional().describe("Category ID to place channel under"),
 });
 
-const CHANNEL_TYPE_MAP: Record<string, GuildChannelTypes> = {
-  text: ChannelType.GuildText,
-  voice: ChannelType.GuildVoice,
-  category: ChannelType.GuildCategory,
-  announcement: ChannelType.GuildAnnouncement,
-  forum: ChannelType.GuildForum,
-  stage: ChannelType.GuildStageVoice,
-};
-
-export const createChannel: ToolDefinition = {
+export const createChannel = defineTool({
   name: "create_channel",
   description: "Create a new channel in a guild.",
   category: "channels",
@@ -51,4 +43,4 @@ export const createChannel: ToolDefinition = {
       parent_id: channel.parentId,
     });
   },
-};
+});

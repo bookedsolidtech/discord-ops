@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
+import { createRequire } from "node:module";
 import { loadConfig } from "../config/index.js";
 import { DiscordClient } from "../client.js";
 import { createServer } from "../server.js";
+import type { ServerOptions } from "../server.js";
 import { startStdioTransport } from "../transport/stdio.js";
 import { startHttpTransport } from "../transport/http.js";
 import { logger, setLogLevel } from "../utils/logger.js";
@@ -26,7 +28,7 @@ async function main(): Promise<void> {
 
   // Handle --version
   if (args.includes("--version") || args.includes("-v")) {
-    console.log("discord-ops 0.1.0");
+    console.log(`discord-ops ${PKG_VERSION}`);
     process.exit(0);
   }
 
@@ -55,11 +57,28 @@ async function main(): Promise<void> {
   // Load config (does NOT require Discord connection)
   const config = loadConfig();
 
+  // Resolve profile: --tools > --profile > per-project config > global config > "full"
+  const resolvedProfile = toolsArg?.length
+    ? undefined
+    : (profileArg ?? config.perProject?.tool_profile ?? config.global.tool_profile ?? "full");
+
+  // Resolve add/remove: per-project overrides global
+  const profileAdd = config.perProject?.tool_profile_add ?? config.global.tool_profile_add;
+  const profileRemove = config.perProject?.tool_profile_remove ?? config.global.tool_profile_remove;
+
+  const serverOptions: ServerOptions = {
+    dryRun,
+    profile: resolvedProfile,
+    tools: toolsArg,
+    profileAdd,
+    profileRemove,
+  };
+
   // Create lazy Discord client
   const discord = new DiscordClient(config.defaultToken);
 
   // Create MCP server with tool context
-  const server = createServer({ discord, config });
+  const { server, meta } = createServer({ discord, config }, serverOptions);
 
   // Handle serve subcommand (HTTP/SSE transport)
   if (args[0] === "serve") {
@@ -108,11 +127,29 @@ async function main(): Promise<void> {
 async function runHealthCheck(): Promise<void> {
   try {
     const config = loadConfig();
+
+    // Run config validation first
+    const validation = validateConfig(config);
+    if (validation.warnings.length > 0) {
+      console.log("Config warnings:");
+      for (const w of validation.warnings) {
+        console.log(`  ⚠ ${w}`);
+      }
+    }
+    if (validation.errors.length > 0) {
+      console.log("Config errors:");
+      for (const e of validation.errors) {
+        console.log(`  ✗ ${e}`);
+      }
+    }
+
     const discord = new DiscordClient(config.defaultToken);
 
     // Collect unique tokens: default + any project-specific ones
     const tokens = new Map<string, string[]>(); // token → project names
-    tokens.set(config.defaultToken, ["(default)"]);
+    if (config.defaultToken) {
+      tokens.set(config.defaultToken, ["(default)"]);
+    }
     for (const [name, project] of Object.entries(config.global.projects)) {
       if (project.token_env) {
         const t = process.env[project.token_env];
@@ -124,29 +161,53 @@ async function runHealthCheck(): Promise<void> {
       }
     }
 
-    console.log(`Bots configured: ${tokens.size}`);
+    console.log(`\nBots configured: ${tokens.size}`);
+    let failures = 0;
 
     for (const [token, projects] of tokens) {
       console.log(`\nConnecting bot for: ${projects.join(", ")}...`);
-      const client = await discord.getClient(token);
+      try {
+        const client = await discord.getClient(token);
 
-      console.log(`  Bot: ${client.user?.tag}`);
-      console.log(`  Guilds: ${client.guilds.cache.size}`);
+        console.log(`  Bot: ${client.user?.tag}`);
+        console.log(`  Guilds: ${client.guilds.cache.size}`);
 
-      for (const [id, guild] of client.guilds.cache) {
-        const me = await guild.members.fetchMe();
-        console.log(`\n    ${guild.name} (${id})`);
-        console.log(`      Members: ${guild.memberCount}`);
-        console.log(`      Permissions: ${me.permissions.toArray().join(", ")}`);
+        for (const [id, guild] of client.guilds.cache) {
+          try {
+            const me = await guild.members.fetchMe();
+            console.log(`\n    ${guild.name} (${id})`);
+            console.log(`      Members: ${guild.memberCount}`);
+            console.log(`      Permissions: ${me.permissions.toArray().join(", ")}`);
+          } catch (err) {
+            console.log(`\n    ${guild.name} (${id})`);
+            console.log(
+              `      ✗ Failed to fetch permissions: ${err instanceof Error ? err.message : String(err)}`,
+            );
+            failures++;
+          }
+        }
+      } catch (err) {
+        console.log(`  ✗ Connection failed: ${err instanceof Error ? err.message : String(err)}`);
+        failures++;
       }
     }
 
     console.log(`\nProjects configured: ${Object.keys(config.global.projects).length}`);
     for (const [name, project] of Object.entries(config.global.projects)) {
       const tokenInfo = project.token_env ? ` [${project.token_env}]` : "";
+      const tokenSet = project.token_env
+        ? process.env[project.token_env]
+          ? " ✓"
+          : " ✗ NOT SET"
+        : "";
       console.log(
-        `  ${name}: guild=${project.guild_id}, channels=${Object.keys(project.channels).join(", ")}${tokenInfo}`,
+        `  ${name}: guild=${project.guild_id}, channels=${Object.keys(project.channels).join(", ")}${tokenInfo}${tokenSet}`,
       );
+    }
+
+    if (failures > 0) {
+      console.log(`\nHealth check completed with ${failures} failure(s).`);
+      process.exit(1);
     }
 
     console.log("\nHealth check passed.");
@@ -154,6 +215,53 @@ async function runHealthCheck(): Promise<void> {
   } catch (err) {
     console.error("Health check failed:", err instanceof Error ? err.message : err);
     process.exit(1);
+  }
+}
+
+async function runValidate(): Promise<void> {
+  try {
+    const config = loadConfig();
+    const result = validateConfig(config);
+    printValidationResult(result);
+    process.exit(result.errors.length > 0 ? 1 : 0);
+  } catch (err) {
+    console.error("Validation failed:", err instanceof Error ? err.message : err);
+    process.exit(1);
+  }
+}
+
+function printValidationResult(result: ConfigValidationResult): void {
+  console.log(`\ndiscord-ops config validation\n`);
+  console.log(`Projects: ${result.projects.length}`);
+
+  for (const p of result.projects) {
+    const tokenStatus = p.tokenEnv
+      ? p.tokenSet
+        ? `[${p.tokenEnv}] ✓`
+        : `[${p.tokenEnv}] ✗ NOT SET`
+      : "(default token)";
+    console.log(`\n  ${p.name}:`);
+    console.log(`    Guild: ${p.guildId}`);
+    console.log(`    Token: ${tokenStatus}`);
+    console.log(`    Channels: ${Object.keys(p.channels).join(", ")}`);
+    if (p.defaultChannel) console.log(`    Default: ${p.defaultChannel}`);
+  }
+
+  if (result.warnings.length > 0) {
+    console.log("\nWarnings:");
+    for (const w of result.warnings) {
+      console.log(`  ⚠ ${w}`);
+    }
+  }
+
+  if (result.errors.length > 0) {
+    console.log("\nErrors:");
+    for (const e of result.errors) {
+      console.log(`  ✗ ${e}`);
+    }
+    console.log("\nValidation FAILED.");
+  } else {
+    console.log("\nValidation passed.");
   }
 }
 
@@ -188,6 +296,8 @@ ENVIRONMENT:
   <PROJECT>_TOKEN          Per-project bot tokens (configured via token_env in config)
   DISCORD_OPS_CONFIG       Path to global config file (default: ~/.discord-ops.json)
   DISCORD_OPS_LOG_LEVEL    Log level: debug, info, warn, error (default: info)
+  DISCORD_OPS_DRY_RUN      Enable dry-run mode (any truthy value)
+  DRY_RUN                  Enable dry-run mode (any truthy value, alias)
 
 CONFIG FILES:
   ~/.discord-ops.json      Global project routing config

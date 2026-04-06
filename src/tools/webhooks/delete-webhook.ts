@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult } from "../types.js";
+import { defineTool, toolResult } from "../types.js";
 import { snowflakeId, reason } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -11,12 +10,13 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const deleteWebhook: ToolDefinition = {
+export const deleteWebhook = defineTool({
   name: "delete_webhook",
   description: "Delete a webhook. This is irreversible. Requires ManageWebhooks permission.",
   category: "webhooks",
   inputSchema,
   permissions: ["ManageWebhooks"],
+  requiresGuild: true,
   destructive: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
@@ -28,4 +28,4 @@ export const deleteWebhook: ToolDefinition = {
 
     return toolResult(`Deleted webhook "${webhookName}" (${input.webhook_id})`);
   },
-};
+});

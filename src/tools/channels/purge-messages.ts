@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../types.js";
-import { toolResult, toolResultJson } from "../types.js";
+import type { TextChannel } from "discord.js";
+import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
@@ -19,7 +19,7 @@ const inputSchema = z.object({
   project: z.string().optional().describe("Project name (resolves bot token for multi-bot setups)"),
 });
 
-export const purgeMessages: ToolDefinition = {
+export const purgeMessages = defineTool({
   name: "purge_messages",
   description:
     "Bulk-delete messages from a channel. Messages must be less than 14 days old. Requires ManageMessages permission. This is irreversible.",
@@ -27,6 +27,7 @@ export const purgeMessages: ToolDefinition = {
   inputSchema,
   permissions: ["ManageMessages"],
   destructive: true,
+  requiresGuild: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
     const channel = await ctx.discord.getChannel(input.channel_id, token);
@@ -35,7 +36,7 @@ export const purgeMessages: ToolDefinition = {
       return toolResult("Channel does not support bulk delete", true);
     }
 
-    const deleted = await (channel as any).bulkDelete(input.count, true);
+    const deleted = await (channel as TextChannel).bulkDelete(input.count, true);
 
     return toolResultJson({
       channel_id: input.channel_id,
@@ -44,4 +45,4 @@ export const purgeMessages: ToolDefinition = {
       reason: input.reason ?? null,
     });
   },
-};
+});
