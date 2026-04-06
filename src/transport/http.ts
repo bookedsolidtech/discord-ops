@@ -10,6 +10,13 @@ import { logger } from "../utils/logger.js";
 
 const DEFAULT_ALLOWED_ORIGIN = "http://localhost";
 
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Content-Security-Policy": "default-src 'none'",
+  "Referrer-Policy": "no-referrer",
+};
+
 function buildCorsHeaders(allowedOrigin: string): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
@@ -164,8 +171,11 @@ export async function startHttpTransport(
       return;
     }
 
-    // Apply CORS headers to all responses
+    // Apply CORS and security headers to all non-OPTIONS responses
     for (const [key, value] of Object.entries(corsHeaders)) {
+      res.setHeader(key, value);
+    }
+    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
       res.setHeader(key, value);
     }
 
