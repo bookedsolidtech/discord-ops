@@ -22,11 +22,13 @@ export const getChannel: ToolDefinition = {
       id: channel.id,
       name: channel.name,
       type: ChannelType[channel.type],
-      position: channel.position,
       parent_id: channel.parentId,
       guild_id: channel.guildId,
     };
 
+    if ("position" in channel) {
+      result.position = (channel as TextChannel).position;
+    }
     if ("topic" in channel) {
       result.topic = (channel as TextChannel).topic;
     }

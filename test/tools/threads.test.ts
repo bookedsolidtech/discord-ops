@@ -80,6 +80,61 @@ describe("create_thread", () => {
     expect(parsed.success).toBe(true);
     expect(parsed.data?.auto_archive_duration).toBe("1440");
   });
+
+  it("creates a thread without posting an initial message when initial_message is omitted", async () => {
+    const ctx = createCtx();
+    const result = await createThread.handle(
+      { name: "no-msg-thread", channel_id: "222222222222222222" },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.id).toBe("555555555555555555");
+
+    const mockChannel = await ctx.discord.getChannel("222222222222222222");
+    const createMock = mockChannel.threads.create as ReturnType<typeof vi.fn>;
+    const createdThread = await createMock.mock.results[0]?.value;
+    if (createdThread) {
+      expect(createdThread.send).not.toHaveBeenCalled();
+    }
+  });
+
+  it("posts initial_message into the thread after creation", async () => {
+    const ctx = createCtx();
+    const result = await createThread.handle(
+      {
+        name: "welcome-thread",
+        channel_id: "222222222222222222",
+        initial_message: "Welcome to this thread!",
+      },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.id).toBe("555555555555555555");
+
+    const mockChannel = await ctx.discord.getChannel("222222222222222222");
+    const createMock = mockChannel.threads.create as ReturnType<typeof vi.fn>;
+    const createdThread = await createMock.mock.results[0]?.value;
+    expect(createdThread.send).toHaveBeenCalledWith({ content: "Welcome to this thread!" });
+  });
+
+  it("accepts initial_message as optional in schema", () => {
+    const withMsg = createThread.inputSchema.safeParse({
+      name: "test",
+      channel_id: "222222222222222222",
+      initial_message: "Hello!",
+    });
+    expect(withMsg.success).toBe(true);
+    expect(withMsg.data?.initial_message).toBe("Hello!");
+
+    const withoutMsg = createThread.inputSchema.safeParse({
+      name: "test",
+      channel_id: "222222222222222222",
+    });
+    expect(withoutMsg.success).toBe(true);
+    expect(withoutMsg.data?.initial_message).toBeUndefined();
+  });
 });
 
 // --- list_threads ---
