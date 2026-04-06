@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { TextChannel } from "discord.js";
 import type { ToolDefinition } from "../types.js";
-import { toolResult, toolResultJson } from "../types.js";
+import { toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
 
