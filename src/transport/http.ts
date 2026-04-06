@@ -29,6 +29,43 @@ export interface HttpTransportOptions {
    * Must be explicitly set to true — the default is to refuse startup when no token is present.
    */
   allowUnauthenticated?: boolean;
+  /**
+   * When true, extract the real client IP from the leftmost non-private IP in X-Forwarded-For.
+   * Only enable when the server is behind a trusted reverse proxy (nginx, Caddy, AWS ALB).
+   * Defaults to false — uses req.socket.remoteAddress directly.
+   */
+  trustProxy?: boolean;
+}
+
+// Private IP ranges that should never appear as "real" client IPs in X-Forwarded-For.
+// Covers loopback, link-local, RFC-1918 private, and IPv4-mapped IPv6.
+const PRIVATE_IP_RE =
+  /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|::1$|fc[0-9a-f]{2}:|fd[0-9a-f]{2}:|::ffff:)/i;
+
+/**
+ * Returns the best available client IP address for rate limiting.
+ *
+ * When trustProxy is false (default): uses req.socket.remoteAddress.
+ * When trustProxy is true: reads X-Forwarded-For and returns the leftmost
+ * non-private IP. Falls back to remoteAddress if no public IP is found.
+ */
+export function getClientIp(req: IncomingMessage, trustProxy: boolean): string {
+  const remote = req.socket.remoteAddress ?? "unknown";
+  if (!trustProxy) return remote;
+
+  const header = req.headers["x-forwarded-for"];
+  if (!header) return remote;
+
+  const raw = Array.isArray(header) ? header[0] : header;
+  const candidates = raw.split(",").map((s) => s.trim());
+
+  for (const candidate of candidates) {
+    if (candidate && !PRIVATE_IP_RE.test(candidate)) {
+      return candidate;
+    }
+  }
+
+  return remote;
 }
 
 function checkAuth(
@@ -85,6 +122,7 @@ export async function startHttpTransport(
   const port = options.port ?? 3000;
   const authToken = options.authToken ?? process.env.DISCORD_OPS_HTTP_TOKEN;
   const allowedOrigin = options.allowedOrigin ?? DEFAULT_ALLOWED_ORIGIN;
+  const trustProxy = options.trustProxy ?? false;
   const corsHeaders = buildCorsHeaders(allowedOrigin);
 
   if (!authToken) {
@@ -132,7 +170,7 @@ export async function startHttpTransport(
     }
 
     // Per-IP rate limiting — applied before auth to protect against enumeration
-    const ip = req.socket.remoteAddress ?? "unknown";
+    const ip = getClientIp(req, trustProxy);
     if (!checkIpRateLimit(ipCounters, ip).allowed) {
       res.writeHead(429, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Too many requests" }));
