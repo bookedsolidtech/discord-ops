@@ -3,6 +3,7 @@ import type { ToolDefinition } from "../types.js";
 import { toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { getTokenForProject } from "../../config/index.js";
+import { isPublicHttpUrl } from "../../utils/og-fetch.js";
 
 const inputSchema = z.object({
   webhook_id: snowflakeId.describe("Webhook ID to execute"),
@@ -18,9 +19,22 @@ const inputSchema = z.object({
         title: z.string().optional(),
         description: z.string().optional(),
         color: z.number().optional(),
-        url: z.string().url().optional(),
+        url: z.string().url().optional().describe("Embed URL — must be a public HTTP/HTTPS URL"),
         footer: z.object({ text: z.string() }).optional(),
         timestamp: z.string().optional(),
+        image: z
+          .object({ url: z.string().url().describe("Image URL — must be a public HTTP/HTTPS URL") })
+          .optional(),
+        thumbnail: z
+          .object({ url: z.string().url().describe("Thumbnail URL — must be a public HTTP/HTTPS URL") })
+          .optional(),
+        author: z
+          .object({
+            name: z.string(),
+            url: z.string().url().optional().describe("Author URL — must be a public HTTP/HTTPS URL"),
+            icon_url: z.string().url().optional().describe("Author icon URL — must be a public HTTP/HTTPS URL"),
+          })
+          .optional(),
         fields: z
           .array(
             z.object({
@@ -59,6 +73,35 @@ export const executeWebhook: ToolDefinition = {
 
     if (!input.content && (!input.embeds || input.embeds.length === 0)) {
       return toolResult("At least content or embeds must be provided", true);
+    }
+
+    // Validate all URL fields in embeds to prevent SSRF via Discord's CDN proxy.
+    if (input.embeds) {
+      for (const embed of input.embeds) {
+        const urlsToCheck: Array<{ field: string; url: string | undefined }> = [
+          { field: "embed.url", url: embed.url },
+          { field: "embed.image.url", url: embed.image?.url },
+          { field: "embed.thumbnail.url", url: embed.thumbnail?.url },
+          { field: "embed.author.url", url: embed.author?.url },
+          { field: "embed.author.icon_url", url: embed.author?.icon_url },
+        ];
+        for (const { field, url } of urlsToCheck) {
+          if (url !== undefined && !isPublicHttpUrl(url)) {
+            return toolResult(
+              `${field} references a private or reserved address and cannot be used in an embed: ${url}`,
+              true,
+            );
+          }
+        }
+      }
+    }
+
+    // Validate avatar_url if provided
+    if (input.avatar_url !== undefined && !isPublicHttpUrl(input.avatar_url)) {
+      return toolResult(
+        `avatar_url references a private or reserved address and cannot be used: ${input.avatar_url}`,
+        true,
+      );
     }
 
     const message = await webhook.send({

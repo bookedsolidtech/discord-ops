@@ -5,12 +5,21 @@ import { editMessage } from "../../src/tools/messaging/edit-message.js";
 import { deleteMessage } from "../../src/tools/messaging/delete-message.js";
 import { addReaction } from "../../src/tools/messaging/add-reaction.js";
 import { searchMessages } from "../../src/tools/messaging/search.js";
+import { sendEmbed } from "../../src/tools/messaging/send-embed.js";
 import {
   createMockDiscordClient,
   createMockConfig,
   createMockMessage,
 } from "../mocks/discord-client.js";
 import type { ToolContext } from "../../src/tools/types.js";
+
+vi.mock("../../src/utils/og-fetch.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/utils/og-fetch.js")>();
+  return {
+    ...actual,
+    fetchOgMetadata: vi.fn().mockResolvedValue({}),
+  };
+});
 
 function createCtx(): ToolContext {
   return {
@@ -168,5 +177,68 @@ describe("search_messages", () => {
     // Verify the second fetch used the correct "before" cursor.
     expect(messagesFetch).toHaveBeenCalledTimes(2);
     expect(messagesFetch).toHaveBeenNthCalledWith(2, { limit: 100, before: oldestPage1Id });
+  });
+});
+
+describe("send_embed", () => {
+  it("has correct metadata", () => {
+    expect(sendEmbed.name).toBe("send_embed");
+    expect(sendEmbed.category).toBe("messaging");
+  });
+
+  it("blocks private-range image_url (SSRF)", async () => {
+    const ctx = createCtx();
+    const result = await sendEmbed.handle(
+      {
+        url: "https://example.com",
+        channel_id: "222222222222222222",
+        image_url: "http://192.168.1.1/admin.png",
+      },
+      ctx,
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("private or reserved address");
+  });
+
+  it("blocks loopback image_url (SSRF)", async () => {
+    const ctx = createCtx();
+    const result = await sendEmbed.handle(
+      {
+        url: "https://example.com",
+        channel_id: "222222222222222222",
+        image_url: "http://127.0.0.1/secret.png",
+      },
+      ctx,
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("private or reserved address");
+  });
+
+  it("allows public image_url through", async () => {
+    const ctx = createCtx();
+    const result = await sendEmbed.handle(
+      {
+        url: "https://example.com",
+        channel_id: "222222222222222222",
+        image_url: "https://example.com/banner.png",
+      },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+  });
+
+  it("sends embed without image_url when none provided", async () => {
+    const ctx = createCtx();
+    const result = await sendEmbed.handle(
+      {
+        url: "https://example.com",
+        channel_id: "222222222222222222",
+        title: "Test embed",
+      },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.url).toBe("https://example.com");
   });
 });

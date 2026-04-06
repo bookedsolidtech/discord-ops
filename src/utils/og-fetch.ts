@@ -152,6 +152,18 @@ const OG_PATTERNS: Array<{ key: keyof OgMetadata; fwd: RegExp; rev: RegExp }> = 
   rev: new RegExp(`content=["']([^"']+)["'][^>]*property=["']${prop}["']`, "i"),
 }));
 
+/**
+ * Returns true if the URL is a valid public HTTP/HTTPS URL that is not
+ * targeting a private, reserved, or loopback address.
+ *
+ * This is a synchronous, string-level check (no DNS resolution). Use it to
+ * reject caller-supplied URLs before embedding them in Discord payloads, where
+ * Discord's CDN would proxy-fetch the URL and could reach internal infrastructure.
+ */
+export function isPublicHttpUrl(url: string): boolean {
+  return preValidateUrl(url).valid;
+}
+
 export async function fetchOgMetadata(url: string): Promise<OgMetadata> {
   // Step 1: synchronous pre-check — protocol, obvious IP literals, "localhost"
   const preCheck = preValidateUrl(url);
