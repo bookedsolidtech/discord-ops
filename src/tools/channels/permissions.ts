@@ -35,7 +35,7 @@ export const setPermissions = defineTool({
   requiresGuild: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
-    const channel = await ctx.discord.getChannel(input.channel_id, token);
+    const channel = await ctx.discord.getAnyChannel(input.channel_id, token);
 
     await channel.permissionOverwrites.edit(input.target_id, {
       ...(input.allow ? Object.fromEntries(input.allow.map((p: string) => [p, true])) : {}),

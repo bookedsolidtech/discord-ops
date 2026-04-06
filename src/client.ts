@@ -2,6 +2,7 @@ import {
   Client,
   GatewayIntentBits,
   type Guild,
+  type GuildChannel,
   type TextChannel,
   type ThreadChannel,
 } from "discord.js";
