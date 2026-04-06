@@ -6,7 +6,9 @@ import { getTokenForProject } from "../../config/index.js";
 
 const inputSchema = z.object({
   webhook_id: snowflakeId.describe("Webhook ID to execute"),
-  guild_id: snowflakeId.describe("Guild ID (needed for bot token resolution)"),
+  guild_id: snowflakeId
+    .optional()
+    .describe("Guild ID (optional, unused — kept for backward compatibility)"),
   content: z.string().max(2000).optional().describe("Message content"),
   username: z.string().max(80).optional().describe("Override the webhook's display name"),
   avatar_url: z.string().url().optional().describe("Override the webhook's avatar URL"),
