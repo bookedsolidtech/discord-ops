@@ -47,7 +47,7 @@ describe("create_invite", () => {
     const ctx = createCtx();
     const result = await createInvite.handle(
       { channel_id: "222222222222222222", max_uses: 1 },
-      ctx
+      ctx,
     );
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0]!.text);
@@ -68,7 +68,7 @@ describe("create_invite", () => {
     const ctx = createCtx();
     const result = await createInvite.handle(
       { channel_id: "222222222222222222", dry_run: true },
-      ctx
+      ctx,
     );
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0]!.text);

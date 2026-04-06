@@ -13,7 +13,9 @@ const inputSchema = z.object({
     .min(0)
     .max(604800)
     .default(86400)
-    .describe("Invite duration in seconds (0 = never expires, max 604800 = 7 days, default 86400 = 24h)"),
+    .describe(
+      "Invite duration in seconds (0 = never expires, max 604800 = 7 days, default 86400 = 24h)",
+    ),
   max_uses: z
     .number()
     .int()
