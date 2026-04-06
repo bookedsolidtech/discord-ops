@@ -24,7 +24,7 @@ export const queryAuditLog: ToolDefinition = {
   name: "query_audit_log",
   description:
     "Query the guild audit log. Filter by user, action type, or fetch recent entries. Requires ViewAuditLog permission.",
-  category: "audit",
+  category: "moderation",
   inputSchema,
   permissions: ["ViewAuditLog"],
   requiresGuild: true,
