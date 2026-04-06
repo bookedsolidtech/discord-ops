@@ -54,7 +54,7 @@
     "test:coverage": "vitest run --coverage",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "node scripts/block-local-publish.mjs && npm audit --audit-level=high && npm run build",
     "changeset": "changeset",
     "release": "changeset publish"
   },
