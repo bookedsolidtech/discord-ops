@@ -56,7 +56,9 @@ async function main(): Promise<void> {
     const originIndex = args.indexOf("--allowed-origin");
     const allowedOrigin = originIndex !== -1 ? args[originIndex + 1] : undefined;
 
-    await startHttpTransport(server, { port, allowedOrigin });
+    const allowUnauthenticated = args.includes("--allow-unauthenticated");
+
+    await startHttpTransport(server, { port, allowedOrigin, allowUnauthenticated });
 
     // Graceful shutdown
     const shutdown = async () => {
@@ -147,8 +149,14 @@ USAGE:
   discord-ops --help       Show this help
   discord-ops --version    Show version
 
+OPTIONS:
+  --port <port>              HTTP port for serve mode (default: 3000)
+  --allowed-origin <origin>  Allowed CORS origin (default: http://localhost)
+  --allow-unauthenticated    Allow serve mode without DISCORD_OPS_HTTP_TOKEN (insecure)
+
 ENVIRONMENT:
   DISCORD_TOKEN            Default Discord bot token (required)
+  DISCORD_OPS_HTTP_TOKEN   Bearer token for HTTP transport auth (required for serve mode)
   <PROJECT>_TOKEN          Per-project bot tokens (configured via token_env in config)
   DISCORD_OPS_CONFIG       Path to global config file (default: ~/.discord-ops.json)
   DISCORD_OPS_LOG_LEVEL    Log level: debug, info, warn, error (default: info)

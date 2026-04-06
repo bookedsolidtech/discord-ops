@@ -24,6 +24,11 @@ export interface HttpTransportOptions {
   authToken?: string;
   /** Allowed CORS origin. Defaults to "http://localhost". Set to "*" to allow all origins (not recommended). */
   allowedOrigin?: string;
+  /**
+   * Allow the server to start without any auth token configured.
+   * Must be explicitly set to true — the default is to refuse startup when no token is present.
+   */
+  allowUnauthenticated?: boolean;
 }
 
 function checkAuth(
@@ -83,8 +88,20 @@ export async function startHttpTransport(
   const corsHeaders = buildCorsHeaders(allowedOrigin);
 
   if (!authToken) {
+    if (!options.allowUnauthenticated) {
+      // Refuse to start: unauthenticated HTTP exposes full bot capabilities.
+      // Operator must either set DISCORD_OPS_HTTP_TOKEN or pass --allow-unauthenticated.
+      console.error(
+        "ERROR: HTTP transport requires an auth token. " +
+          "Set the DISCORD_OPS_HTTP_TOKEN environment variable, " +
+          "or pass --allow-unauthenticated to explicitly opt in to unauthenticated access.",
+      );
+      process.exit(1);
+    }
+
     logger.warn(
-      "HTTP transport running WITHOUT authentication. Set DISCORD_OPS_HTTP_TOKEN to require bearer auth.",
+      "HTTP transport running WITHOUT authentication (--allow-unauthenticated). " +
+        "Set DISCORD_OPS_HTTP_TOKEN to require bearer auth.",
     );
   }
 
