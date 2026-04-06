@@ -7,15 +7,16 @@ function makeMockServer(): McpServer {
   return { connect: async () => {} } as unknown as McpServer;
 }
 
-function getHeaders(port: number, path = "/health", method = "GET"): Promise<http.IncomingHttpHeaders> {
+function getHeaders(
+  port: number,
+  path = "/health",
+  method = "GET",
+): Promise<http.IncomingHttpHeaders> {
   return new Promise((resolve, reject) => {
-    const req = http.request(
-      { hostname: "localhost", port, path, method },
-      (res) => {
-        resolve(res.headers);
-        res.resume();
-      },
-    );
+    const req = http.request({ hostname: "localhost", port, path, method }, (res) => {
+      resolve(res.headers);
+      res.resume();
+    });
     req.on("error", reject);
     req.end();
   });
