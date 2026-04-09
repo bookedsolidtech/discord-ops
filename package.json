@@ -68,7 +68,8 @@
     "format:check": "prettier --check .",
     "prepublishOnly": "node scripts/block-local-publish.mjs && npm audit --audit-level=high && npm run build",
     "changeset": "changeset",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "prepare": "husky"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
@@ -85,7 +86,8 @@
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.58.0",
-    "vitest": "^3.1.2"
+    "vitest": "^3.1.2",
+    "husky": "^9.1.7"
   },
   "engines": {
     "node": "^20.0.0 || ^22.0.0 || ^24.0.0"

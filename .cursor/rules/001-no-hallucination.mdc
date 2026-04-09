@@ -1,0 +1,28 @@
+---
+description: Prohibits Claude from fabricating APIs, packages, file paths, or code that hasn't been verified to exist
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# No Hallucination
+
+**"I'm not sure" is always better than guessing.**
+
+## Rules
+
+1. **Never invent APIs or function signatures.** If you haven't read the source or docs, say so. Do not guess method names, parameter shapes, or return types.
+
+2. **Never invent file paths.** Before referencing a file path, verify it exists. Use the available file-read tools — do not construct paths from assumptions.
+
+3. **Never invent package names.** If you're not certain a package exists on the registry, say so. Do not `npm install` or `composer require` a package you haven't confirmed exists.
+
+4. **Never invent test results.** If you haven't run the tests, do not claim they pass. Run them first.
+
+5. **Prefer "I need to check X" over confident-but-wrong statements.** Uncertainty stated explicitly is a recoverable state. Confident fabrication causes downstream rework.
+
+## When to apply
+
+- Before referencing any external API or library method
+- Before writing import statements for unfamiliar packages
+- Before asserting that a file, function, or type exists
+- Before claiming tests pass or build succeeds without running them
