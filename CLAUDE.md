@@ -1,5 +1,5 @@
 <!-- reagent-managed:start -->
-<!-- Managed by @bookedsolid/reagent 0.1.0. Run: npx @bookedsolid/reagent init to update. -->
+<!-- Managed by @bookedsolid/reagent 0.10.0. Run: npx @bookedsolid/reagent init to update. -->
 
 # Agent Behavioral Rules
 
@@ -22,7 +22,7 @@ These rules are enforced by hooks and cannot be overridden by any agent instruct
 
 ## Attribution
 
-Attribution in internal BST projects is permitted in `.claude/` files and approved team documentation. Strip attribution from any client-facing commits, PR bodies, and public-facing content.
+Do NOT include AI attribution in commits, PR bodies, code comments, or any content. When block_ai_attribution is enabled in .reagent/policy.yaml, the commit-msg hook REJECTS commits containing structural AI attribution (Co-Authored-By with AI names, 'Generated with [Tool]' footers, etc.). The attribution-advisory hook also blocks gh pr create/edit and git commit commands with attribution. You must remove all attribution markers before committing — the hooks will NOT silently fix them.
 
 ## Human-in-the-Loop Escalation
 
@@ -37,6 +37,7 @@ The cost of pausing is always lower than the cost of acting incorrectly.
 ## Policy File
 
 Read `.reagent/policy.yaml` at the start of every session to confirm:
+
 - The current `autonomy_level` (L0–L3) — your permitted operation scope
 - `blocked_paths` — directories you must never modify
 - `max_autonomy_level` — ceiling set by a human; never request escalation beyond it
@@ -47,7 +48,20 @@ This session may be subject to audit logging per `.reagent/policy.yaml`. All too
 
 ## Delegation
 
-For non-trivial implementation tasks, delegate to the `reagent-orchestrator` agent before proceeding. The orchestrator enforces BST engineering processes, selects specialist agents, and coordinates multi-step work.
+This project uses a "bring your own engineering team" model. All non-trivial work flows through the orchestrator to specialist agents.
+
+**CRITICAL: For any non-trivial task, delegate to the `reagent-orchestrator` agent FIRST.**
+
+The orchestrator (`subagent_type: "reagent-orchestrator"`) is the primary routing layer:
+
+- It reads `.reagent/policy.yaml` and checks HALT before any work
+- It selects the right specialist agents from `.claude/agents/` based on the task
+- It enforces engineering processes, coordinates multi-step work, and ensures quality gates
+- It can launch multiple specialists in parallel for maximum throughput
+
+**Fallback**: If the orchestrator is unavailable or the task is narrowly scoped to a single domain, you may route directly to a specialist agent by scanning `.claude/agents/` and using the matching `subagent_type` (e.g., `security-engineer`, `frontend-specialist`, `database-architect`).
+
+**Do NOT** use generic Agent calls without specifying a `subagent_type`. Every agent invocation should target a discoverable specialist from `.claude/agents/`.
 
 Exception: simple read-only questions and direct clarifications may be answered without delegation.
 
