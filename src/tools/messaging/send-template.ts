@@ -10,6 +10,7 @@ import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { renderTemplate } from "../../templates/registry.js";
 import { templateVarsSchema } from "../../templates/types.js";
+import { isPublicHttpUrl } from "../../utils/og-fetch.js";
 import type { TemplateActionRow, TemplatePoll } from "../../templates/types.js";
 
 const inputSchema = z.object({
@@ -93,6 +94,20 @@ export const sendTemplate = defineTool({
     const target = await resolveTarget(input, ctx.config, ctx.discord);
     if ("error" in target) {
       return { content: [{ type: "text", text: target.error }], isError: true };
+    }
+
+    // Validate user-supplied URLs to prevent SSRF via Discord's CDN proxy
+    const urlVarKeys = ["author_icon", "image", "thumbnail", "url", "link"] as const;
+    for (const key of urlVarKeys) {
+      const val = input.vars[key];
+      if (typeof val === "string" && val.startsWith("http") && !isPublicHttpUrl(val)) {
+        return {
+          content: [
+            { type: "text", text: `Blocked: "${key}" URL points to a private/reserved address` },
+          ],
+          isError: true,
+        };
+      }
     }
 
     const rendered = renderTemplate(input.template, input.vars);

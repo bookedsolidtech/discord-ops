@@ -8,6 +8,11 @@ import { deleteMessage } from "./messaging/delete-message.js";
 import { addReaction } from "./messaging/add-reaction.js";
 import { searchMessages } from "./messaging/search.js";
 import { sendEmbed } from "./messaging/send-embed.js";
+import { sendTemplate } from "./messaging/send-template.js";
+import { listTemplatesCmd } from "./messaging/list-templates.js";
+import { pinMessage } from "./messaging/pin.js";
+import { unpinMessage } from "./messaging/unpin.js";
+import { notifyOwners } from "./messaging/notify-owners.js";
 
 // Channels
 import { listChannels } from "./channels/list-channels.js";
@@ -24,6 +29,7 @@ import { setPermissions } from "./channels/permissions.js";
 import { listGuilds } from "./guilds/list-guilds.js";
 import { getGuild } from "./guilds/get-guild.js";
 import { createInvite } from "./guilds/create-invite.js";
+import { getInvites } from "./guilds/get-invites.js";
 
 // Members
 import { listMembers } from "./members/list-members.js";
@@ -71,6 +77,11 @@ export const allTools: ToolDefinition[] = [
   addReaction,
   searchMessages,
   sendEmbed,
+  sendTemplate,
+  listTemplatesCmd,
+  pinMessage,
+  unpinMessage,
+  notifyOwners,
 
   // Channels
   listChannels,
@@ -87,6 +98,7 @@ export const allTools: ToolDefinition[] = [
   listGuilds,
   getGuild,
   createInvite,
+  getInvites,
 
   // Members
   listMembers,

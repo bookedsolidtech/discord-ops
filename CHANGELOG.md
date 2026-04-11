@@ -150,14 +150,6 @@
   - `move_channel` — reposition a channel or category relative to another channel using `before_id`/`after_id` instead of fragile raw position integers. Resolves sibling positions automatically.
   - `notify_owners` — standalone owner ping tool. Sends `<@mention>`s to a channel based on `notification_type` without a full message or embed. No-ops silently if the type isn't in the project's `notify_owners_on` list. Supports optional message text appended after mentions.
 
-## 0.18.0
-
-### Minor Changes
-
-- 637362e: feat: add move_channel and notify_owners tools
-  - `move_channel` — reposition a channel or category relative to another channel using `before_id`/`after_id` instead of fragile raw position integers. Resolves sibling positions automatically.
-  - `notify_owners` — standalone owner ping tool. Sends `<@mention>`s to a channel based on `notification_type` without a full message or embed. No-ops silently if the type isn't in the project's `notify_owners_on` list. Supports optional message text appended after mentions.
-
 ## 0.17.0
 
 ### Minor Changes
@@ -177,58 +169,6 @@
   Without `@latest`, npx may serve a cached older version indefinitely, causing MCP clients to run stale code even after new releases are published. All MCP config examples in the README updated to use `discord-ops@latest`.
 
 - 350cb59: fix: release workflow — truncate highlights to Discord 1024-char field limit, auto-sync main back to staging after publish
-
-## 0.16.0
-
-### Minor Changes
-
-- b42d0fe: feat: add `run` CLI subcommand and inline JSON support for `DISCORD_OPS_CONFIG`
-  - `discord-ops run <tool> --args '<json>'` — execute any tool directly from shell, no AI/MCP required. Supports the full tool suite including `send_template`, `send_message`, `send_embed`, and all 46 tools.
-  - `DISCORD_OPS_CONFIG` now accepts an inline JSON string in addition to a file path — if the value starts with `{` it is parsed directly. Eliminates the need to write config files in CI environments.
-  - `release.yml` GitHub Actions workflow — automatically posts a rich Discord release notification to `#releases` after every successful npm publish via changesets.
-  - README — new CLI `run` docs with examples, CI/CD integration section with config shape, GitHub Actions example, and updated `DISCORD_OPS_CONFIG` env var description.
-
-### Patch Changes
-
-- b42d0fe: fix: add "alert" to NotificationType enum — global config with alert in notify_owners_on caused config parse failure and MCP startup crash
-- b42d0fe: fix: clean up changelog formatting in Discord release notifications — section headers now render as bold text, commit hashes stripped from bullet lines
-- b42d0fe: Fix stale npx cache — use `discord-ops@latest` in MCP config
-
-  Without `@latest`, npx may serve a cached older version indefinitely, causing MCP clients to run stale code even after new releases are published. All MCP config examples in the README updated to use `discord-ops@latest`.
-
-## 0.15.0
-
-### Minor Changes
-
-- 01c3e44: feat: add `run` CLI subcommand and inline JSON support for `DISCORD_OPS_CONFIG`
-  - `discord-ops run <tool> --args '<json>'` — execute any tool directly from shell, no AI/MCP required. Supports the full tool suite including `send_template`, `send_message`, `send_embed`, and all 46 tools.
-  - `DISCORD_OPS_CONFIG` now accepts an inline JSON string in addition to a file path — if the value starts with `{` it is parsed directly. Eliminates the need to write config files in CI environments.
-  - `release.yml` GitHub Actions workflow — automatically posts a rich Discord release notification to `#releases` after every successful npm publish via changesets.
-  - README — new CLI `run` docs with examples, CI/CD integration section with config shape, GitHub Actions example, and updated `DISCORD_OPS_CONFIG` env var description.
-
-### Patch Changes
-
-- 01c3e44: fix: add "alert" to NotificationType enum — global config with alert in notify_owners_on caused config parse failure and MCP startup crash
-- 01c3e44: Fix stale npx cache — use `discord-ops@latest` in MCP config
-
-  Without `@latest`, npx may serve a cached older version indefinitely, causing MCP clients to run stale code even after new releases are published. All MCP config examples in the README updated to use `discord-ops@latest`.
-
-## 0.14.3
-
-### Patch Changes
-
-- 6bd5a54: fix: add "alert" to NotificationType enum — global config with alert in notify_owners_on caused config parse failure and MCP startup crash
-- 6bd5a54: Fix stale npx cache — use `discord-ops@latest` in MCP config
-
-  Without `@latest`, npx may serve a cached older version indefinitely, causing MCP clients to run stale code even after new releases are published. All MCP config examples in the README updated to use `discord-ops@latest`.
-
-## 0.14.2
-
-### Patch Changes
-
-- 9fb0d4b: Fix stale npx cache — use `discord-ops@latest` in MCP config
-
-  Without `@latest`, npx may serve a cached older version indefinitely, causing MCP clients to run stale code even after new releases are published. All MCP config examples in the README updated to use `discord-ops@latest`.
 
 ## 0.14.1
 
@@ -285,75 +225,6 @@
 - 5cdab50: fix: resolver now includes bot token when channel_id is provided directly
 
   When `channel_id` was passed directly to `resolveTarget`, the returned `ResolvedTarget` was missing the `token` field even if a `project` was specified. This caused direct-channel-ID calls in multi-bot setups to fall back to the default bot token instead of the project-specific one.
-
-## 0.13.0
-
-### Minor Changes
-
-- 4928e5e: Auto-embed for send_message and health endpoint version field
-  - **Auto-embed for `send_message`**: Messages are now automatically wrapped in a polished embed (color bar, description, timestamp) via the new `simple` template. Set `raw: true` to send plain text. Every message looks professional by default.
-  - **`simple` template**: New minimal utility template — just a branded embed with optional title, color, author, and footer. Used automatically by `send_message`, also available via `send_template`.
-  - **Health endpoint `version` field**: `GET /health` now includes the `discord-ops` package version for deployment verification.
-
-- 4928e5e: feat: add position parameter to edit_channel
-
-  `edit_channel` now accepts an optional `position` integer (0-indexed) to reorder channels and categories within a guild. This enables programmatic channel ordering without needing separate Discord admin UI access.
-
-- 4928e5e: Live channel name resolution — fuzzy.ts was dead code, now it works
-  - **Channel fuzzy resolution**: The `channel` param now resolves in four layers — exact alias match, fuzzy alias match (e.g. `"build"` hits `"builds"`), then a live Discord API lookup that finds channels by their actual Discord name (e.g. `channel: "general"` now works even with no configured alias).
-  - **Fuzzy alias matching**: Configured channel aliases are now fuzzy-matched before falling back to Discord, so near-misses on alias names resolve correctly.
-  - **`list_templates` fix**: Internal `simple` template (used for auto-embed) no longer appears in `list_templates` output — count now correctly shows 23.
-
-- 4928e5e: New send_embed tool with server-side OG metadata fetching
-
-### Patch Changes
-
-- 4928e5e: fix: isConnected no longer throws in multi-bot setups
-
-  `DiscordClient.isConnected` was calling `getConnection()` with no token, which throws when no default `DISCORD_TOKEN` is set. Any setup that uses only per-project `token_env` (the standard multi-bot pattern) would immediately crash with "No Discord token available" on the first `health_check` call — before per-project tokens were ever checked. `isConnected` now returns `false` instead of throwing when there is no default token.
-
-- 4928e5e: fix: resolver now includes bot token when channel_id is provided directly
-
-  When `channel_id` was passed directly to `resolveTarget`, the returned `ResolvedTarget` was missing the `token` field even if a `project` was specified. This caused direct-channel-ID calls in multi-bot setups to fall back to the default bot token instead of the project-specific one.
-
-## 0.12.0
-
-### Minor Changes
-
-- e70b6ac: Auto-embed for send_message and health endpoint version field
-  - **Auto-embed for `send_message`**: Messages are now automatically wrapped in a polished embed (color bar, description, timestamp) via the new `simple` template. Set `raw: true` to send plain text. Every message looks professional by default.
-  - **`simple` template**: New minimal utility template — just a branded embed with optional title, color, author, and footer. Used automatically by `send_message`, also available via `send_template`.
-  - **Health endpoint `version` field**: `GET /health` now includes the `discord-ops` package version for deployment verification.
-
-- e70b6ac: Live channel name resolution — fuzzy.ts was dead code, now it works
-  - **Channel fuzzy resolution**: The `channel` param now resolves in four layers — exact alias match, fuzzy alias match (e.g. `"build"` hits `"builds"`), then a live Discord API lookup that finds channels by their actual Discord name (e.g. `channel: "general"` now works even with no configured alias).
-  - **Fuzzy alias matching**: Configured channel aliases are now fuzzy-matched before falling back to Discord, so near-misses on alias names resolve correctly.
-  - **`list_templates` fix**: Internal `simple` template (used for auto-embed) no longer appears in `list_templates` output — count now correctly shows 23.
-
-- e70b6ac: New send_embed tool with server-side OG metadata fetching
-
-## 0.11.0
-
-### Minor Changes
-
-- c53ebcd: Auto-embed for send_message and health endpoint version field
-  - **Auto-embed for `send_message`**: Messages are now automatically wrapped in a polished embed (color bar, description, timestamp) via the new `simple` template. Set `raw: true` to send plain text. Every message looks professional by default.
-  - **`simple` template**: New minimal utility template — just a branded embed with optional title, color, author, and footer. Used automatically by `send_message`, also available via `send_template`.
-  - **Health endpoint `version` field**: `GET /health` now includes the `discord-ops` package version for deployment verification.
-
-- c53ebcd: Live channel name resolution — fuzzy.ts was dead code, now it works
-  - **Channel fuzzy resolution**: The `channel` param now resolves in four layers — exact alias match, fuzzy alias match (e.g. `"build"` hits `"builds"`), then a live Discord API lookup that finds channels by their actual Discord name (e.g. `channel: "general"` now works even with no configured alias).
-  - **Fuzzy alias matching**: Configured channel aliases are now fuzzy-matched before falling back to Discord, so near-misses on alias names resolve correctly.
-  - **`list_templates` fix**: Internal `simple` template (used for auto-embed) no longer appears in `list_templates` output — count now correctly shows 23.
-
-## 0.10.0
-
-### Minor Changes
-
-- 6c4ef2a: Auto-embed for send_message and health endpoint version field
-  - **Auto-embed for `send_message`**: Messages are now automatically wrapped in a polished embed (color bar, description, timestamp) via the new `simple` template. Set `raw: true` to send plain text. Every message looks professional by default.
-  - **`simple` template**: New minimal utility template — just a branded embed with optional title, color, author, and footer. Used automatically by `send_message`, also available via `send_template`.
-  - **Health endpoint `version` field**: `GET /health` now includes the `discord-ops` package version for deployment verification.
 
 ## 0.9.0
 

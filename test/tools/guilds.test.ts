@@ -64,15 +64,10 @@ describe("create_invite", () => {
     expect(parsed.max_uses).toBe(0);
   });
 
-  it("returns dry_run response without creating invite", async () => {
-    const ctx = createCtx();
-    const result = await createInvite.handle(
-      { channel_id: "222222222222222222", dry_run: true },
-      ctx,
-    );
-    expect(result.isError).toBeUndefined();
-    const data = JSON.parse(result.content[0]!.text);
-    expect(data.dry_run).toBe(true);
-    expect(data.would_have).toContain("222222222222222222");
+  it("relies on server-level dry-run mode for simulation", () => {
+    // Finding #28: local dry_run parameter removed — the server-level dry-run
+    // intercept (--dry-run flag / DISCORD_OPS_DRY_RUN env) handles audit-logged
+    // simulation for all destructive tools, including create_invite.
+    expect(createInvite.destructive).toBe(true);
   });
 });

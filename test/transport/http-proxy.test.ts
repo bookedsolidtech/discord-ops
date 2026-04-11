@@ -27,14 +27,22 @@ describe("getClientIp", () => {
     });
   });
 
-  describe("trustProxy: true", () => {
-    it("returns leftmost non-private IP from X-Forwarded-For", () => {
+  describe("trustProxy: true (right-to-left parsing)", () => {
+    it("returns rightmost non-private IP from X-Forwarded-For", () => {
+      // Right-to-left: "10.0.0.1" is private, so "203.0.113.5" is returned
       const req = makeReq("10.0.0.1", "203.0.113.5, 10.0.0.1");
       expect(getClientIp(req, true)).toBe("203.0.113.5");
     });
 
-    it("skips private IPs in X-Forwarded-For to find real client", () => {
+    it("skips private IPs walking right-to-left to find real client", () => {
+      // Right-to-left: "10.0.0.2" private, "203.0.113.10" public — returned
       const req = makeReq("10.0.0.2", "192.168.1.1, 203.0.113.10, 10.0.0.2");
+      expect(getClientIp(req, true)).toBe("203.0.113.10");
+    });
+
+    it("returns the rightmost public IP, not the leftmost", () => {
+      // Attacker prepends fake 1.2.3.4, real client is 203.0.113.10
+      const req = makeReq("10.0.0.1", "1.2.3.4, 203.0.113.10, 10.0.0.1");
       expect(getClientIp(req, true)).toBe("203.0.113.10");
     });
 
@@ -54,17 +62,17 @@ describe("getClientIp", () => {
     });
 
     it("filters 127.x loopback addresses", () => {
-      const req = makeReq("10.0.0.1", "127.0.0.1, 203.0.113.1");
+      const req = makeReq("10.0.0.1", "203.0.113.1, 127.0.0.1");
       expect(getClientIp(req, true)).toBe("203.0.113.1");
     });
 
     it("filters IPv4-mapped IPv6 addresses", () => {
-      const req = makeReq("10.0.0.1", "::ffff:192.168.1.1, 203.0.113.2");
+      const req = makeReq("10.0.0.1", "203.0.113.2, ::ffff:192.168.1.1");
       expect(getClientIp(req, true)).toBe("203.0.113.2");
     });
 
     it("filters IPv6 loopback ::1", () => {
-      const req = makeReq("10.0.0.1", "::1, 203.0.113.3");
+      const req = makeReq("10.0.0.1", "203.0.113.3, ::1");
       expect(getClientIp(req, true)).toBe("203.0.113.3");
     });
 

@@ -12,7 +12,7 @@ export function createMockMessage(overrides: Record<string, unknown> = {}) {
     author: { tag: "TestBot#0001", id: "333333333333333333" },
     createdAt: new Date("2026-01-01T00:00:00Z"),
     editedAt: null,
-    attachments: { size: 0 },
+    attachments: new Map(),
     embeds: [],
     reactions: { cache: [] },
     pinned: false,

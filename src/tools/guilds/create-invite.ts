@@ -31,10 +31,6 @@ const inputSchema = z.object({
     .boolean()
     .default(false)
     .describe("Whether to create a new unique invite even if one already exists"),
-  dry_run: z
-    .boolean()
-    .optional()
-    .describe("If true, simulate the action without creating an invite"),
   project: z.string().optional().describe("Project name for token resolution"),
 });
 
@@ -48,17 +44,17 @@ export const createInvite: ToolDefinition = {
   requiresGuild: true,
   destructive: true,
   handle: async (input, ctx) => {
-    if (input.dry_run) {
-      return toolResultJson({
-        dry_run: true,
-        would_have: `created invite for channel ${input.channel_id} (max_uses=${input.max_uses}, max_age=${input.max_age}s, temporary=${input.temporary})`,
-      });
-    }
-
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
     const channel = await ctx.discord.getAnyChannel(input.channel_id, token);
 
-    const invite = await (channel as unknown as TextChannel).createInvite({
+    // Channel supports createInvite if it's text-based or voice
+    if (!channel.isTextBased() && !channel.isVoiceBased()) {
+      return toolResultJson(
+        { error: `Channel ${input.channel_id} does not support invite creation` },
+        true,
+      );
+    }
+    const invite = await (channel as TextChannel).createInvite({
       maxAge: input.max_age,
       maxUses: input.max_uses,
       temporary: input.temporary,

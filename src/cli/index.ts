@@ -7,8 +7,15 @@ import { startStdioTransport } from "../transport/stdio.js";
 import { startHttpTransport } from "../transport/http.js";
 import { logger, setLogLevel } from "../utils/logger.js";
 import type { LogLevel } from "../utils/logger.js";
+import { createRequire } from "node:module";
 import { runInit } from "./init.js";
+import { runSetup } from "./setup.js";
+import { runTool } from "./run.js";
+import { runValidate } from "./validate.js";
 import { validateFlags } from "./validate-flags.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../../package.json") as { version: string };
 
 export { validateFlags } from "./validate-flags.js";
 
@@ -26,7 +33,7 @@ async function main(): Promise<void> {
 
   // Handle --version
   if (args.includes("--version") || args.includes("-v")) {
-    console.log("discord-ops 0.21.0");
+    console.log(`discord-ops ${pkg.version}`);
     process.exit(0);
   }
 
@@ -39,6 +46,31 @@ async function main(): Promise<void> {
   // Handle health subcommand
   if (args[0] === "health") {
     await runHealthCheck();
+    return;
+  }
+
+  // Handle setup subcommand (interactive wizard)
+  if (args[0] === "setup") {
+    await runSetup();
+    return;
+  }
+
+  // Handle run subcommand (execute a single tool)
+  if (args[0] === "run") {
+    const toolName = args[1];
+    if (!toolName) {
+      console.error("Usage: discord-ops run <tool-name> --args '<json>'");
+      process.exit(1);
+    }
+    const argsIndex = args.indexOf("--args");
+    const rawArgs = argsIndex !== -1 ? args[argsIndex + 1] : "{}";
+    await runTool(toolName, rawArgs);
+    return;
+  }
+
+  // Handle validate subcommand (validate config)
+  if (args[0] === "validate") {
+    await runValidate();
     return;
   }
 
@@ -162,6 +194,9 @@ USAGE:
   discord-ops serve        Start MCP server (HTTP/SSE transport)
   discord-ops health       Run health check + permission audit
   discord-ops init         Scaffold a per-project .discord-ops.json
+  discord-ops setup        Interactive setup wizard for config
+  discord-ops run <tool>   Run a single tool from the CLI
+  discord-ops validate     Validate configuration files
   discord-ops --help       Show this help
   discord-ops --version    Show version
 
@@ -169,6 +204,10 @@ OPTIONS:
   --port <port>              HTTP port for serve mode (default: 3000)
   --allowed-origin <origin>  Allowed CORS origin (default: http://localhost)
   --allow-unauthenticated    Allow serve mode without DISCORD_OPS_HTTP_TOKEN (insecure)
+  --args <json>              JSON arguments for the run subcommand
+  --profile <name>           Tool profile: full, monitoring, readonly, moderation
+  --tools <list>             Comma-separated list of tools to enable
+  --dry-run                  Preview actions without executing
 
 INIT FLAGS:
   --project <name>         Project name (required)

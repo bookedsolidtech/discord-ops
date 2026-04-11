@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fuzzyFind, fuzzyFindAll, type Named } from "../../src/routing/fuzzy.js";
+import { fuzzyFind, type Named } from "../../src/routing/fuzzy.js";
 
 const channels: Named[] = [
   { id: "111", name: "general" },
@@ -37,13 +37,5 @@ describe("fuzzyFind", () => {
   it("returns undefined for no match", () => {
     const result = fuzzyFind(channels, "nonexistent-very-long-name");
     expect(result).toBeUndefined();
-  });
-});
-
-describe("fuzzyFindAll", () => {
-  it("returns multiple matches sorted by score", () => {
-    const results = fuzzyFindAll(channels, "general");
-    expect(results.length).toBeGreaterThanOrEqual(1);
-    expect(results[0]!.item.name).toBe("general");
   });
 });
