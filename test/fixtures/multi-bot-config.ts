@@ -29,7 +29,7 @@ export const multiBotGlobalConfig: GlobalConfig = {
       default_channel: "dev-ops",
       tool_profile: "full",
     },
-    "helix": {
+    helix: {
       guild_id: "900000000000000002",
       channels: {
         dev: "555555555555555555",

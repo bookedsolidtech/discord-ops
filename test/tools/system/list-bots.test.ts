@@ -83,14 +83,17 @@ describe("list_bots tool", () => {
   });
 
   it("returns empty list when no bots configured", async () => {
-    const result = await listBots.handle({}, makeCtx({
-      projects: {
-        test: {
-          guild_id: "900000000000000001",
-          channels: { dev: "111111111111111111" },
+    const result = await listBots.handle(
+      {},
+      makeCtx({
+        projects: {
+          test: {
+            guild_id: "900000000000000001",
+            channels: { dev: "111111111111111111" },
+          },
         },
-      },
-    }));
+      }),
+    );
     const data = JSON.parse(result.content[0].text);
     expect(data.bot_count).toBe(0);
     expect(data.bots).toHaveLength(0);

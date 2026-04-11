@@ -9,7 +9,15 @@ import {
 
 describe("ToolProfileEnum", () => {
   it("accepts all 7 profile names", () => {
-    for (const name of ["full", "monitoring", "readonly", "moderation", "messaging", "channels", "webhooks"]) {
+    for (const name of [
+      "full",
+      "monitoring",
+      "readonly",
+      "moderation",
+      "messaging",
+      "channels",
+      "webhooks",
+    ]) {
       expect(ToolProfileEnum.safeParse(name).success).toBe(true);
     }
   });

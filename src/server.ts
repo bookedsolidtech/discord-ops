@@ -7,7 +7,12 @@ import { sanitizeError } from "./security/sanitizer.js";
 import { auditToolCall } from "./security/audit.js";
 import { RateLimiter } from "./security/rate-limiter.js";
 import { checkPermissions } from "./security/permissions.js";
-import { filterTools, validateProfileToolNames, PROFILES, isProfileName } from "./profiles/index.js";
+import {
+  filterTools,
+  validateProfileToolNames,
+  PROFILES,
+  isProfileName,
+} from "./profiles/index.js";
 import { logger } from "./utils/logger.js";
 import { getTokenForProject, getBotPersona } from "./config/index.js";
 import { resolveProject } from "./config/profiles.js";
@@ -114,7 +119,11 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
 
         // Per-project/per-bot tool profile enforcement — runtime gate
         if (typeof parsed.project === "string") {
-          const resolvedProj = resolveProject(parsed.project, ctx.config.global, ctx.config.perProject);
+          const resolvedProj = resolveProject(
+            parsed.project,
+            ctx.config.global,
+            ctx.config.perProject,
+          );
           if (resolvedProj) {
             // Determine effective profile: project tool_profile, or bot's default_profile
             let effectiveProfile = resolvedProj.toolProfile;

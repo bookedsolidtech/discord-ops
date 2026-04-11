@@ -418,11 +418,11 @@ Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich pr
 
 ### System (3 tools)
 
-| Tool            | Description                                                              |
-| --------------- | ------------------------------------------------------------------------ |
-| `health_check`  | Bot status, version, connected guilds, and permission audit              |
-| `list_projects` | List all projects with guild mappings, token status, and validation      |
-| `list_bots`     | List all bot personas with project assignments and channel overrides     |
+| Tool            | Description                                                          |
+| --------------- | -------------------------------------------------------------------- |
+| `health_check`  | Bot status, version, connected guilds, and permission audit          |
+| `list_projects` | List all projects with guild mappings, token status, and validation  |
+| `list_bots`     | List all bot personas with project assignments and channel overrides |
 
 ## Tool Profiles
 
@@ -430,15 +430,15 @@ Load only the tools an agent needs. Reduces schema token overhead by up to 85% f
 
 ### Built-in profiles
 
-| Profile      | Tools | Description                                                                                                      |
-| ------------ | ----- | ---------------------------------------------------------------------------------------------------------------- |
-| `full`       | 49    | All tools (default)                                                                                              |
-| `monitoring` | 7     | get_messages, send_message, add_reaction, create_thread, health_check, list_projects, list_bots                  |
-| `readonly`   | 7     | get_messages, list_channels, list_members, get_guild, health_check, list_projects, list_bots                     |
-| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log           |
-| `messaging`  | 5     | add_reaction, delete_message, edit_message, get_messages, send_message                                           |
-| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode           |
-| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks                        |
+| Profile      | Tools | Description                                                                                            |
+| ------------ | ----- | ------------------------------------------------------------------------------------------------------ |
+| `full`       | 49    | All tools (default)                                                                                    |
+| `monitoring` | 7     | get_messages, send_message, add_reaction, create_thread, health_check, list_projects, list_bots        |
+| `readonly`   | 7     | get_messages, list_channels, list_members, get_guild, health_check, list_projects, list_bots           |
+| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log |
+| `messaging`  | 5     | add_reaction, delete_message, edit_message, get_messages, send_message                                 |
+| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode |
+| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks              |
 
 ### Using profiles
 
@@ -822,27 +822,27 @@ Full `~/.discord-ops.json` schema with all options:
 
 **Global fields:**
 
-| Field                  | Description                                                                              |
-| ---------------------- | ---------------------------------------------------------------------------------------- |
-| `bots`                 | Named bot personas with `name`, `role`, `description`, `token_env`, `default_profile`    |
-| `default_project`      | Project used when no `project` param is provided                                         |
-| `notification_routing` | Global notification type → channel alias routing                                         |
+| Field                  | Description                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `bots`                 | Named bot personas with `name`, `role`, `description`, `token_env`, `default_profile` |
+| `default_project`      | Project used when no `project` param is provided                                      |
+| `notification_routing` | Global notification type → channel alias routing                                      |
 
 **Project fields:**
 
-| Field                  | Description                                                                               |
-| ---------------------- | ----------------------------------------------------------------------------------------- |
-| `guild_id`             | Discord server (guild) snowflake ID                                                       |
-| `token_env`            | Env var name for this project's bot token                                                 |
-| `bot`                  | Default bot persona for this project (references a key in `bots`)                         |
-| `channels`             | Alias → channel ID or `{ id, bot }` map; `channel: "builds"` resolves here first         |
-| `default_channel`      | Channel used when no `channel` param is provided                                          |
-| `owners`               | User snowflake IDs to mention on matching notification types                              |
-| `notify_owners_on`     | Notification types that trigger owner pings (`"dev"` never pings)                         |
-| `tool_profile`         | Base tool profile for this project (`full`, `monitoring`, etc.) — enforced at runtime     |
-| `profile_add`          | Additional tools to load on top of the base profile                                       |
-| `profile_remove`       | Tools to exclude from the base profile                                                    |
-| `notification_routing` | Per-project override of global notification → channel routing                             |
+| Field                  | Description                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `guild_id`             | Discord server (guild) snowflake ID                                                   |
+| `token_env`            | Env var name for this project's bot token                                             |
+| `bot`                  | Default bot persona for this project (references a key in `bots`)                     |
+| `channels`             | Alias → channel ID or `{ id, bot }` map; `channel: "builds"` resolves here first      |
+| `default_channel`      | Channel used when no `channel` param is provided                                      |
+| `owners`               | User snowflake IDs to mention on matching notification types                          |
+| `notify_owners_on`     | Notification types that trigger owner pings (`"dev"` never pings)                     |
+| `tool_profile`         | Base tool profile for this project (`full`, `monitoring`, etc.) — enforced at runtime |
+| `profile_add`          | Additional tools to load on top of the base profile                                   |
+| `profile_remove`       | Tools to exclude from the base profile                                                |
+| `notification_routing` | Per-project override of global notification → channel routing                         |
 
 Per-project profiles are enforced at runtime — all tools stay registered on the MCP server, but tool calls are filtered when the resolved project or bot has a profile set. This means agents can discover all tools via MCP schema, but per-project restrictions are applied on each call.
 

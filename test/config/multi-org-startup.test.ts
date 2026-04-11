@@ -9,7 +9,13 @@
  * where DISCORD_TOKEN is never set.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { loadConfig, getTokenForProject, getTokenForBot, getTokenForChannel, getBotPersona } from "../../src/config/index.js";
+import {
+  loadConfig,
+  getTokenForProject,
+  getTokenForBot,
+  getTokenForChannel,
+  getBotPersona,
+} from "../../src/config/index.js";
 import type { LoadedConfig, GlobalConfig } from "../../src/config/index.js";
 
 describe("multi-org startup (no default token)", () => {
@@ -170,9 +176,7 @@ describe("multi-org startup (no default token)", () => {
     process.env.CLARITY_DISCORD_BOT_TOKEN = "clarity-token";
     delete process.env.BOOKED_DISCORD_BOT_TOKEN;
 
-    expect(() => getTokenForProject("helix", config)).toThrow(
-      "BOOKED_DISCORD_BOT_TOKEN",
-    );
+    expect(() => getTokenForProject("helix", config)).toThrow("BOOKED_DISCORD_BOT_TOKEN");
   });
 
   it("same token_env across projects returns same token", () => {
@@ -231,7 +235,7 @@ describe("multi-org startup with bot personas (no default token)", () => {
         },
         default_channel: "dev-ops",
       },
-      "helix": {
+      helix: {
         guild_id: "147821583513393996",
         token_env: "HELIX_TOKEN",
         channels: {
@@ -298,9 +302,7 @@ describe("multi-org startup with bot personas (no default token)", () => {
       global: botPersonaConfig,
     };
 
-    expect(() => getTokenForBot("nonexistent", config)).toThrow(
-      'Bot "nonexistent" not found',
-    );
+    expect(() => getTokenForBot("nonexistent", config)).toThrow('Bot "nonexistent" not found');
   });
 
   it("getTokenForBot throws when bot token_env is not set", () => {
@@ -323,9 +325,7 @@ describe("multi-org startup with bot personas (no default token)", () => {
     };
 
     // "support" has bot: "claire" override
-    expect(getTokenForChannel("clarity-house", "support", config)).toBe(
-      "claire-channel-token",
-    );
+    expect(getTokenForChannel("clarity-house", "support", config)).toBe("claire-channel-token");
   });
 
   it("getTokenForChannel falls back to project-level bot for plain channels", () => {
@@ -338,9 +338,7 @@ describe("multi-org startup with bot personas (no default token)", () => {
     };
 
     // "general" has no bot override → project bot "courier"
-    expect(getTokenForChannel("clarity-house", "general", config)).toBe(
-      "courier-project-token",
-    );
+    expect(getTokenForChannel("clarity-house", "general", config)).toBe("courier-project-token");
   });
 
   it("getBotPersona returns channel-level bot persona", () => {

@@ -16,7 +16,8 @@ export const listBots = defineTool({
       return toolResultJson({
         bot_count: 0,
         bots: [],
-        message: "No bot personas configured. Bots are defined in the 'bots' section of the config.",
+        message:
+          "No bot personas configured. Bots are defined in the 'bots' section of the config.",
       });
     }
 
@@ -31,10 +32,7 @@ export const listBots = defineTool({
         }
 
         for (const [alias, channelConfig] of Object.entries(project.channels)) {
-          if (
-            typeof channelConfig === "object" &&
-            channelConfig.bot === key
-          ) {
+          if (typeof channelConfig === "object" && channelConfig.bot === key) {
             channelOverrides.push({ project: projectName, channel: alias });
           }
         }

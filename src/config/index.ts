@@ -26,9 +26,7 @@ export function getTokenForBot(botName: string, config: LoadedConfig): string {
   }
   const token = process.env[bot.token_env];
   if (!token) {
-    throw new Error(
-      `Bot "${botName}": token_env "${bot.token_env}" is not set in environment`,
-    );
+    throw new Error(`Bot "${botName}": token_env "${bot.token_env}" is not set in environment`);
   }
   return token;
 }

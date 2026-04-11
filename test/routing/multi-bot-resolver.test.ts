@@ -25,10 +25,7 @@ describe("multi-bot resolveTarget", () => {
   };
 
   it("uses project-level bot token for plain channel", async () => {
-    const result = await resolveTarget(
-      { project: "clarity-house", channel: "general" },
-      config,
-    );
+    const result = await resolveTarget({ project: "clarity-house", channel: "general" }, config);
     expect(result).not.toHaveProperty("error");
     if ("error" in result) return;
     expect(result.channelId).toBe("111111111111111111");
@@ -37,10 +34,7 @@ describe("multi-bot resolveTarget", () => {
   });
 
   it("uses channel-level bot override token", async () => {
-    const result = await resolveTarget(
-      { project: "clarity-house", channel: "support" },
-      config,
-    );
+    const result = await resolveTarget({ project: "clarity-house", channel: "support" }, config);
     expect(result).not.toHaveProperty("error");
     if ("error" in result) return;
     expect(result.channelId).toBe("222222222222222222");
@@ -49,10 +43,7 @@ describe("multi-bot resolveTarget", () => {
   });
 
   it("uses channel-level bot override for ai-testing", async () => {
-    const result = await resolveTarget(
-      { project: "clarity-house", channel: "ai-testing" },
-      config,
-    );
+    const result = await resolveTarget({ project: "clarity-house", channel: "ai-testing" }, config);
     expect(result).not.toHaveProperty("error");
     if ("error" in result) return;
     expect(result.channelId).toBe("444444444444444444");
@@ -61,10 +52,7 @@ describe("multi-bot resolveTarget", () => {
   });
 
   it("falls back to default_channel with project bot", async () => {
-    const result = await resolveTarget(
-      { project: "clarity-house" },
-      config,
-    );
+    const result = await resolveTarget({ project: "clarity-house" }, config);
     expect(result).not.toHaveProperty("error");
     if ("error" in result) return;
     expect(result.channelId).toBe("333333333333333333");
@@ -85,10 +73,7 @@ describe("multi-bot resolveTarget", () => {
   });
 
   it("project without bot falls back to default token", async () => {
-    const result = await resolveTarget(
-      { project: "helix", channel: "dev" },
-      config,
-    );
+    const result = await resolveTarget({ project: "helix", channel: "dev" }, config);
     expect(result).not.toHaveProperty("error");
     if ("error" in result) return;
     expect(result.channelId).toBe("555555555555555555");
@@ -97,10 +82,7 @@ describe("multi-bot resolveTarget", () => {
   });
 
   it("direct channel_id bypasses bot routing", async () => {
-    const result = await resolveTarget(
-      { channel_id: "999999999999999999" },
-      config,
-    );
+    const result = await resolveTarget({ channel_id: "999999999999999999" }, config);
     expect(result).not.toHaveProperty("error");
     if ("error" in result) return;
     expect(result.channelId).toBe("999999999999999999");
