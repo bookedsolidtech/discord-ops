@@ -20,7 +20,29 @@ export const listThreads = defineTool({
     const guild = await ctx.discord.getGuild(input.guild_id, token);
     const active = await guild.channels.fetchActiveThreads();
 
-    const threads = active.threads.map((thread) => ({
+    const allThreads = [...active.threads.values()];
+
+    // Fetch archived threads if requested
+    if (input.archived) {
+      const channels = await guild.channels.fetch();
+      for (const [, channel] of channels) {
+        if (channel && "threads" in channel && channel.threads) {
+          try {
+            const archived = await channel.threads.fetchArchived();
+            for (const [, thread] of archived.threads) {
+              // Avoid duplicates (a thread could appear in both)
+              if (!allThreads.some((t) => t.id === thread.id)) {
+                allThreads.push(thread);
+              }
+            }
+          } catch {
+            // Channel may not support threads or bot lacks access
+          }
+        }
+      }
+    }
+
+    const threads = allThreads.map((thread) => ({
       id: thread.id,
       name: thread.name,
       parent_id: thread.parentId,

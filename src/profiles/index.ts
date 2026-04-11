@@ -63,6 +63,22 @@ export const PROFILES: Record<ProfileName, string[] | "all"> = {
   ],
 };
 
+/**
+ * Validates that all tool names referenced in profiles exist in the full tool list.
+ * Called at server startup to catch stale profile entries.
+ */
+export function validateProfileToolNames(allToolNames: Set<string>): void {
+  for (const [profileName, tools] of Object.entries(PROFILES)) {
+    if (tools === "all") continue;
+    const unknown = tools.filter((name) => !allToolNames.has(name));
+    if (unknown.length > 0) {
+      throw new Error(
+        `Profile "${profileName}" references unknown tools: ${unknown.join(", ")}`,
+      );
+    }
+  }
+}
+
 export function isProfileName(s: string): s is ProfileName {
   return PROFILE_NAMES.includes(s as ProfileName);
 }

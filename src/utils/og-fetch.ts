@@ -20,8 +20,8 @@ function isBlockedIp(ip: string): boolean {
   // IPv6 loopback / unspecified
   if (h === "::1" || h === "::") return true;
 
-  // IPv4: unspecified and full loopback range (127.0.0.0/8)
-  if (h === "0.0.0.0" || /^127\./.test(h)) return true;
+  // IPv4: "this network" (0.0.0.0/8) and full loopback range (127.0.0.0/8)
+  if (/^0\./.test(h) || /^127\./.test(h)) return true;
 
   // Link-local — AWS/Azure/GCP IMDS and other APIPA (169.254.0.0/16)
   if (h.startsWith("169.254.")) return true;
@@ -42,6 +42,19 @@ function isBlockedIp(ip: string): boolean {
     const second = parseInt(h.split(".")[1] ?? "-1", 10);
     if (second >= 18 && second <= 19) return true;
   }
+
+  // IETF protocol assignments 192.0.0.0/24
+  if (h.startsWith("192.0.0.")) return true;
+
+  // Documentation ranges (TEST-NET-1/2/3)
+  if (h.startsWith("192.0.2.")) return true;
+  if (h.startsWith("198.51.100.")) return true;
+  if (h.startsWith("203.0.113.")) return true;
+
+  // Reserved for future use 240.0.0.0/4 and broadcast
+  if (h === "255.255.255.255") return true;
+  const firstOctet = parseInt(h.split(".")[0] ?? "-1", 10);
+  if (firstOctet >= 240 && firstOctet <= 255) return true;
 
   // IPv6 private / link-local (fc00::/7 = fc** and fd**, fe80::/10)
   if (h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80")) return true;
@@ -111,12 +124,14 @@ function preValidateUrl(urlStr: string): { valid: false } | { valid: true; hostn
  * Returns `true` if safe to proceed, `false` if the resolved IP is blocked
  * or the lookup fails.
  */
-async function resolveAndValidateHostname(hostname: string): Promise<boolean> {
+async function resolveAndValidateHostname(
+  hostname: string,
+): Promise<{ safe: true; address: string } | { safe: false }> {
   // Already an IP literal — pre-validated by preValidateUrl, skip DNS.
   const isIpv4Literal = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname);
   const isIpv6Literal = hostname.includes(":");
   if (isIpv4Literal || isIpv6Literal) {
-    return true;
+    return { safe: true, address: hostname };
   }
 
   try {
@@ -126,15 +141,15 @@ async function resolveAndValidateHostname(hostname: string): Promise<boolean> {
         hostname,
         resolvedIp: address,
       });
-      return false;
+      return { safe: false };
     }
-    return true;
+    return { safe: true, address };
   } catch (err) {
     logger.warn("Blocked OG fetch: DNS lookup failed", {
       hostname,
       error: err instanceof Error ? err.message : String(err),
     });
-    return false;
+    return { safe: false };
   }
 }
 
@@ -173,15 +188,25 @@ export async function fetchOgMetadata(url: string): Promise<OgMetadata> {
   }
 
   // Step 2: DNS resolution + post-resolution IP blocklist check (anti-rebinding)
-  const dnsOk = await resolveAndValidateHostname(preCheck.hostname);
-  if (!dnsOk) {
+  const dnsResult = await resolveAndValidateHostname(preCheck.hostname);
+  if (!dnsResult.safe) {
     // Warning already emitted inside resolveAndValidateHostname
     return {};
   }
 
   try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "discord-ops/1.0 (OG metadata fetcher)" },
+    // Pin to the validated IP to prevent DNS rebinding (TOCTOU).
+    // Replace the hostname in the URL with the resolved IP and pass the
+    // original hostname via the Host header so TLS and virtual-hosting work.
+    const pinnedUrl = new URL(url);
+    const isIpv6 = dnsResult.address.includes(":");
+    pinnedUrl.hostname = isIpv6 ? `[${dnsResult.address}]` : dnsResult.address;
+
+    const response = await fetch(pinnedUrl.toString(), {
+      headers: {
+        "User-Agent": "discord-ops/1.0 (OG metadata fetcher)",
+        Host: preCheck.hostname,
+      },
       signal: AbortSignal.timeout(5000),
       redirect: "manual",
     });

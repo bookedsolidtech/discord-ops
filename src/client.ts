@@ -6,10 +6,17 @@ import {
   type TextChannel,
   type ThreadChannel,
 } from "discord.js";
+import { createHash } from "node:crypto";
 import { logger } from "./utils/logger.js";
 import { validateTokenFormat } from "./security/token-validator.js";
 import { TTLCache } from "./utils/cache.js";
 import { fuzzyFind } from "./routing/fuzzy.js";
+
+/** Hash a token to a short key for cache lookups — avoids storing raw tokens in Map keys. */
+function tokenKey(token?: string): string {
+  if (!token) return "default";
+  return createHash("sha256").update(token).digest("hex").slice(0, 16);
+}
 
 /**
  * Single Discord bot connection — lazy login on first use.
@@ -106,7 +113,8 @@ export class DiscordClient {
         "No Discord token available. Set DISCORD_TOKEN, DISCORD_OPS_TOKEN_ENV, or use per-project token_env.",
       );
     }
-    let conn = this.connections.get(t);
+    const key = tokenKey(t);
+    let conn = this.connections.get(key);
     if (!conn) {
       if (t !== this.defaultToken) {
         const validation = validateTokenFormat(t);
@@ -115,7 +123,7 @@ export class DiscordClient {
         }
       }
       conn = new BotConnection(t);
-      this.connections.set(t, conn);
+      this.connections.set(key, conn);
     }
     return conn;
   }
@@ -129,7 +137,7 @@ export class DiscordClient {
   }
 
   async getGuild(guildId: string, token?: string): Promise<Guild> {
-    const cacheKey = `${token ?? "default"}:${guildId}`;
+    const cacheKey = `${tokenKey(token)}:${guildId}`;
     const cached = this.guildCache.get(cacheKey);
     if (cached) return cached;
 
@@ -140,7 +148,7 @@ export class DiscordClient {
   }
 
   async getChannel(channelId: string, token?: string): Promise<TextChannel | ThreadChannel> {
-    const cacheKey = `${token ?? "default"}:${channelId}`;
+    const cacheKey = `${tokenKey(token)}:${channelId}`;
     const cached = this.channelCache.get(cacheKey);
     if (cached) return cached;
 
@@ -178,7 +186,7 @@ export class DiscordClient {
       : await this.resolveChannelName(channelIdOrName, token, guildId);
     const client = await this.getClient(token);
     const channel = await client.channels.fetch(resolvedId);
-    if (!channel || !("guild" in channel)) {
+    if (!channel || !("guild" in channel) || channel.guild === null) {
       throw new Error(`Channel "${channelIdOrName}" not found or not a guild channel`);
     }
     return channel as GuildChannel;

@@ -6,3 +6,4 @@ export { deleteChannel } from "./delete-channel.js";
 export { purgeMessages } from "./purge-messages.js";
 export { setSlowmode } from "./set-slowmode.js";
 export { setPermissions } from "./permissions.js";
+export { moveChannel } from "./move-channel.js";

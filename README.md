@@ -8,7 +8,7 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **46 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
+- **48 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
 - **Notification routing** — map notification types (`ci_build`, `deploy`, `error`) to channels per project
 - **Owner pings** — configure project owners so releases, errors, and alerts auto-mention the right people
@@ -279,7 +279,7 @@ Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich pr
 
 ## Tools
 
-### Messaging (11 tools)
+### Messaging (12 tools)
 
 | Tool              | Description                                                 |
 | ----------------- | ----------------------------------------------------------- |
@@ -294,8 +294,9 @@ Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich pr
 | `search_messages` | Search messages by content, author, or date range           |
 | `send_template`   | Send a styled embed using a built-in template               |
 | `list_templates`  | List available templates with required variables            |
+| `notify_owners`   | Ping project owners based on notification type              |
 
-### Channels (8 tools)
+### Channels (9 tools)
 
 | Tool              | Description                                                                   |
 | ----------------- | ----------------------------------------------------------------------------- |
@@ -306,6 +307,7 @@ Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich pr
 | `delete_channel`  | Delete a channel                                                              |
 | `purge_messages`  | Bulk-delete messages (max 100, < 14 days old)                                 |
 | `set_slowmode`    | Set or disable slowmode                                                       |
+| `move_channel`    | Move a channel to a different category or position                            |
 | `set_permissions` | Set channel permission overrides for a role or member                         |
 
 ### Moderation (4 tools)
@@ -376,12 +378,15 @@ Load only the tools an agent needs. Reduces schema token overhead by up to 85% f
 
 ### Built-in profiles
 
-| Profile      | Tools | Description                                                                                        |
-| ------------ | ----- | -------------------------------------------------------------------------------------------------- |
-| `monitoring` | 6     | health_check, list_guilds, get_guild, get_messages, list_channels, list_members                    |
-| `readonly`   | 6     | get_messages, get_channel, get_guild, get_member, list_roles, search_messages                      |
-| `moderation` | 7     | kick_member, ban_member, unban_member, timeout_member, purge_messages, get_member, query_audit_log |
-| `full`       | 46    | All tools (default)                                                                                |
+| Profile      | Tools | Description                                                                                     |
+| ------------ | ----- | ----------------------------------------------------------------------------------------------- |
+| `full`       | 48    | All tools (default)                                                                             |
+| `monitoring` | 6     | get_messages, send_message, add_reaction, create_thread, health_check, list_projects            |
+| `readonly`   | 6     | get_messages, list_channels, list_members, get_guild, health_check, list_projects               |
+| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log |
+| `messaging`  | 5     | add_reaction, delete_message, edit_message, get_messages, send_message                          |
+| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode |
+| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks       |
 
 ### Using profiles
 
@@ -762,6 +767,8 @@ Full `~/.discord-ops.json` schema with all options:
 | `tool_profile_add`     | Additional tools to load on top of the base profile               |
 | `tool_profile_remove`  | Tools to exclude from the base profile                            |
 | `notification_routing` | Per-project override of global notification → channel routing     |
+
+> **Note:** `tool_profile`, `tool_profile_add`, and `tool_profile_remove` in project config are not yet implemented in the config schema. Use CLI flags `--profile` and `--tools` instead.
 
 ## Multi-Organization Troubleshooting
 
