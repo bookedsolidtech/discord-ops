@@ -63,8 +63,30 @@ export const getMessages = defineTool({
       author: msg.author.tag,
       content: msg.content,
       timestamp: msg.createdAt.toISOString(),
-      attachments: msg.attachments.size,
-      embeds: msg.embeds.length,
+      attachments: [...msg.attachments.values()].map((a) => ({
+        id: a.id,
+        filename: a.name,
+        url: a.url,
+        size: a.size,
+        content_type: a.contentType ?? null,
+      })),
+      embeds: msg.embeds.map((e) => ({
+        title: e.title ?? null,
+        description: e.description ?? null,
+        url: e.url ?? null,
+        color: e.color ?? null,
+        fields:
+          e.fields?.map((f) => ({ name: f.name, value: f.value, inline: f.inline ?? false })) ?? [],
+        author: e.author
+          ? { name: e.author.name, url: e.author.url ?? null, icon_url: e.author.iconURL ?? null }
+          : null,
+        footer: e.footer
+          ? { text: e.footer.text, icon_url: e.footer.iconURL ?? null }
+          : null,
+        thumbnail: e.thumbnail ? { url: e.thumbnail.url } : null,
+        image: e.image ? { url: e.image.url } : null,
+        timestamp: e.timestamp ?? null,
+      })),
       reactions: [...(msg.reactions?.cache?.values?.() ?? [])].map((r: MessageReaction) => ({
         emoji: r.emoji.name,
         count: r.count,
