@@ -1,14 +1,15 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
 import { toolResult, toolResultJson } from "../types.js";
+import { snowflakeId } from "../schema.js";
 import { notificationType } from "../../config/schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { fetchOgMetadata, isPublicHttpUrl } from "../../utils/og-fetch.js";
 
 const inputSchema = z.object({
   url: z.string().url().describe("URL to unfurl as a rich embed"),
-  channel_id: z.string().optional().describe("Direct channel ID"),
-  guild_id: z.string().optional().describe("Direct guild ID"),
+  channel_id: snowflakeId.optional().describe("Direct channel ID"),
+  guild_id: snowflakeId.optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
   notification_type: notificationType.optional().describe("Notification type for auto-routing"),

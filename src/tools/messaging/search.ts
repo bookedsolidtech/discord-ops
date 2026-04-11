@@ -1,15 +1,16 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
 import { toolResultJson } from "../types.js";
+import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
 
 const inputSchema = z.object({
-  channel_id: z.string().optional().describe("Direct channel ID"),
-  guild_id: z.string().optional().describe("Direct guild ID"),
+  channel_id: snowflakeId.optional().describe("Direct channel ID"),
+  guild_id: snowflakeId.optional().describe("Direct guild ID"),
   project: z.string().optional().describe("Project name for routing"),
   channel: z.string().optional().describe("Channel alias within project"),
   query: z.string().min(1).describe("Text to search for (case-insensitive substring match)"),
-  author_id: z.string().optional().describe("Filter results to messages from this user ID"),
+  author_id: snowflakeId.optional().describe("Filter results to messages from this user ID"),
   limit: z
     .number()
     .min(1)

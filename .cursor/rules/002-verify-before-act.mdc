@@ -1,0 +1,28 @@
+---
+description: Requires Claude to read before writing, verify before installing, and confirm before destructive operations
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Verify Before Acting
+
+**Read before writing. Verify before installing. Confirm before deleting.**
+
+## Rules
+
+1. **Read before writing.** Before editing a file, read the current version. Never overwrite without knowing what's there. Never assume file contents from memory.
+
+2. **Verify package existence before installing.** Before running `npm install <pkg>`, `composer require <pkg>`, or any equivalent, confirm the package exists and its name is spelled correctly. Use the package registry, not your training data.
+
+3. **Confirm before destructive operations.** Before `git reset`, `git clean`, file deletion, or database drops — state what you're about to do and why. Wait for acknowledgement if there's any doubt.
+
+4. **Check current state before declaring it.** Before saying "the build passes" or "there are no TypeScript errors", run the check. Do not rely on previous results from earlier in the session.
+
+5. **Verify tool availability before use.** Before running a CLI tool (docker, act, composer, drush, etc.), check that it's installed. Don't assume availability.
+
+## When to apply
+
+- Before any write or edit operation
+- Before any `install`, `add`, `require`, or `update` command
+- Before any destructive git operation
+- Before any claim about current system state
