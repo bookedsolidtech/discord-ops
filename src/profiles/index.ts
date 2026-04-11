@@ -25,6 +25,7 @@ export const PROFILES: Record<ProfileName, string[] | "all"> = {
     "create_thread",
     "health_check",
     "list_projects",
+    "list_bots",
   ],
   readonly: [
     "get_messages",
@@ -33,6 +34,7 @@ export const PROFILES: Record<ProfileName, string[] | "all"> = {
     "get_guild",
     "health_check",
     "list_projects",
+    "list_bots",
   ],
   moderation: [
     "get_messages",

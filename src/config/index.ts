@@ -7,6 +7,7 @@ import {
   PerProjectConfigSchema,
   type GlobalConfig,
   type PerProjectConfig,
+  type BotPersona,
 } from "./schema.js";
 
 export interface LoadedConfig {
@@ -16,12 +17,100 @@ export interface LoadedConfig {
 }
 
 /**
+ * Resolves the token for a named bot from the bots config section.
+ */
+export function getTokenForBot(botName: string, config: LoadedConfig): string {
+  const bot = config.global.bots?.[botName];
+  if (!bot) {
+    throw new Error(`Bot "${botName}" not found in bots config`);
+  }
+  const token = process.env[bot.token_env];
+  if (!token) {
+    throw new Error(`Bot "${botName}": token_env "${bot.token_env}" is not set in environment`);
+  }
+  return token;
+}
+
+/**
+ * Resolves the token for a specific channel within a project.
+ * Checks channel-level bot override first, then falls back to project-level.
+ */
+export function getTokenForChannel(
+  projectName: string,
+  channelAlias: string,
+  config: LoadedConfig,
+): string {
+  const project = config.global.projects[projectName];
+  if (!project) {
+    throw new Error(`Project "${projectName}" not found in config`);
+  }
+
+  // Check channel-level bot override
+  const channelConfig = project.channels[channelAlias];
+  if (channelConfig && typeof channelConfig === "object" && channelConfig.bot) {
+    return getTokenForBot(channelConfig.bot, config);
+  }
+
+  // Fall back to project-level resolution
+  return getTokenForProject(projectName, config);
+}
+
+/**
+ * Returns bot persona metadata for agent context.
+ * Checks channel-level bot override first, then project-level bot.
+ */
+export function getBotPersona(
+  projectName: string,
+  channelAlias?: string,
+  config?: LoadedConfig,
+): (BotPersona & { key: string }) | undefined {
+  if (!config) return undefined;
+
+  const project = config.global.projects[projectName];
+  if (!project) return undefined;
+
+  const bots = config.global.bots;
+  if (!bots) return undefined;
+
+  // Check channel-level bot override
+  if (channelAlias) {
+    const channelConfig = project.channels[channelAlias];
+    if (channelConfig && typeof channelConfig === "object" && channelConfig.bot) {
+      const bot = bots[channelConfig.bot];
+      if (bot) return { ...bot, key: channelConfig.bot };
+    }
+  }
+
+  // Check project-level bot
+  if (project.bot) {
+    const bot = bots[project.bot];
+    if (bot) return { ...bot, key: project.bot };
+  }
+
+  return undefined;
+}
+
+/**
  * Resolves the token for a given project.
- * If the project has `token_env`, reads that env var.
- * Otherwise falls back to the default DISCORD_TOKEN.
+ *
+ * Token resolution priority:
+ *  1. Project-level bot (project.bot → bots[name].token_env)
+ *  2. Project-level token_env (existing behavior)
+ *  3. Default DISCORD_TOKEN (existing behavior)
  */
 export function getTokenForProject(projectName: string, config: LoadedConfig): string {
   const project = config.global.projects[projectName];
+
+  // Check project-level bot reference first
+  if (project?.bot && config.global.bots?.[project.bot]) {
+    const bot = config.global.bots[project.bot];
+    const token = process.env[bot.token_env];
+    if (token) return token;
+    logger.warn(
+      `Bot "${project.bot}" token_env "${bot.token_env}" for project "${projectName}" is not set, falling back`,
+    );
+  }
+
   if (project?.token_env) {
     const token = process.env[project.token_env];
     if (token) return token;
@@ -60,7 +149,7 @@ export function loadConfig(): LoadedConfig {
   const global = loadGlobalConfig();
   const perProject = loadPerProjectConfig();
 
-  // Option B: if no default token, validate that all projects have their own token_env
+  // Option B: if no default token, validate that all projects have their own token_env or bot reference
   if (!defaultToken) {
     const projectEntries = Object.entries(global.projects);
 
@@ -71,7 +160,15 @@ export function loadConfig(): LoadedConfig {
     }
 
     const missing = projectEntries
-      .filter(([, p]) => !p.token_env || !process.env[p.token_env])
+      .filter(([, p]) => {
+        // Project has a bot reference — check if the bot's token_env is set
+        if (p.bot && global.bots?.[p.bot]) {
+          const bot = global.bots[p.bot];
+          return !process.env[bot.token_env];
+        }
+        // Fallback to direct token_env check
+        return !p.token_env || !process.env[p.token_env];
+      })
       .map(([name]) => name);
 
     if (missing.length > 0) {
@@ -146,4 +243,4 @@ function loadPerProjectConfig(): PerProjectConfig | undefined {
   }
 }
 
-export { type GlobalConfig, type PerProjectConfig } from "./schema.js";
+export { type GlobalConfig, type PerProjectConfig, type BotPersona } from "./schema.js";

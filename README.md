@@ -8,10 +8,11 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **48 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
+- **49 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
 - **Notification routing** — map notification types (`ci_build`, `deploy`, `error`) to channels per project
 - **Owner pings** — configure project owners so releases, errors, and alerts auto-mention the right people
+- **Bot personas** — named bots with identity metadata, per-channel bot assignment, and per-bot tool profiles
 - **Multi-bot support** — manage multiple Discord bots from a single MCP server with per-project tokens
 - **Tool profiles** — load only the tools an agent needs; cut schema overhead by 85% with slim profiles
 - **Smart channel resolution** — channel params accept channel name or snowflake ID, with 4-layer fuzzy fallback
@@ -182,6 +183,56 @@ Projects can specify their own bot token via `token_env`:
 ```
 
 When all projects have `token_env`, the default `DISCORD_TOKEN` is optional. Each project connects with its own bot.
+
+### Bot personas
+
+Give bots names, roles, and per-channel assignment. This is ideal when your Discord server runs multiple bots with distinct personas (e.g., a community helper vs. a tech ops bot).
+
+```json
+{
+  "bots": {
+    "claire": {
+      "name": "Claire",
+      "role": "Community helper",
+      "description": "Handles support and community channels",
+      "token_env": "CLAIRE_TOKEN",
+      "default_profile": "messaging"
+    },
+    "courier": {
+      "name": "Clarity Courier",
+      "role": "Technical operations",
+      "token_env": "COURIER_TOKEN",
+      "default_profile": "full"
+    }
+  },
+  "projects": {
+    "clarity-house": {
+      "guild_id": "123456789012345678",
+      "bot": "courier",
+      "channels": {
+        "general": "111111111111111111",
+        "support": { "id": "222222222222222222", "bot": "claire" },
+        "dev-ops": "333333333333333333",
+        "ai-testing": { "id": "444444444444444444", "bot": "claire" }
+      },
+      "default_channel": "dev-ops",
+      "tool_profile": "full"
+    }
+  }
+}
+```
+
+**How it works:**
+
+- **`bots`** — named bot definitions with identity metadata and `token_env`
+- **`project.bot`** — default bot for the project (all channels use this bot unless overridden)
+- **Channel `bot` override** — individual channels can use a different bot: `{ "id": "...", "bot": "claire" }`
+- **`default_profile`** — per-bot tool profile (restricts which tools a bot can use at runtime)
+- **Token resolution** — channel bot → project bot → project `token_env` → default `DISCORD_TOKEN`
+- **Bot persona in routing** — resolved targets include `bot: { name, role }` metadata for agent context
+- **Backwards compatible** — `bots` is optional; channels accept both `"ID"` and `{ "id": "ID", "bot": "name" }` formats
+
+Use `list_bots` to see all configured bots, their project assignments, channel overrides, and connection status.
 
 ### Owner pings
 
@@ -365,12 +416,13 @@ Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich pr
 | `list_threads`   | List active threads                    |
 | `archive_thread` | Archive (and optionally lock) a thread |
 
-### System (2 tools)
+### System (3 tools)
 
-| Tool            | Description                                                         |
-| --------------- | ------------------------------------------------------------------- |
-| `health_check`  | Bot status, version, connected guilds, and permission audit         |
-| `list_projects` | List all projects with guild mappings, token status, and validation |
+| Tool            | Description                                                          |
+| --------------- | -------------------------------------------------------------------- |
+| `health_check`  | Bot status, version, connected guilds, and permission audit          |
+| `list_projects` | List all projects with guild mappings, token status, and validation  |
+| `list_bots`     | List all bot personas with project assignments and channel overrides |
 
 ## Tool Profiles
 
@@ -380,9 +432,9 @@ Load only the tools an agent needs. Reduces schema token overhead by up to 85% f
 
 | Profile      | Tools | Description                                                                                            |
 | ------------ | ----- | ------------------------------------------------------------------------------------------------------ |
-| `full`       | 48    | All tools (default)                                                                                    |
-| `monitoring` | 6     | get_messages, send_message, add_reaction, create_thread, health_check, list_projects                   |
-| `readonly`   | 6     | get_messages, list_channels, list_members, get_guild, health_check, list_projects                      |
+| `full`       | 49    | All tools (default)                                                                                    |
+| `monitoring` | 7     | get_messages, send_message, add_reaction, create_thread, health_check, list_projects, list_bots        |
+| `readonly`   | 7     | get_messages, list_channels, list_members, get_guild, health_check, list_projects, list_bots           |
 | `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log |
 | `messaging`  | 5     | add_reaction, delete_message, edit_message, get_messages, send_message                                 |
 | `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode |
@@ -484,10 +536,12 @@ Any tool name accepted by the MCP server works here — `send_message`, `send_te
 
 ### Token resolution
 
-1. If `DISCORD_OPS_TOKEN_ENV` is set, its value names the env var holding the default token (e.g., `DISCORD_OPS_TOKEN_ENV=MY_BOT_TOKEN` reads `MY_BOT_TOKEN`).
-2. Otherwise, the default token comes from `DISCORD_TOKEN`.
-3. Per-project tokens override the default: if a project config has `"token_env": "ORG_A_TOKEN"`, that project's bot uses `ORG_A_TOKEN`.
-4. If all projects have `token_env` set with valid values, no default token is needed at all.
+1. **Channel-level bot** — if the channel has a `bot` override, use that bot's `token_env`
+2. **Project-level bot** — if the project has a `bot`, use that bot's `token_env`
+3. **Project-level `token_env`** — project's own token env var
+4. **Default token** — `DISCORD_TOKEN` (or custom via `DISCORD_OPS_TOKEN_ENV`)
+
+If `DISCORD_OPS_TOKEN_ENV` is set, its value names the env var holding the default token (e.g., `DISCORD_OPS_TOKEN_ENV=MY_BOT_TOKEN` reads `MY_BOT_TOKEN`). If all projects have `token_env` or `bot` set, no default token is needed.
 
 ## CI/CD Integration
 
@@ -720,22 +774,33 @@ Full `~/.discord-ops.json` schema with all options:
 
 ```json
 {
+  "bots": {
+    "my-bot": {
+      "name": "My Bot",
+      "role": "General purpose",
+      "description": "Handles all operations",
+      "token_env": "MY_BOT_TOKEN",
+      "default_profile": "full"
+    }
+  },
   "projects": {
     "my-app": {
       "guild_id": "123456789012345678",
       "token_env": "MY_APP_DISCORD_TOKEN",
+      "bot": "my-bot",
       "channels": {
         "dev": "CHANNEL_ID",
         "builds": "CHANNEL_ID",
         "releases": "CHANNEL_ID",
-        "alerts": "CHANNEL_ID"
+        "alerts": "CHANNEL_ID",
+        "support": { "id": "CHANNEL_ID", "bot": "my-bot" }
       },
       "default_channel": "dev",
       "owners": ["USER_SNOWFLAKE_ID"],
       "notify_owners_on": ["release", "error", "alert"],
       "tool_profile": "full",
-      "tool_profile_add": [],
-      "tool_profile_remove": [],
+      "profile_add": [],
+      "profile_remove": [],
       "notification_routing": {
         "ci_build": "builds",
         "deploy": "builds",
@@ -755,20 +820,31 @@ Full `~/.discord-ops.json` schema with all options:
 }
 ```
 
-| Field                  | Description                                                       |
-| ---------------------- | ----------------------------------------------------------------- |
-| `guild_id`             | Discord server (guild) snowflake ID                               |
-| `token_env`            | Env var name for this project's bot token                         |
-| `channels`             | Alias → channel ID map; `channel: "builds"` resolves here first   |
-| `default_channel`      | Channel used when no `channel` param is provided                  |
-| `owners`               | User snowflake IDs to mention on matching notification types      |
-| `notify_owners_on`     | Notification types that trigger owner pings (`"dev"` never pings) |
-| `tool_profile`         | Base tool profile for this project (`full`, `monitoring`, etc.)   |
-| `tool_profile_add`     | Additional tools to load on top of the base profile               |
-| `tool_profile_remove`  | Tools to exclude from the base profile                            |
-| `notification_routing` | Per-project override of global notification → channel routing     |
+**Global fields:**
 
-> **Note:** `tool_profile`, `tool_profile_add`, and `tool_profile_remove` in project config are not yet implemented in the config schema. Use CLI flags `--profile` and `--tools` instead.
+| Field                  | Description                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `bots`                 | Named bot personas with `name`, `role`, `description`, `token_env`, `default_profile` |
+| `default_project`      | Project used when no `project` param is provided                                      |
+| `notification_routing` | Global notification type → channel alias routing                                      |
+
+**Project fields:**
+
+| Field                  | Description                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `guild_id`             | Discord server (guild) snowflake ID                                                   |
+| `token_env`            | Env var name for this project's bot token                                             |
+| `bot`                  | Default bot persona for this project (references a key in `bots`)                     |
+| `channels`             | Alias → channel ID or `{ id, bot }` map; `channel: "builds"` resolves here first      |
+| `default_channel`      | Channel used when no `channel` param is provided                                      |
+| `owners`               | User snowflake IDs to mention on matching notification types                          |
+| `notify_owners_on`     | Notification types that trigger owner pings (`"dev"` never pings)                     |
+| `tool_profile`         | Base tool profile for this project (`full`, `monitoring`, etc.) — enforced at runtime |
+| `profile_add`          | Additional tools to load on top of the base profile                                   |
+| `profile_remove`       | Tools to exclude from the base profile                                                |
+| `notification_routing` | Per-project override of global notification → channel routing                         |
+
+Per-project profiles are enforced at runtime — all tools stay registered on the MCP server, but tool calls are filtered when the resolved project or bot has a profile set. This means agents can discover all tools via MCP schema, but per-project restrictions are applied on each call.
 
 ## Multi-Organization Troubleshooting
 
@@ -777,6 +853,9 @@ Full `~/.discord-ops.json` schema with all options:
 Run `discord-ops validate` to check your config without connecting to Discord. It detects:
 
 - Missing `token_env` values (env var not set)
+- Bot references (`project.bot`, channel `bot`) pointing to undefined bots
+- Invalid `default_profile` or `tool_profile` values
+- Missing bot `token_env` environment variables
 - Duplicate guild IDs across projects with different tokens
 - `default_channel` referencing a nonexistent alias
 - `default_project` pointing to a nonexistent project

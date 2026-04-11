@@ -1,8 +1,14 @@
-import { type LoadedConfig, getTokenForProject } from "../config/index.js";
+import {
+  type LoadedConfig,
+  getTokenForProject,
+  getTokenForBot,
+  getBotPersona,
+} from "../config/index.js";
 import { resolveProject, getDefaultProjectName, type ResolvedProject } from "../config/profiles.js";
 import type { NotificationType } from "../config/schema.js";
 import type { DiscordClient } from "../client.js";
 import { fuzzyFind } from "./fuzzy.js";
+import { logger } from "../utils/logger.js";
 
 export interface ResolvedTarget {
   guildId: string | undefined;
@@ -14,6 +20,8 @@ export interface ResolvedTarget {
    * The audit logger and error sanitizer strip tokens automatically.
    */
   token?: string;
+  /** Bot persona metadata (name, role) for agent context. Never includes token. */
+  bot?: { name: string; role?: string };
 }
 
 export interface ResolveParams {
@@ -68,19 +76,37 @@ export async function resolveTarget(
     return { error: `Project "${projectName}" not found in config` };
   }
 
-  const token = getTokenForProject(projectName, config);
-
   // Resolve channel via config aliases or notification routing
-  const channelId = resolveChannel(params, project);
-  if (channelId) {
-    return { guildId: project.guildId, channelId, project: projectName, token };
+  const resolved = resolveChannelWithBot(params, project);
+  if (resolved) {
+    const token = resolveTokenForChannel(resolved.botName, projectName, config);
+    const botPersona = resolveBotPersona(resolved.botName, projectName, resolved.alias, config);
+    return {
+      guildId: project.guildId,
+      channelId: resolved.channelId,
+      project: projectName,
+      token,
+      ...(botPersona ? { bot: botPersona } : {}),
+    };
   }
 
   // Fallback: live Discord channel name lookup (fuzzy)
   if (params.channel && discord && project.guildId) {
-    const liveChannelId = await discord.findChannelByName(project.guildId, params.channel, token);
+    const defaultToken = resolveTokenForChannel(undefined, projectName, config);
+    const liveChannelId = await discord.findChannelByName(
+      project.guildId,
+      params.channel,
+      defaultToken,
+    );
     if (liveChannelId) {
-      return { guildId: project.guildId, channelId: liveChannelId, project: projectName, token };
+      const botPersona = resolveBotPersona(project.bot, projectName, undefined, config);
+      return {
+        guildId: project.guildId,
+        channelId: liveChannelId,
+        project: projectName,
+        token: defaultToken,
+        ...(botPersona ? { bot: botPersona } : {}),
+      };
     }
   }
 
@@ -89,11 +115,26 @@ export async function resolveTarget(
   };
 }
 
-function resolveChannel(params: ResolveParams, project: ResolvedProject): string | undefined {
+interface ResolvedChannel {
+  channelId: string;
+  alias?: string;
+  botName?: string;
+}
+
+function resolveChannelWithBot(
+  params: ResolveParams,
+  project: ResolvedProject,
+): ResolvedChannel | undefined {
   // Explicit channel alias — exact then fuzzy on configured alias keys
   if (params.channel) {
     const exact = project.channels[params.channel];
-    if (exact) return exact;
+    if (exact) {
+      return {
+        channelId: exact,
+        alias: params.channel,
+        botName: project.channelBots[params.channel] ?? project.bot,
+      };
+    }
 
     // Fuzzy match against configured alias keys
     const aliases = Object.keys(project.channels).map((k) => ({
@@ -101,7 +142,13 @@ function resolveChannel(params: ResolveParams, project: ResolvedProject): string
       name: k,
     }));
     const fuzzyMatch = fuzzyFind(aliases, params.channel);
-    if (fuzzyMatch) return fuzzyMatch.item.id;
+    if (fuzzyMatch) {
+      return {
+        channelId: fuzzyMatch.item.id,
+        alias: fuzzyMatch.item.name,
+        botName: project.channelBots[fuzzyMatch.item.name] ?? project.bot,
+      };
+    }
 
     return undefined;
   }
@@ -109,15 +156,65 @@ function resolveChannel(params: ResolveParams, project: ResolvedProject): string
   // Notification type → channel alias → channel ID
   if (params.notification_type && project.notificationRouting) {
     const channelAlias = project.notificationRouting[params.notification_type as NotificationType];
-    if (channelAlias) {
-      return project.channels[channelAlias];
+    if (channelAlias && project.channels[channelAlias]) {
+      return {
+        channelId: project.channels[channelAlias],
+        alias: channelAlias,
+        botName: project.channelBots[channelAlias] ?? project.bot,
+      };
     }
   }
 
   // Default channel
-  if (project.defaultChannel) {
-    return project.channels[project.defaultChannel];
+  if (project.defaultChannel && project.channels[project.defaultChannel]) {
+    return {
+      channelId: project.channels[project.defaultChannel],
+      alias: project.defaultChannel,
+      botName: project.channelBots[project.defaultChannel] ?? project.bot,
+    };
   }
 
+  return undefined;
+}
+
+/**
+ * Resolves the token for a channel, preferring bot-specific tokens.
+ */
+function resolveTokenForChannel(
+  botName: string | undefined,
+  projectName: string,
+  config: LoadedConfig,
+): string {
+  if (botName && config.global.bots?.[botName]) {
+    try {
+      return getTokenForBot(botName, config);
+    } catch (err) {
+      logger.warn(
+        `Bot "${botName}" token unavailable, falling back to project token for "${projectName}"`,
+        { error: err instanceof Error ? err.message : String(err) },
+      );
+    }
+  }
+  return getTokenForProject(projectName, config);
+}
+
+/**
+ * Builds a safe bot persona object (no token) for the resolved target.
+ */
+function resolveBotPersona(
+  botName: string | undefined,
+  projectName: string,
+  channelAlias: string | undefined,
+  config: LoadedConfig,
+): { name: string; role?: string } | undefined {
+  if (botName && config.global.bots?.[botName]) {
+    const bot = config.global.bots[botName];
+    return { name: bot.name, role: bot.role };
+  }
+  // Try getBotPersona for channel-level override resolution
+  const persona = getBotPersona(projectName, channelAlias, config);
+  if (persona) {
+    return { name: persona.name, role: persona.role };
+  }
   return undefined;
 }

@@ -69,11 +69,12 @@ describe("filterTools", () => {
       "list_members",
       "get_guild",
       "list_projects",
+      "list_bots",
     ];
     const allTools = makeTools(allNames);
 
     const result = filterTools(allTools, { profile: "readonly" });
-    // readonly profile: get_messages, list_channels, list_members, get_guild, health_check, list_projects
+    // readonly profile: get_messages, list_channels, list_members, get_guild, health_check, list_projects, list_bots
     expect(result.length).toBeGreaterThan(0);
     for (const t of result) {
       expect(allNames).toContain(t.name);
@@ -112,6 +113,7 @@ describe("filterTools", () => {
       "list_members",
       "get_guild",
       "list_projects",
+      "list_bots",
       "add_reaction",
       "create_thread",
       "kick_member",

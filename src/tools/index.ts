@@ -67,6 +67,7 @@ import { queryAuditLog } from "./audit/query-audit-log.js";
 // System
 import { healthCheck } from "./health-check.js";
 import { listProjects } from "./system/list-projects.js";
+import { listBots } from "./system/list-bots.js";
 
 export const allTools: ToolDefinition[] = [
   // Messaging
@@ -136,4 +137,5 @@ export const allTools: ToolDefinition[] = [
   // System
   healthCheck,
   listProjects,
+  listBots,
 ];

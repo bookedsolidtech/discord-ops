@@ -4,13 +4,27 @@ export interface ResolvedProject {
   name: string;
   guildId: string;
   channels: Record<string, string>;
+  channelBots: Record<string, string>;
   defaultChannel?: string;
   notificationRouting?: Record<string, string>;
+  bot?: string;
+  toolProfile?: string;
+  toolProfileAdd?: string[];
+  toolProfileRemove?: string[];
+}
+
+/**
+ * Normalizes a channel config value (string or object) to a plain channel ID.
+ */
+function normalizeChannelId(value: string | { id: string; bot?: string }): string {
+  return typeof value === "string" ? value : value.id;
 }
 
 /**
  * Resolves a project from global + per-project config.
  * Per-project notification_routing overrides global.
+ * Normalizes ChannelConfigSchema union values — extracts plain IDs into `channels`
+ * and collects bot overrides into `channelBots`.
  */
 export function resolveProject(
   projectName: string,
@@ -26,12 +40,28 @@ export function resolveProject(
     ...perProjectConfig?.notification_routing,
   };
 
+  // Normalize channels: extract plain IDs and collect bot overrides
+  const channels: Record<string, string> = {};
+  const channelBots: Record<string, string> = {};
+
+  for (const [alias, value] of Object.entries(project.channels)) {
+    channels[alias] = normalizeChannelId(value);
+    if (typeof value === "object" && value.bot) {
+      channelBots[alias] = value.bot;
+    }
+  }
+
   return {
     name: projectName,
     guildId: project.guild_id,
-    channels: project.channels,
+    channels,
+    channelBots,
     defaultChannel: project.default_channel,
     notificationRouting,
+    bot: project.bot,
+    toolProfile: project.tool_profile,
+    toolProfileAdd: project.profile_add,
+    toolProfileRemove: project.profile_remove,
   };
 }
 
