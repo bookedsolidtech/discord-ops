@@ -45,6 +45,7 @@ jobs:
 
       - name: Notify Discord on publish
         if: steps.changesets.outputs.published == 'true'
+        continue-on-error: true
         env:
           DISCORD_TOKEN: ${{ secrets.BOOKED_DISCORD_BOT_TOKEN }}
           DISCORD_OPS_CONFIG: ${{ secrets.DISCORD_OPS_CONFIG }}
@@ -89,7 +90,7 @@ jobs:
 
             const date = new Date().toISOString().slice(0, 10);
             const npmUrl = `https://www.npmjs.com/package/discord-ops/v/${version}`;
-            const releaseUrl = `https://github.com/${process.env.REPO}/releases`;
+            const releaseUrl = `https://github.com/${process.env.REPO}/releases/tag/v${version}`;
 
             const args = JSON.stringify({
               project: 'discord-ops',
