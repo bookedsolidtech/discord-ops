@@ -6,11 +6,11 @@ import { editMessage } from "../../src/tools/messaging/edit-message.js";
 import { deleteMessage } from "../../src/tools/messaging/delete-message.js";
 import { addReaction } from "../../src/tools/messaging/add-reaction.js";
 import { searchMessages } from "../../src/tools/messaging/search.js";
-import { sendEmbed } from "../../src/tools/messaging/send-embed.js";
 import {
   createMockDiscordClient,
   createMockConfig,
   createMockMessage,
+  createMockChannel,
 } from "../mocks/discord-client.js";
 import type { ToolContext } from "../../src/tools/types.js";
 
@@ -100,6 +100,135 @@ describe("get_messages", () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0]!.text);
     expect(data.channel_id).toBe("222222222222222222");
+    // embeds and attachments should be arrays, not counts
+    const msg = data.messages[0];
+    expect(Array.isArray(msg.embeds)).toBe(true);
+    expect(Array.isArray(msg.attachments)).toBe(true);
+  });
+
+  it("returns full embed content instead of just a count", async () => {
+    const mockEmbed = {
+      title: "Bot Response",
+      description: "Here is the embed body",
+      url: "https://example.com",
+      color: 0x5865f2,
+      fields: [
+        { name: "Field 1", value: "Value 1", inline: true },
+        { name: "Field 2", value: "Value 2" },
+      ],
+      author: {
+        name: "AuthorName",
+        url: "https://author.example.com",
+        iconURL: "https://author.example.com/icon.png",
+      },
+      footer: { text: "Footer text", iconURL: "https://footer.example.com/icon.png" },
+      thumbnail: { url: "https://example.com/thumb.png" },
+      image: { url: "https://example.com/image.png" },
+      timestamp: "2026-01-01T00:00:00.000Z",
+    };
+
+    const attachment = {
+      id: "900000000000000000",
+      name: "file.txt",
+      url: "https://cdn.discordapp.com/attachments/file.txt",
+      size: 1024,
+      contentType: "text/plain",
+    };
+    const attachmentsMap = new Map([["900000000000000000", attachment]]);
+
+    const msgWithEmbed = createMockMessage({
+      embeds: [mockEmbed],
+      attachments: attachmentsMap,
+    });
+
+    const mockChannel = createMockChannel({
+      messages: {
+        fetch: vi.fn().mockResolvedValue(new Map([["111111111111111111", msgWithEmbed]])),
+      },
+    });
+
+    const ctx = createCtx();
+    (ctx.discord.getChannel as any).mockResolvedValue(mockChannel);
+
+    const result = await getMessages.handle({ channel_id: "222222222222222222", limit: 10 }, ctx);
+    expect(result.isError).toBeUndefined();
+
+    const data = JSON.parse(result.content[0]!.text);
+    const msg = data.messages[0];
+
+    // Verify embed fields are fully mapped
+    expect(msg.embeds).toHaveLength(1);
+    const embed = msg.embeds[0];
+    expect(embed.title).toBe("Bot Response");
+    expect(embed.description).toBe("Here is the embed body");
+    expect(embed.url).toBe("https://example.com");
+    expect(embed.color).toBe(0x5865f2);
+    expect(embed.fields).toHaveLength(2);
+    expect(embed.fields[0]).toEqual({ name: "Field 1", value: "Value 1", inline: true });
+    expect(embed.fields[1]).toEqual({ name: "Field 2", value: "Value 2", inline: false });
+    expect(embed.author).toEqual({
+      name: "AuthorName",
+      url: "https://author.example.com",
+      icon_url: "https://author.example.com/icon.png",
+    });
+    expect(embed.footer).toEqual({
+      text: "Footer text",
+      icon_url: "https://footer.example.com/icon.png",
+    });
+    expect(embed.thumbnail).toEqual({ url: "https://example.com/thumb.png" });
+    expect(embed.image).toEqual({ url: "https://example.com/image.png" });
+    expect(embed.timestamp).toBe("2026-01-01T00:00:00.000Z");
+
+    // Verify attachment fields are fully mapped
+    expect(msg.attachments).toHaveLength(1);
+    const att = msg.attachments[0];
+    expect(att.id).toBe("900000000000000000");
+    expect(att.filename).toBe("file.txt");
+    expect(att.url).toBe("https://cdn.discordapp.com/attachments/file.txt");
+    expect(att.size).toBe(1024);
+    expect(att.content_type).toBe("text/plain");
+  });
+
+  it("handles embeds with missing optional fields gracefully", async () => {
+    const minimalEmbed = {
+      title: null,
+      description: "Just a description",
+      url: undefined,
+      color: null,
+      fields: undefined,
+      author: null,
+      footer: null,
+      thumbnail: null,
+      image: null,
+      timestamp: null,
+    };
+
+    const msgWithMinimalEmbed = createMockMessage({
+      embeds: [minimalEmbed],
+    });
+
+    const mockChannel = createMockChannel({
+      messages: {
+        fetch: vi.fn().mockResolvedValue(new Map([["111111111111111111", msgWithMinimalEmbed]])),
+      },
+    });
+
+    const ctx = createCtx();
+    (ctx.discord.getChannel as any).mockResolvedValue(mockChannel);
+
+    const result = await getMessages.handle({ channel_id: "222222222222222222", limit: 10 }, ctx);
+    const data = JSON.parse(result.content[0]!.text);
+    const embed = data.messages[0].embeds[0];
+
+    expect(embed.title).toBeNull();
+    expect(embed.description).toBe("Just a description");
+    expect(embed.url).toBeNull();
+    expect(embed.fields).toEqual([]);
+    expect(embed.author).toBeNull();
+    expect(embed.footer).toBeNull();
+    expect(embed.thumbnail).toBeNull();
+    expect(embed.image).toBeNull();
+    expect(embed.timestamp).toBeNull();
   });
 });
 

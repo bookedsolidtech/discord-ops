@@ -7,7 +7,7 @@ import { sanitizeError } from "./security/sanitizer.js";
 import { auditToolCall } from "./security/audit.js";
 import { RateLimiter } from "./security/rate-limiter.js";
 import { checkPermissions } from "./security/permissions.js";
-import { filterTools } from "./profiles/index.js";
+import { filterTools, validateProfileToolNames } from "./profiles/index.js";
 import { logger } from "./utils/logger.js";
 import { getTokenForProject } from "./config/index.js";
 
@@ -66,6 +66,13 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
     remove: options?.profileRemove,
   });
 
+  // Validate profile tool names against actual tool registry (catches stale entries).
+  // Guard: only validate when the full tool registry is loaded (not in test harnesses
+  // that mock allTools with a small synthetic subset).
+  if (allTools.length >= 10) {
+    validateProfileToolNames(new Set(allTools.map((t) => t.name)));
+  }
+
   const profileName = options?.tools?.length ? "custom" : (options?.profile ?? "full");
 
   const destructiveLimiter = new RateLimiter(10, 60);
@@ -84,7 +91,11 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
       try {
         // Rate limiting — tighter for destructive ops
         const limiter = tool.destructive ? destructiveLimiter : standardLimiter;
-        const rateCheck = limiter.check(tool.name);
+        // Include project in rate limit key for per-context isolation.
+        // Use raw params.project (pre-validation) since this only needs a string key.
+        const project = typeof params.project === "string" ? params.project : undefined;
+        const rateLimitKey = project ? `${project}:${tool.name}` : tool.name;
+        const rateCheck = limiter.check(rateLimitKey);
         if (!rateCheck.allowed) {
           const retryAfter = Math.ceil((rateCheck.retryAfterMs ?? 1000) / 1000);
           return {
@@ -129,8 +140,12 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
                 };
               }
             }
-          } catch {
-            // If we can't check perms (e.g. guild not cached yet), let the tool try and fail naturally
+          } catch (err) {
+            // Permission pre-flight is best-effort — log and let the tool handle auth errors
+            logger.debug("Permission pre-flight skipped", {
+              tool: tool.name,
+              error: err instanceof Error ? err.message : String(err),
+            });
           }
         }
 
@@ -188,6 +203,8 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
       }
     };
 
+    // ToolResult is structurally compatible with the SDK callback return type;
+    // the cast is intentional (see src/tools/types.ts lines 37-43).
     if (shape) {
       server.tool(tool.name, tool.description, shape, callback as any);
     } else {

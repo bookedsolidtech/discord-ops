@@ -5,3 +5,8 @@ export { deleteMessage } from "./delete-message.js";
 export { addReaction } from "./add-reaction.js";
 export { searchMessages } from "./search.js";
 export { sendEmbed } from "./send-embed.js";
+export { sendTemplate } from "./send-template.js";
+export { listTemplatesCmd } from "./list-templates.js";
+export { pinMessage } from "./pin.js";
+export { unpinMessage } from "./unpin.js";
+export { notifyOwners } from "./notify-owners.js";

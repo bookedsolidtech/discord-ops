@@ -59,33 +59,3 @@ export function fuzzyFind<T extends Named>(
 
   return undefined;
 }
-
-export function fuzzyFindAll<T extends Named>(
-  items: T[],
-  query: string,
-  threshold: number = 0.5,
-): FuzzyMatch<T>[] {
-  const results: FuzzyMatch<T>[] = [];
-  const normalizedQuery = normalize(query);
-
-  for (const item of items) {
-    const normalName = normalize(item.name);
-
-    if (item.id === query) {
-      results.push({ item, score: 1, matchType: "exact_id" });
-    } else if (item.name.toLowerCase() === query.toLowerCase()) {
-      results.push({ item, score: 1, matchType: "exact_name" });
-    } else if (normalName === normalizedQuery) {
-      results.push({ item, score: 0.9, matchType: "normalized" });
-    } else if (normalName.includes(normalizedQuery) || normalizedQuery.includes(normalName)) {
-      const shorter = Math.min(normalName.length, normalizedQuery.length);
-      const longer = Math.max(normalName.length, normalizedQuery.length);
-      const score = shorter / longer;
-      if (score >= threshold) {
-        results.push({ item, score, matchType: "substring" });
-      }
-    }
-  }
-
-  return results.sort((a, b) => b.score - a.score);
-}

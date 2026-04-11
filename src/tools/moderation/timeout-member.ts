@@ -22,6 +22,7 @@ export const timeoutMember = defineTool({
   category: "moderation",
   inputSchema,
   permissions: ["ModerateMembers"],
+  destructive: true,
   requiresGuild: true,
   handle: async (input, ctx) => {
     const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;

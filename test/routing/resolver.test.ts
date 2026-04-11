@@ -15,9 +15,10 @@ describe("resolveTarget", () => {
   it("resolves direct channel_id", async () => {
     const result = await resolveTarget({ channel_id: "999999999999999999" }, config);
     expect(result).toEqual({
-      guildId: "",
+      guildId: undefined,
       channelId: "999999999999999999",
       project: undefined,
+      token: undefined,
     });
   });
 

@@ -5,9 +5,14 @@ import type { DiscordClient } from "../client.js";
 import { fuzzyFind } from "./fuzzy.js";
 
 export interface ResolvedTarget {
-  guildId: string;
+  guildId: string | undefined;
   channelId: string;
   project?: string;
+  /**
+   * Bot token for multi-bot routing. SECURITY: This is the raw token, required
+   * for Discord API calls. Never serialize, log, or include in tool results.
+   * The audit logger and error sanitizer strip tokens automatically.
+   */
   token?: string;
 }
 
@@ -44,7 +49,7 @@ export async function resolveTarget(
   if (params.channel_id) {
     const token = params.project ? getTokenForProject(params.project, config) : undefined;
     return {
-      guildId: params.guild_id ?? "",
+      guildId: params.guild_id ?? undefined,
       channelId: params.channel_id,
       project: params.project,
       token,

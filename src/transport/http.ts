@@ -53,8 +53,10 @@ const PRIVATE_IP_RE =
  * Returns the best available client IP address for rate limiting.
  *
  * When trustProxy is false (default): uses req.socket.remoteAddress.
- * When trustProxy is true: reads X-Forwarded-For and returns the leftmost
- * non-private IP. Falls back to remoteAddress if no public IP is found.
+ * When trustProxy is true: reads X-Forwarded-For right-to-left — the rightmost
+ * entry is set by the closest trusted proxy. Walking backwards finds the first
+ * non-private IP (the real client), preventing attackers from prepending a fake
+ * public IP to bypass rate limits.
  */
 export function getClientIp(req: IncomingMessage, trustProxy: boolean): string {
   const remote = req.socket.remoteAddress ?? "unknown";
@@ -66,7 +68,10 @@ export function getClientIp(req: IncomingMessage, trustProxy: boolean): string {
   const raw = Array.isArray(header) ? header[0] : header;
   const candidates = raw.split(",").map((s) => s.trim());
 
-  for (const candidate of candidates) {
+  // Parse right-to-left: the rightmost entry is set by the closest trusted proxy.
+  // Walk backwards until we find the first non-private IP (the real client).
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    const candidate = candidates[i];
     if (candidate && !PRIVATE_IP_RE.test(candidate)) {
       return candidate;
     }
@@ -110,11 +115,22 @@ interface IpBucket {
 
 const IP_WINDOW_MS = 60_000;
 const IP_MAX_REQUESTS = 120; // generous enough for legitimate use (~2 req/s)
+const IP_MAX_TRACKED = 10_000; // Hard cap on tracked IPs
 
 function checkIpRateLimit(ipCounters: Map<string, IpBucket>, ip: string): { allowed: boolean } {
   const now = Date.now();
   const bucket = ipCounters.get(ip);
   if (!bucket || now > bucket.resetAt) {
+    // If at capacity, do a synchronous prune before adding
+    if (!bucket && ipCounters.size >= IP_MAX_TRACKED) {
+      for (const [key, b] of ipCounters) {
+        if (now > b.resetAt) ipCounters.delete(key);
+      }
+      // If still at capacity after prune, reject (defense against IP flooding)
+      if (ipCounters.size >= IP_MAX_TRACKED) {
+        return { allowed: false };
+      }
+    }
     ipCounters.set(ip, { count: 1, resetAt: now + IP_WINDOW_MS });
     return { allowed: true };
   }

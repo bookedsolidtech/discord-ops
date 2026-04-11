@@ -24,6 +24,11 @@ export class RateLimiter {
     // Prune expired timestamps
     entry.timestamps = entry.timestamps.filter((ts) => now - ts < this.windowMs);
 
+    // Remove empty buckets to prevent unbounded map growth
+    if (entry.timestamps.length === 0 && this.buckets.has(bucket)) {
+      this.buckets.delete(bucket);
+    }
+
     if (entry.timestamps.length >= this.maxRequests) {
       const oldestInWindow = entry.timestamps[0]!;
       const retryAfterMs = this.windowMs - (now - oldestInWindow);
