@@ -1,0 +1,36 @@
+---
+description: Prohibits AI attribution strings in commits, PR bodies, code comments, and client-facing content
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# No AI Attribution in Client-Facing Content
+
+**Do not expose AI tooling in client git history, PR descriptions, or code comments.**
+
+## What to remove
+
+Remove these patterns from all commits, PR bodies, commit messages, and code:
+
+- `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>`
+- `Co-Authored-By: Claude ...` (any variant)
+- `Generated with Claude Code`
+- `🤖 Generated with [Claude Code](https://claude.com/claude-code)`
+- `claude.ai` references in commit messages or PR descriptions
+- AI assistant footers in PR templates
+
+## Enforcement
+
+- **commit-msg hook** strips attribution automatically from every commit message
+- This rule governs PR bodies and code comments, which the hook does not cover
+- Before running `gh pr create`, review the body — remove attribution strings manually
+
+## What's allowed
+
+- Internal tooling notes in `.claude/` config files (gitignored)
+- Documentation about the AI workflow in team-facing docs (e.g., `CONTRIBUTING.md`) when explicitly approved
+- Attribution in commits to internal/private BST repos where it's expected
+
+## Why
+
+Client projects are delivered work product. AI tooling attribution in git history creates unnecessary disclosure, may violate NDA scope, and makes commits less professional. The work speaks for itself.
