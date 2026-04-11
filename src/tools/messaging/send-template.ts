@@ -102,7 +102,9 @@ export const sendTemplate = defineTool({
       const val = input.vars[key];
       if (typeof val === "string" && val.startsWith("http") && !isPublicHttpUrl(val)) {
         return {
-          content: [{ type: "text", text: `Blocked: "${key}" URL points to a private/reserved address` }],
+          content: [
+            { type: "text", text: `Blocked: "${key}" URL points to a private/reserved address` },
+          ],
           isError: true,
         };
       }

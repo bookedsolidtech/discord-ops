@@ -72,9 +72,7 @@ export function validateProfileToolNames(allToolNames: Set<string>): void {
     if (tools === "all") continue;
     const unknown = tools.filter((name) => !allToolNames.has(name));
     if (unknown.length > 0) {
-      throw new Error(
-        `Profile "${profileName}" references unknown tools: ${unknown.join(", ")}`,
-      );
+      throw new Error(`Profile "${profileName}" references unknown tools: ${unknown.join(", ")}`);
     }
   }
 }

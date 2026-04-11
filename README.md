@@ -378,15 +378,15 @@ Load only the tools an agent needs. Reduces schema token overhead by up to 85% f
 
 ### Built-in profiles
 
-| Profile      | Tools | Description                                                                                     |
-| ------------ | ----- | ----------------------------------------------------------------------------------------------- |
-| `full`       | 48    | All tools (default)                                                                             |
-| `monitoring` | 6     | get_messages, send_message, add_reaction, create_thread, health_check, list_projects            |
-| `readonly`   | 6     | get_messages, list_channels, list_members, get_guild, health_check, list_projects               |
+| Profile      | Tools | Description                                                                                            |
+| ------------ | ----- | ------------------------------------------------------------------------------------------------------ |
+| `full`       | 48    | All tools (default)                                                                                    |
+| `monitoring` | 6     | get_messages, send_message, add_reaction, create_thread, health_check, list_projects                   |
+| `readonly`   | 6     | get_messages, list_channels, list_members, get_guild, health_check, list_projects                      |
 | `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log |
-| `messaging`  | 5     | add_reaction, delete_message, edit_message, get_messages, send_message                          |
+| `messaging`  | 5     | add_reaction, delete_message, edit_message, get_messages, send_message                                 |
 | `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode |
-| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks       |
+| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks              |
 
 ### Using profiles
 

@@ -116,7 +116,11 @@ describe("get_messages", () => {
         { name: "Field 1", value: "Value 1", inline: true },
         { name: "Field 2", value: "Value 2" },
       ],
-      author: { name: "AuthorName", url: "https://author.example.com", iconURL: "https://author.example.com/icon.png" },
+      author: {
+        name: "AuthorName",
+        url: "https://author.example.com",
+        iconURL: "https://author.example.com/icon.png",
+      },
       footer: { text: "Footer text", iconURL: "https://footer.example.com/icon.png" },
       thumbnail: { url: "https://example.com/thumb.png" },
       image: { url: "https://example.com/image.png" },

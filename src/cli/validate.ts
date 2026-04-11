@@ -27,10 +27,7 @@ export async function runValidate(): Promise<void> {
       console.warn("  Warning: No default token configured (DISCORD_TOKEN not set)");
     }
   } catch (err) {
-    console.error(
-      "Configuration invalid:",
-      err instanceof Error ? err.message : String(err),
-    );
+    console.error("Configuration invalid:", err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
 }

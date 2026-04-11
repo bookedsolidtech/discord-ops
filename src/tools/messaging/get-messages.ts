@@ -80,9 +80,7 @@ export const getMessages = defineTool({
         author: e.author
           ? { name: e.author.name, url: e.author.url ?? null, icon_url: e.author.iconURL ?? null }
           : null,
-        footer: e.footer
-          ? { text: e.footer.text, icon_url: e.footer.iconURL ?? null }
-          : null,
+        footer: e.footer ? { text: e.footer.text, icon_url: e.footer.iconURL ?? null } : null,
         thumbnail: e.thumbnail ? { url: e.thumbnail.url } : null,
         image: e.image ? { url: e.image.url } : null,
         timestamp: e.timestamp ?? null,
