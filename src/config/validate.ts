@@ -36,14 +36,27 @@ export function validateConfig(config: LoadedConfig): ConfigValidationResult {
   const channelToProjects = new Map<string, string[]>();
 
   for (const [name, project] of projectEntries) {
-    // Track token state
+    // Track token state — check bot-level token first, then project-level, then default
     const tokenEnv = project.token_env;
-    const tokenSet = tokenEnv ? !!process.env[tokenEnv] : !!config.defaultToken;
+    let tokenSet: boolean;
+    if (project.bot && config.global.bots?.[project.bot]) {
+      tokenSet = !!process.env[config.global.bots[project.bot].token_env];
+    } else if (tokenEnv) {
+      tokenSet = !!process.env[tokenEnv];
+    } else {
+      tokenSet = !!config.defaultToken;
+    }
+
+    // Normalize channels to plain ID strings for validation output
+    const normalizedChannels: Record<string, string> = {};
+    for (const [alias, value] of Object.entries(project.channels)) {
+      normalizedChannels[alias] = typeof value === "string" ? value : value.id;
+    }
 
     projects.push({
       name,
       guildId: project.guild_id,
-      channels: project.channels,
+      channels: normalizedChannels,
       defaultChannel: project.default_channel,
       tokenEnv,
       tokenSet,
@@ -51,7 +64,10 @@ export function validateConfig(config: LoadedConfig): ConfigValidationResult {
 
     // Check token availability
     if (!tokenSet) {
-      if (tokenEnv) {
+      if (project.bot && config.global.bots?.[project.bot]) {
+        const bot = config.global.bots[project.bot];
+        errors.push(`Project "${name}": bot "${project.bot}" token_env "${bot.token_env}" is not set in environment`);
+      } else if (tokenEnv) {
         errors.push(`Project "${name}": token_env "${tokenEnv}" is not set in environment`);
       } else {
         errors.push(`Project "${name}": no token_env configured and no default token available`);
@@ -63,8 +79,9 @@ export function validateConfig(config: LoadedConfig): ConfigValidationResult {
     guildProjects.push(name);
     guildToProjects.set(project.guild_id, guildProjects);
 
-    // Track channel ID usage
-    for (const [alias, channelId] of Object.entries(project.channels)) {
+    // Track channel ID usage (channels can be plain strings or objects with id/bot)
+    for (const [alias, channelValue] of Object.entries(project.channels)) {
+      const channelId = typeof channelValue === "string" ? channelValue : channelValue.id;
       const channelProjects = channelToProjects.get(channelId) ?? [];
       channelProjects.push(`${name}/${alias}`);
       channelToProjects.set(channelId, channelProjects);
