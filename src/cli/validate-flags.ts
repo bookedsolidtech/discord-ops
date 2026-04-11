@@ -4,6 +4,11 @@ export const KNOWN_FLAGS = new Set([
   "--version",
   "--port",
   "--allowed-origin",
+  "--allow-unauthenticated",
+  "--profile",
+  "--tools",
+  "--dry-run",
+  "--args",
   // init subcommand flags
   "--project",
   "--guild-id",
