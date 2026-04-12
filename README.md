@@ -202,7 +202,9 @@ Give bots names, roles, and per-channel assignment. This is ideal when your Disc
       "name": "Clarity Courier",
       "role": "Technical operations",
       "token_env": "COURIER_TOKEN",
-      "default_profile": "full"
+      "default_profile": "full",
+      "profile_add": ["send_template"],
+      "profile_remove": []
     }
   },
   "projects": {
@@ -228,6 +230,8 @@ Give bots names, roles, and per-channel assignment. This is ideal when your Disc
 - **`project.bot`** — default bot for the project (all channels use this bot unless overridden)
 - **Channel `bot` override** — individual channels can use a different bot: `{ "id": "...", "bot": "claire" }`
 - **`default_profile`** — per-bot tool profile (restricts which tools a bot can use at runtime)
+- **`profile_add`** — additional tools to load on top of the bot's `default_profile`
+- **`profile_remove`** — tools to exclude from the bot's `default_profile`
 - **Token resolution** — channel bot → project bot → project `token_env` → default `DISCORD_TOKEN`
 - **Bot persona in routing** — resolved targets include `bot: { name, role }` metadata for agent context
 - **Backwards compatible** — `bots` is optional; channels accept both `"ID"` and `{ "id": "ID", "bot": "name" }` formats
@@ -316,10 +320,10 @@ send_message({ project: "my-app", channel: "dev", content: "pong", raw: true })
 
 ```
 send_embed({
-  url: "https://www.npmjs.com/package/discord-ops/v/0.14.0",
+  url: "https://www.npmjs.com/package/discord-ops/v/0.23.0",
   project: "my-app",
   channel: "releases",
-  title: "discord-ops v0.14.0",
+  title: "discord-ops v0.23.0",
   description: "Owner pings, smart channel resolution, category editing",
   color: 5763719,
   footer: "Released April 3, 2026"
@@ -464,16 +468,16 @@ Profiles can be set per project in `~/.discord-ops.json` so each agent gets only
       "guild_id": "123456789012345678",
       "channels": { "dev": "CHANNEL_ID", "alerts": "CHANNEL_ID" },
       "tool_profile": "monitoring",
-      "tool_profile_add": ["send_message"],
-      "tool_profile_remove": ["list_members"]
+      "profile_add": ["send_message"],
+      "profile_remove": ["list_members"]
     }
   }
 }
 ```
 
 - **`tool_profile`** — base profile to use for this project
-- **`tool_profile_add`** — add tools not included in the base profile
-- **`tool_profile_remove`** — remove tools from the base profile
+- **`profile_add`** — add tools not included in the base profile
+- **`profile_remove`** — remove tools from the base profile
 
 ## CLI
 
@@ -481,6 +485,7 @@ Profiles can be set per project in `~/.discord-ops.json` so each agent gets only
 discord-ops                        Start MCP server (stdio transport)
 discord-ops serve                  Start MCP server (HTTP/SSE transport)
 discord-ops run <tool> --args '{…}' Run any tool directly (no AI/MCP required)
+discord-ops init                   Scaffold a per-project .discord-ops.json
 discord-ops setup                  Interactive setup wizard (single + multi-bot)
 discord-ops health                 Run health check + permission audit
 discord-ops validate               Validate config without connecting to Discord
@@ -520,6 +525,44 @@ npx discord-ops@latest run send_template \
 ```
 
 Any tool name accepted by the MCP server works here — `send_message`, `send_template`, `send_embed`, `list_channels`, etc. The same input schema applies; validation errors are printed with field paths and exit code 1.
+
+### `init` — scaffold a per-project config
+
+The `init` subcommand creates a `.discord-ops.json` file in the current directory for per-project configuration.
+
+```bash
+discord-ops init --project my-app --guild-id 123456789012345678
+
+# With channels and custom token env var
+discord-ops init --project my-app --guild-id 123456789012345678 \
+  --token-env MY_APP_TOKEN \
+  --channel builds=987654321098765432 \
+  --channel releases=111222333444555666
+
+# Overwrite existing and mark as default project
+discord-ops init --project my-app --guild-id 123456789012345678 --force --default
+```
+
+**Flags:**
+
+| Flag                     | Required | Description                                          |
+| ------------------------ | -------- | ---------------------------------------------------- |
+| `--project <name>`       | Yes      | Project name                                         |
+| `--guild-id <snowflake>` | Yes      | Discord guild/server snowflake ID                    |
+| `--token-env <VAR>`      | No       | Env var for bot token (default: `DISCORD_TOKEN`)     |
+| `--channel <alias>=<id>` | No       | Channel alias mapping, repeatable                    |
+| `--force`                | No       | Overwrite existing `.discord-ops.json`               |
+| `--default`              | No       | Mark this project as `default_project` in the config |
+
+### `serve` flags
+
+The `serve` subcommand accepts additional flags for HTTP transport configuration:
+
+| Flag                        | Description                                                                  |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| `--port <port>`             | HTTP port (default: 3000)                                                    |
+| `--allowed-origin <origin>` | Allowed CORS origin (default: `http://localhost`)                            |
+| `--allow-unauthenticated`   | Start without requiring `DISCORD_OPS_HTTP_TOKEN` (insecure, shows a warning) |
 
 ## Environment Variables
 
@@ -701,11 +744,11 @@ In dry-run mode, destructive tools return a simulated success response showing w
 send_template({
   template: "release",
   vars: {
-    version: "v0.14.0",
+    version: "v0.23.0",
     name: "discord-ops",
     highlights: "• Owner pings\n• Smart channel resolution\n• Category channel editing",
-    npm: "npm install discord-ops@0.14.0",
-    npm_url: "https://www.npmjs.com/package/discord-ops/v/0.14.0",
+    npm: "npm install discord-ops@0.23.0",
+    npm_url: "https://www.npmjs.com/package/discord-ops/v/0.23.0",
     link: "https://github.com/bookedsolidtech/discord-ops/pull/20",
     footer: "Released April 3, 2026",
     author_name: "Booked Solid Technology"
@@ -780,7 +823,9 @@ Full `~/.discord-ops.json` schema with all options:
       "role": "General purpose",
       "description": "Handles all operations",
       "token_env": "MY_BOT_TOKEN",
-      "default_profile": "full"
+      "default_profile": "full",
+      "profile_add": [],
+      "profile_remove": []
     }
   },
   "projects": {
@@ -800,13 +845,7 @@ Full `~/.discord-ops.json` schema with all options:
       "notify_owners_on": ["release", "error", "alert"],
       "tool_profile": "full",
       "profile_add": [],
-      "profile_remove": [],
-      "notification_routing": {
-        "ci_build": "builds",
-        "deploy": "builds",
-        "release": "releases",
-        "error": "alerts"
-      }
+      "profile_remove": []
     }
   },
   "default_project": "my-app",
@@ -822,11 +861,11 @@ Full `~/.discord-ops.json` schema with all options:
 
 **Global fields:**
 
-| Field                  | Description                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------- |
-| `bots`                 | Named bot personas with `name`, `role`, `description`, `token_env`, `default_profile` |
-| `default_project`      | Project used when no `project` param is provided                                      |
-| `notification_routing` | Global notification type → channel alias routing                                      |
+| Field                  | Description                                                                                                            |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `bots`                 | Named bot personas with `name`, `role`, `description`, `token_env`, `default_profile`, `profile_add`, `profile_remove` |
+| `default_project`      | Project used when no `project` param is provided                                                                       |
+| `notification_routing` | Global notification type → channel alias routing                                                                       |
 
 **Project fields:**
 
@@ -842,7 +881,7 @@ Full `~/.discord-ops.json` schema with all options:
 | `tool_profile`         | Base tool profile for this project (`full`, `monitoring`, etc.) — enforced at runtime |
 | `profile_add`          | Additional tools to load on top of the base profile                                   |
 | `profile_remove`       | Tools to exclude from the base profile                                                |
-| `notification_routing` | Per-project override of global notification → channel routing                         |
+| `notification_routing` | Per-repo config only (`.discord-ops.json`), not a project field in global config      |
 
 Per-project profiles are enforced at runtime — all tools stay registered on the MCP server, but tool calls are filtered when the resolved project or bot has a profile set. This means agents can discover all tools via MCP schema, but per-project restrictions are applied on each call.
 
