@@ -171,14 +171,21 @@ export function loadConfig(): LoadedConfig {
       })
       .map(([name]) => name);
 
-    if (missing.length > 0) {
+    if (missing.length === projectEntries.length) {
       throw new Error(
         `${tokenEnvName} is not set, and these projects lack a valid token_env: ${missing.join(", ")}`,
       );
     }
 
+    if (missing.length > 0) {
+      logger.warn(
+        `No token available for these projects — they will be unavailable: ${missing.join(", ")}`,
+      );
+    }
+
+    const available = projectEntries.length - missing.length;
     logger.info(
-      `No default token set — all ${projectEntries.length} project(s) use per-project token_env`,
+      `No default token set — ${available} of ${projectEntries.length} project(s) available via per-project token_env`,
     );
   }
 

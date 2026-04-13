@@ -81,8 +81,8 @@ describe("list_projects tool", () => {
     expect(orgB.token_set).toBe(false);
     expect(orgB.token_env).toBeUndefined();
 
-    // Should have errors for org-b
-    expect(data.errors.length).toBeGreaterThan(0);
+    // Should have warnings for org-b (missing token is a warning, not a fatal error)
+    expect(data.warnings.length).toBeGreaterThan(0);
   });
 
   it("includes validation warnings", async () => {
