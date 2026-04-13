@@ -66,11 +66,13 @@ export function validateConfig(config: LoadedConfig): ConfigValidationResult {
     if (!tokenSet) {
       if (project.bot && config.global.bots?.[project.bot]) {
         const bot = config.global.bots[project.bot];
-        errors.push(
-          `Project "${name}": bot "${project.bot}" token_env "${bot.token_env}" is not set in environment`,
+        warnings.push(
+          `Project "${name}": bot "${project.bot}" token_env "${bot.token_env}" is not set in environment — project will be unavailable`,
         );
       } else if (tokenEnv) {
-        errors.push(`Project "${name}": token_env "${tokenEnv}" is not set in environment`);
+        warnings.push(
+          `Project "${name}": token_env "${tokenEnv}" is not set in environment — project will be unavailable`,
+        );
       } else {
         errors.push(`Project "${name}": no token_env configured and no default token available`);
       }
