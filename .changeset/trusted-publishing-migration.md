@@ -1,5 +1,5 @@
 ---
-'discord-ops': patch
+"discord-ops": patch
 ---
 
 chore: migrate npm publishing to Trusted Publishing (OIDC)
