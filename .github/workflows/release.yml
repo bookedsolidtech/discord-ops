@@ -24,10 +24,12 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
-      - name: Activate npm 11.5+ via corepack for OIDC trusted publishing
+      - name: Install npm 11.5.1+ for OIDC trusted publishing
         run: |
-          corepack enable
-          corepack prepare npm@latest --activate
+          # corepack's `npm@latest` alias is stale and activates npm 10.9.7,
+          # which has --provenance but no native trusted-publishing auth.
+          # Pin to an explicit version known to support TP (≥ 11.5.1).
+          npm install -g npm@11.5.1 --force
           npm --version
       - run: npm ci
       - run: npm run build
