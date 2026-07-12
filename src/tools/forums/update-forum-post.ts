@@ -36,7 +36,9 @@ export const updateForumPost = defineTool({
     "done by setting archived: true, or reopen it with archived: false. Tags are given by name, " +
     "resolved against the parent forum's available tags, and REPLACE the current set. Reopening " +
     "happens before retagging, so { tags, archived: false } reactivates an archived post in one " +
-    "call.",
+    "call. For a forum with a per-channel bot override, pass the SAME project + channel that " +
+    "create_forum_post returned so the correct bot token is used; with thread_id alone the " +
+    "project default bot is used (which is correct for the common single-bot case).",
   category: FORUMS_CATEGORY,
   inputSchema,
   permissions: ["ManageThreads"],

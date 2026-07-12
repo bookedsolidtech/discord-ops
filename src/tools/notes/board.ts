@@ -36,8 +36,10 @@ export const recipientToken = noteToken.describe(
   'Recipient: "all" (broadcast), a session id, or a role/name — single token, no spaces',
 );
 export const sessionToken = noteToken.describe(
-  "Session id of the sender — single token, no spaces. Omit to use the DISCORD_OPS_SESSION " +
-    "env var, or an id auto-derived from the working directory. Keep it stable within a session.",
+  "Session id of the sender — single token, no spaces. STRONGLY RECOMMENDED to pass this " +
+    "explicitly (or set DISCORD_OPS_SESSION per session). If omitted, an id is auto-derived from " +
+    "the process; in a shared `serve` deployment that collapses concurrent sessions into one, so " +
+    "pass a distinct id per agent/session there. Keep it stable within a session.",
 );
 export const tagToken = noteToken;
 
@@ -85,11 +87,21 @@ export function resolveBoardChannel(
 }
 
 /**
- * Derive a stable-per-process session id when the caller doesn't supply one.
- * Prefers the DISCORD_OPS_SESSION env var (the reliable mechanism across CLI
- * invocations and concurrent sessions); otherwise generates one from the
- * working-directory basename plus a short random suffix, cached for the
- * lifetime of this process so every note from one MCP server shares it.
+ * Session id to use when the caller does not supply `from`.
+ *
+ * Precedence:
+ *  1. DISCORD_OPS_SESSION env var — the reliable per-session mechanism. Set it
+ *     per session (each agent process / each shell) so notes are attributable.
+ *  2. An auto id derived from the working directory + pid + a random suffix.
+ *
+ * IMPORTANT: the auto id identifies THIS PROCESS, not the caller. It is correct
+ * for the common one-process-per-session case (a stdio MCP server, a CLI run),
+ * where every note legitimately comes from the same session. In a SHARED
+ * deployment — `discord-ops serve` fronting multiple agents from one process —
+ * all callers that omit `from` would share this one id and collapse into a
+ * single apparent session. Those deployments MUST pass `from` explicitly (or
+ * set DISCORD_OPS_SESSION per session). The pid is included so the id is
+ * honestly a process instance, and distinct processes never collide.
  */
 let cachedSessionId: string | undefined;
 export function defaultSessionId(): string {
@@ -98,7 +110,7 @@ export function defaultSessionId(): string {
   if (cachedSessionId) return cachedSessionId;
   const dir = basename(process.cwd()).replace(/[^A-Za-z0-9._-]/g, "") || "session";
   const suffix = randomBytes(3).toString("hex");
-  cachedSessionId = `${dir}-${suffix}`.slice(0, 64);
+  cachedSessionId = `${dir}-${process.pid}-${suffix}`.slice(0, 64);
   return cachedSessionId;
 }
 

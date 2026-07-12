@@ -54,7 +54,17 @@ export function resolveApplicationTarget(
   if (projectName && config.global.projects[projectName]) {
     return { token: getTokenForProject(projectName, config), project: projectName };
   }
-  // No project context at all — fall back to the server's default token.
+  // No project context. Fall back to the server default token only if one
+  // exists — in per-project-token installs (no default DISCORD_TOKEN) there is
+  // no bot to act as, so surface a clear routing error instead of a confusing
+  // "token missing" failure deep in the Discord client.
+  if (!config.defaultToken) {
+    return {
+      error:
+        "No project specified and no default project or token configured. Pass `project` to " +
+        "select which bot's application to edit.",
+    };
+  }
   return {};
 }
 

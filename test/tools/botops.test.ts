@@ -349,6 +349,17 @@ describe("update_application", () => {
     expect(app.edit).not.toHaveBeenCalled();
   });
 
+  it("errors when no project is given and there is no default project or token", async () => {
+    const { ctx, app } = createBotopsCtx();
+    // Per-project-token install: no default token, no default project.
+    (ctx.config as any).defaultToken = undefined;
+    (ctx.config as any).global.default_project = undefined;
+    const result = await updateApplication.handle({ description: "hello" }, ctx);
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("No project specified");
+    expect(app.edit).not.toHaveBeenCalled();
+  });
+
   it("errors cleanly when the client application is unavailable", async () => {
     const { ctx } = createBotopsCtx({ nullApplication: true });
     const result = await updateApplication.handle({ description: "hello" }, ctx);

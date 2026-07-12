@@ -103,6 +103,23 @@ describe("create_forum_post", () => {
     expect(data.applied_tags).toEqual(["todo"]);
   });
 
+  it("echoes project + channel so update_forum_post can reuse the same bot token", async () => {
+    const { ctx } = createForumCtx();
+    const result = await createForumPost.handle(
+      {
+        project: "test-project",
+        channel: "dev",
+        title: "Task",
+        content: "body",
+        auto_archive_duration: "1440",
+      },
+      ctx,
+    );
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.project).toBe("test-project");
+    expect(data.channel).toBe("dev");
+  });
+
   it("creates a post without tags when tags are omitted", async () => {
     const { ctx, forum } = createForumCtx();
     const result = await createForumPost.handle(

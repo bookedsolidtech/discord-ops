@@ -69,6 +69,10 @@ export const createForumPost = defineTool({
       message_id: thread.id,
       title: thread.name,
       applied_tags: tagIdsToNames(forum, thread.appliedTags ?? appliedTags ?? []),
+      // Echo the routing so a follow-up update_forum_post can reuse the SAME
+      // bot token — essential when the forum has a per-channel bot override.
+      ...(target.project ? { project: target.project } : {}),
+      ...(input.channel ? { channel: input.channel } : {}),
     });
   },
 });
