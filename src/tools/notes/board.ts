@@ -55,6 +55,7 @@ export const tagToken = noteToken;
 export function resolveBoardChannel(
   projectName: string | undefined,
   config: LoadedConfig,
+  hasOverride = false,
 ): { project: string; board: string } | { error: string } {
   const name = projectName ?? getDefaultProjectName(config.global, config.perProject);
   if (!name) {
@@ -76,14 +77,16 @@ export function resolveBoardChannel(
           : has("backchannel")
             ? "backchannel"
             : project.defaultChannel);
-  if (!board) {
+  // A caller-supplied channel_id/board_channel override wins in
+  // boardTargetParams, so a project without a configured board is fine then.
+  if (!board && !hasOverride) {
     return {
       error:
         `Project "${name}" has no board channel. Set board_channel in its config, ` +
         "or add a board / agent-logs / backchannel channel alias, or a default_channel.",
     };
   }
-  return { project: name, board };
+  return { project: name, board: board ?? "" };
 }
 
 /**
@@ -103,10 +106,14 @@ export function resolveBoardChannel(
  * set DISCORD_OPS_SESSION per session). The pid is included so the id is
  * honestly a process instance, and distinct processes never collide.
  */
+const SESSION_TOKEN_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 let cachedSessionId: string | undefined;
 export function defaultSessionId(): string {
-  const fromEnv = process.env.DISCORD_OPS_SESSION;
-  if (fromEnv && fromEnv.trim()) return fromEnv.trim().slice(0, 64);
+  // Honor DISCORD_OPS_SESSION only when it satisfies the same single-token
+  // rules as `from`; a malformed value (spaces, slashes) would corrupt the
+  // note header, so fall through to the auto id instead of trusting it.
+  const fromEnv = process.env.DISCORD_OPS_SESSION?.trim();
+  if (fromEnv && SESSION_TOKEN_RE.test(fromEnv)) return fromEnv.slice(0, 64);
   if (cachedSessionId) return cachedSessionId;
   const dir = basename(process.cwd()).replace(/[^A-Za-z0-9._-]/g, "") || "session";
   const suffix = randomBytes(3).toString("hex");

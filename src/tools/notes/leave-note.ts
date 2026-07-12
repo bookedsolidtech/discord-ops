@@ -38,7 +38,11 @@ export const leaveNote = defineTool({
   category: NOTES_CATEGORY,
   inputSchema,
   handle: async (input, ctx) => {
-    const board = resolveBoardChannel(input.project, ctx.config);
+    const board = resolveBoardChannel(
+      input.project,
+      ctx.config,
+      Boolean(input.channel_id ?? input.board_channel),
+    );
     if ("error" in board) return toolResult(board.error, true);
 
     const target = await resolveTarget(

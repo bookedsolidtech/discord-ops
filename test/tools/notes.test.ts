@@ -119,6 +119,16 @@ describe("notes board helpers", () => {
     if (prev === undefined) delete process.env.DISCORD_OPS_SESSION;
     else process.env.DISCORD_OPS_SESSION = prev;
   });
+
+  it("ignores a malformed DISCORD_OPS_SESSION and falls back to an auto id", () => {
+    const prev = process.env.DISCORD_OPS_SESSION;
+    process.env.DISCORD_OPS_SESSION = "bad session/id"; // spaces + slash — invalid token
+    const id = defaultSessionId();
+    expect(id).not.toBe("bad session/id");
+    expect(id).toMatch(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
+    if (prev === undefined) delete process.env.DISCORD_OPS_SESSION;
+    else process.env.DISCORD_OPS_SESSION = prev;
+  });
 });
 
 describe("leave_note", () => {
@@ -308,6 +318,27 @@ describe("resolve_note", () => {
     );
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toContain("not found");
+  });
+
+  it("refuses to resolve a message that is not a note", async () => {
+    const chatter = createMockMessage({
+      id: "300000000000000009",
+      content: "just a normal human message, not a note",
+    });
+    const react = chatter.react as ReturnType<typeof vi.fn>;
+    const channel = createMockChannel({
+      messages: { fetch: vi.fn().mockResolvedValue(chatter) },
+    });
+    const ctx = createCtx();
+    (ctx.discord.getChannel as any).mockResolvedValue(channel);
+
+    const result = await resolveNote.handle(
+      { project: "test-project", note_id: "300000000000000009" },
+      ctx,
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("is not a note");
+    expect(react).not.toHaveBeenCalled();
   });
 });
 

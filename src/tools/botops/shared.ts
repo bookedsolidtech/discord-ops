@@ -59,7 +59,13 @@ export function resolveApplicationTarget(
     if (!config.global.projects[projectName]) {
       return { error: `Default project "${projectName}" is not defined in config` };
     }
-    return { token: getTokenForProject(projectName, config), project: projectName };
+    // getTokenForProject throws when the project's token env var is unset;
+    // surface that as a routing error rather than an unhandled exception.
+    try {
+      return { token: getTokenForProject(projectName, config), project: projectName };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
+    }
   }
   // No project context at all. Fall back to the server default token only if one
   // exists — in per-project-token installs (no default DISCORD_TOKEN) there is

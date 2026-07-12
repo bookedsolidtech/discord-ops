@@ -39,7 +39,11 @@ export const resolveNote = defineTool({
   destructive: false,
   inputSchema,
   handle: async (input, ctx) => {
-    const board = resolveBoardChannel(input.project, ctx.config);
+    const board = resolveBoardChannel(
+      input.project,
+      ctx.config,
+      Boolean(input.channel_id ?? input.board_channel),
+    );
     if ("error" in board) return toolResult(board.error, true);
 
     const target = await resolveTarget(
@@ -53,15 +57,24 @@ export const resolveNote = defineTool({
     const fetched = await fetchMessageOrError(channel, input.note_id, target.channelId);
     if ("error" in fetched) return toolResult(fetched.error, true);
 
+    // Only resolve actual notes — reacting ✅ to ordinary channel chatter would
+    // make it look "resolved" without ever having been an open note.
+    const original = parseNoteContent(fetched.message.content);
+    if (!original) {
+      return toolResult(
+        `Message ${input.note_id} is not a note (posted with leave_note) — nothing to resolve.`,
+        true,
+      );
+    }
+
     await fetched.message.react(RESOLVED_EMOJI);
 
     let replyId: string | undefined;
     if (input.reply) {
-      const original = parseNoteContent(fetched.message.content);
       const from = input.from ?? defaultSessionId();
       // Reply is addressed back to the original sender, tagged resolved.
       const content = encodeNote({
-        to: original?.from ?? "all",
+        to: original.from,
         from,
         tags: ["resolved"],
         body: input.reply,
