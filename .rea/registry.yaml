@@ -1,0 +1,19 @@
+# .rea/registry.yaml — downstream MCP servers proxied through rea serve.
+# Every entry below is subject to the same middleware chain as native tool calls.
+#
+# env: values support ${VAR} interpolation against rea-serve's own process.env.
+# If a referenced var is unset at startup, the affected server fails to start
+# (the rest of the gateway still comes up). Only the curly-brace form is
+# supported — no $VAR, no defaults, no command substitution.
+#
+# Example (uncomment and export the vars in your shell before running `rea serve`):
+#
+#   - name: discord-ops
+#     command: npx
+#     args: ['-y', 'discord-ops@latest']
+#     env:
+#       BOOKED_DISCORD_BOT_TOKEN: '${BOOKED_DISCORD_BOT_TOKEN}'
+#       CLARITY_DISCORD_BOT_TOKEN: '${CLARITY_DISCORD_BOT_TOKEN}'
+#     enabled: false  # flip to true after exporting the tokens
+version: "1"
+servers: []

@@ -91,3 +91,19 @@ npm run build         # compile to dist/
 - Feature work on `dev` or feature branches
 - `staging` for release candidates
 - `main` is the published release branch — merges trigger npm publish via changesets
+
+<!-- rea:managed:start v=1 -->
+
+## REA Governance (managed — do not edit this block)
+
+- **Policy**: `.rea/policy.yaml` — profile `bst-internal`
+- **Autonomy**: `L1` (ceiling `L2`)
+- **Blocked paths**: 4 entries — see the policy file
+- **block_ai_attribution**: `true` (enforced by commit-msg hook)
+
+Protected-path changes (`src/gateway/middleware/`, `hooks/`, `src/policy/`,
+`.github/workflows/`) require a `/codex-review` audit entry before push.
+
+Run `rea doctor` to verify the install. Run `rea check` to inspect state.
+
+<!-- rea:managed:end -->

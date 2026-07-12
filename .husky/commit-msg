@@ -1,15 +1,24 @@
 #!/bin/sh
-# .husky/commit-msg — strips AI attribution from commit messages
+# rea:commit-msg v1
+# .husky/commit-msg — optionally BLOCKS commits that contain AI attribution
 #
-# Removes lines added by AI coding assistants (Claude Code, etc.) that would
-# expose AI tooling in client-facing or public git history.
+# OPT-IN: Only enforces when .rea/policy.yaml contains:
+#   block_ai_attribution: true
 #
-# Stripped patterns:
-#   Co-Authored-By: Claude ...
-#   Co-Authored-By: Sonnet ...
-#   Generated with Claude Code
-#   🤖 Generated with ...
-#   claude.ai
+# When disabled (default), this hook does nothing — commits work normally.
+# When enabled, rejects (exit 1) commit messages with structural AI attribution
+# markers. This teaches agents to stop including attribution by giving clear
+# feedback on what went wrong.
+#
+# IMPORTANT: This does NOT block casual mentions of AI tools.
+# "Fix Claude API integration" or "Update OpenAI SDK" are fine.
+# What gets blocked are STRUCTURAL ATTRIBUTION MARKERS:
+#
+#   Co-Authored-By with noreply@ emails (dead giveaway)
+#   Co-Authored-By with known AI names (Claude, Copilot, GPT, Gemini, etc.)
+#   "Generated with/by [Tool]" footer lines
+#   Markdown-linked tool names: [Claude Code](...)
+#   Emoji-prefixed attribution: 🤖 Generated...
 #
 # SAFETY: set -e ensures any unexpected error BLOCKS the commit rather than
 # silently passing a message with attribution intact.
@@ -28,22 +37,140 @@ if [ ! -f "$COMMIT_MSG_FILE" ]; then
   exit 1
 fi
 
-# Atomic write: grep to temp, mv to original (no partial-write risk)
-TMPFILE=$(mktemp) || { echo "ERROR: mktemp failed" >&2; exit 1; }
-trap "rm -f '$TMPFILE'" EXIT
+# ── Check if attribution blocking is enabled ───────────────────────────────────
+# Look for block_ai_attribution: true in .rea/policy.yaml
+# If not found or not true, exit 0 (normal commit behavior)
 
-grep -v \
-  -e "Co-Authored-By: Claude" \
-  -e "Co-Authored-By: Sonnet" \
-  -e "Generated with Claude Code" \
-  -e "🤖 Generated with" \
-  -e "claude.ai" \
-  "$COMMIT_MSG_FILE" > "$TMPFILE" || true
-# grep -v exits 1 when no lines survive (empty file after stripping) — that's OK
+# Helper: chain extension fragments under .husky/commit-msg.d/ in lex
+# order. Defined once and called from every exit path so consumers get
+# consistent behavior regardless of whether attribution blocking ran.
+chain_commit_msg_fragments() {
+  REA_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+  ext_dir="${REA_ROOT}/.husky/commit-msg.d"
+  if [ -d "$ext_dir" ]; then
+    for frag in "$ext_dir"/*; do
+      [ -e "$frag" ] || continue
+      [ -f "$frag" ] || continue
+      [ -x "$frag" ] || continue
+      "$frag" "$COMMIT_MSG_FILE"
+    done
+  fi
+}
 
-mv "$TMPFILE" "$COMMIT_MSG_FILE" || { echo "ERROR: could not write cleaned message" >&2; exit 1; }
+POLICY_FILE=".rea/policy.yaml"
+if [ ! -f "$POLICY_FILE" ]; then
+  chain_commit_msg_fragments
+  exit 0
+fi
+
+# Simple grep — no YAML parser dependency needed for a boolean flag
+if ! grep -qE '^block_ai_attribution:[[:space:]]*true' "$POLICY_FILE" 2>/dev/null; then
+  # Attribution blocking is disabled — still chain extension fragments
+  # (consumers may want commitlint/conventional-commits checks regardless
+  # of rea's attribution stance).
+  chain_commit_msg_fragments
+  exit 0
+fi
+
+# ── Attribution blocking is enabled — check patterns ───────────────────────────
+
+BLOCKED=0
+MATCHES=""
+
+# Pattern 1: Co-Authored-By with noreply@ email
+# 0.18.0 helix-020 / discord-ops Round 10 #3 fix (G4.B):
+# the pre-fix pattern `Co-Authored-By:.*noreply@` matched both AI-tool
+# noreply addresses AND legitimate `<user>@users.noreply.github.com`
+# collaborator credits — blocking honest co-author footers from human
+# contributors. Refined to enumerate AI-tool noreply domains explicitly;
+# Pattern 2 below catches Co-Authored-By with named tools regardless of
+# email, so dropping users.noreply.github.com from this branch only
+# relaxes the check for human collaborators — never for AI.
+if grep -qiE 'Co-Authored-By:.*noreply@(anthropic\.com|openai\.com|github-copilot|github\.com|claude\.ai|chatgpt\.com|googlemail\.com|google\.com|cursor\.com|codeium\.com|tabnine\.com|amazon\.com|amazonaws\.com|amazon-q\.amazonaws\.com|cody\.dev|sourcegraph\.com|mistral\.ai|xai-org|x\.ai|inflection\.ai|perplexity\.ai|replit\.com|jetbrains\.com|bito\.ai|pieces\.app|phind\.com|you\.com)' "$COMMIT_MSG_FILE" 2>/dev/null; then
+  BLOCKED=1
+  MATCHES="${MATCHES}$(grep -niE 'Co-Authored-By:.*noreply@(anthropic\.com|openai\.com|github-copilot|github\.com|claude\.ai|chatgpt\.com|googlemail\.com|google\.com|cursor\.com|codeium\.com|tabnine\.com|amazon\.com|amazonaws\.com|amazon-q\.amazonaws\.com|cody\.dev|sourcegraph\.com|mistral\.ai|xai-org|x\.ai|inflection\.ai|perplexity\.ai|replit\.com|jetbrains\.com|bito\.ai|pieces\.app|phind\.com|you\.com)' "$COMMIT_MSG_FILE" 2>/dev/null)
+"
+fi
+
+# Pattern 2: Co-Authored-By with known AI assistant names
+if grep -qiE 'Co-Authored-By:.*\b(Claude|Sonnet|Opus|Haiku|Copilot|GPT|ChatGPT|Gemini|Cursor|Codeium|Tabnine|Amazon Q|CodeWhisperer|Devin|Windsurf|Cline|Aider|Anthropic|OpenAI|GitHub Copilot)\b' "$COMMIT_MSG_FILE" 2>/dev/null; then
+  BLOCKED=1
+  MATCHES="${MATCHES}$(grep -niE 'Co-Authored-By:.*\b(Claude|Sonnet|Opus|Haiku|Copilot|GPT|ChatGPT|Gemini|Cursor|Codeium|Tabnine|CodeWhisperer|Devin|Windsurf|Cline|Aider|Anthropic|OpenAI|GitHub Copilot)\b' "$COMMIT_MSG_FILE" 2>/dev/null)
+"
+fi
+
+# Pattern 3: "Generated/Built/Powered with/by [AI Tool]" footer lines
+if grep -qiE '^\s*(Generated|Created|Built|Powered|Authored|Written|Produced)\s+(with|by)\s+(Claude|Copilot|GPT|ChatGPT|Gemini|Cursor|Codeium|Tabnine|CodeWhisperer|Devin|Windsurf|Cline|Aider|AI|an? AI)\b' "$COMMIT_MSG_FILE" 2>/dev/null; then
+  BLOCKED=1
+  MATCHES="${MATCHES}$(grep -niE '^\s*(Generated|Created|Built|Powered|Authored|Written|Produced)\s+(with|by)\s+(Claude|Copilot|GPT|ChatGPT|Gemini|Cursor|Codeium|Tabnine|CodeWhisperer|Devin|Windsurf|Cline|Aider|AI|an? AI)\b' "$COMMIT_MSG_FILE" 2>/dev/null)
+"
+fi
+
+# Pattern 4: Markdown-linked attribution
+# 0.16.2 helix-017 P3 #4: anchor on the markdown link shape `[Text](url)`
+# rather than bare `[Text]`. Pre-fix the regex matched ANY bracketed
+# mention — `feat: support [Claude Code] hook output format` would block
+# a perfectly legitimate commit. The markdown-link form requires the `(`
+# immediately after the closing bracket, which is the actual structural
+# attribution we want to catch.
+if grep -qiE '\[Claude Code\]\(|\[GitHub Copilot\]\(|\[ChatGPT\]\(|\[Gemini\]\(|\[Cursor\]\(' "$COMMIT_MSG_FILE" 2>/dev/null; then
+  BLOCKED=1
+  MATCHES="${MATCHES}$(grep -niE '\[Claude Code\]\(|\[GitHub Copilot\]\(|\[ChatGPT\]\(|\[Gemini\]\(|\[Cursor\]\(' "$COMMIT_MSG_FILE" 2>/dev/null)
+"
+fi
+
+# Pattern 5: Emoji-prefixed "Generated" lines
+if grep -qE '🤖.*[Gg]enerated' "$COMMIT_MSG_FILE" 2>/dev/null; then
+  BLOCKED=1
+  MATCHES="${MATCHES}$(grep -nE '🤖.*[Gg]enerated' "$COMMIT_MSG_FILE" 2>/dev/null)
+"
+fi
+
+# ── Block or allow ─────────────────────────────────────────────────────────────
+
+if [ "$BLOCKED" -eq 1 ]; then
+  {
+    printf '\n'
+    printf '═══════════════════════════════════════════════════════════════════\n'
+    printf '  COMMIT BLOCKED: AI attribution detected in commit message\n'
+    printf '═══════════════════════════════════════════════════════════════════\n'
+    printf '\n'
+    printf '  Your commit message contains structural AI attribution markers\n'
+    printf '  that must be removed before committing.\n'
+    printf '\n'
+    printf '  Matched line(s):\n'
+    printf '%s' "$MATCHES" | grep -v '^$' | sed 's/^/    /'
+    printf '\n'
+    printf '  What gets BLOCKED (structural attribution):\n'
+    printf '    - Co-Authored-By with AI names or noreply@ emails\n'
+    printf '    - "Generated with/by [AI Tool]" footer lines\n'
+    printf '    - Markdown-linked tool names: [Claude Code](...)\n'
+    printf '    - Emoji attribution: 🤖 Generated...\n'
+    printf '\n'
+    printf '  What is ALLOWED (legitimate references):\n'
+    printf '    - "Fix Claude API integration"\n'
+    printf '    - "Update OpenAI SDK version"\n'
+    printf '    - "Add Copilot config"\n'
+    printf '\n'
+    printf '  Remove the attribution markers and retry your commit.\n'
+    printf '  To disable: set block_ai_attribution: false in .rea/policy.yaml\n'
+    printf '═══════════════════════════════════════════════════════════════════\n'
+    printf '\n'
+  } >&2
+  exit 1
+fi
 
 # Normalize trailing newlines (cosmetic, non-fatal)
 perl -i -0777 -pe 's/\n+$/\n/' "$COMMIT_MSG_FILE" 2>/dev/null || true
+
+# ── Extension-hook chaining ────────────────────────────────────────────────────
+# Source every executable file under `.husky/commit-msg.d/` in lexical order.
+# Missing directory = no-op (backward compatible). Each fragment receives the
+# commit-msg file path as $1. Non-zero exit fails the commit (set -e above).
+#
+# Fragments run AFTER rea's attribution check so HALT/governance enforcement
+# happens first; consumers can layer on commitlint, conventional-commits
+# linters, or branch-policy checks without losing rea coverage.
+chain_commit_msg_fragments
 
 exit 0
