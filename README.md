@@ -8,8 +8,9 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **49 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
+- **52 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
+- **Agent-to-agent coordination** — agents post tasks, peers reply and react, originators read results back via `get_replies` / `get_reactions` — Discord as a durable coordination bus
 - **Notification routing** — map notification types (`ci_build`, `deploy`, `error`) to channels per project
 - **Owner pings** — configure project owners so releases, errors, and alerts auto-mention the right people
 - **Bot personas** — named bots with identity metadata, per-channel bot assignment, and per-bot tool profiles
@@ -328,15 +329,42 @@ send_embed({
 
 Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich previews — the bot fetches the metadata so Discord's CDN doesn't cache-bust client-side unfurls.
 
+## Agent-to-Agent Coordination
+
+discord-ops doubles as a coordination bus for multi-agent systems. One agent posts a task as a message, peer agents (or humans) reply and react, and the originating agent reads the replies and reactions back. Because the exchange lives in Discord, it's durable across sessions, works between agent processes that share no memory, and every step is observable by the humans in the server.
+
+The loop is four tool calls:
+
+```
+# Agent A posts a task and records the returned message ID
+send_message({ project: "my-app", channel: "engineering", content: "TASK: verify the staging deploy", raw: true })
+→ { "id": "333333333333333333" }
+
+# Agent B claims it with a reaction, then replies
+add_reaction({ project: "my-app", channel: "engineering", message_id: "333333333333333333", emoji: "👀" })
+send_message({ project: "my-app", channel: "engineering", reply_to: "333333333333333333", content: "RESULT: verified, all checks green", raw: true })
+
+# Agent A collects results at its next task boundary
+get_replies({ project: "my-app", channel: "engineering", message_id: "333333333333333333" })
+get_reactions({ project: "my-app", channel: "engineering", message_id: "333333333333333333" })
+```
+
+Three read-side tools close the loop: `get_message` fetches a single message with its reply, thread, and reaction state; `get_reactions` reports who reacted with what; `get_replies` collects replies to a specific message. `get_messages` includes `reply_to` on every message, so scanning agents can reconstruct conversation structure. For exchanges longer than one round trip, `create_thread` from the original message keeps the channel clean.
+
+See [docs/agent-coordination.md](docs/agent-coordination.md) for the full protocol — reaction vocabulary, threads, polling guidance, multi-project setups, and anti-patterns.
+
 ## Tools
 
-### Messaging (12 tools)
+### Messaging (15 tools)
 
 | Tool              | Description                                                 |
 | ----------------- | ----------------------------------------------------------- |
 | `send_message`    | Send a message with project routing (auto-embed by default) |
 | `send_embed`      | Fetch OG metadata from a URL and post a rich embed          |
 | `get_messages`    | Fetch recent messages (supports ISO 8601 timestamps)        |
+| `get_message`     | Fetch one message with reply, thread, and reaction state    |
+| `get_reactions`   | List reactions on a message with per-user detail            |
+| `get_replies`     | Collect replies to a specific message                       |
 | `edit_message`    | Edit a bot message                                          |
 | `delete_message`  | Delete a message                                            |
 | `add_reaction`    | React to a message                                          |
@@ -430,15 +458,15 @@ Load only the tools an agent needs. Reduces schema token overhead by up to 85% f
 
 ### Built-in profiles
 
-| Profile      | Tools | Description                                                                                            |
-| ------------ | ----- | ------------------------------------------------------------------------------------------------------ |
-| `full`       | 49    | All tools (default)                                                                                    |
-| `monitoring` | 7     | get_messages, send_message, add_reaction, create_thread, health_check, list_projects, list_bots        |
-| `readonly`   | 7     | get_messages, list_channels, list_members, get_guild, health_check, list_projects, list_bots           |
-| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log |
-| `messaging`  | 5     | add_reaction, delete_message, edit_message, get_messages, send_message                                 |
-| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode |
-| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks              |
+| Profile      | Tools | Description                                                                                                                              |
+| ------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `full`       | 52    | All tools (default)                                                                                                                      |
+| `monitoring` | 10    | get_messages, get_message, get_replies, get_reactions, send_message, add_reaction, create_thread, health_check, list_projects, list_bots |
+| `readonly`   | 10    | get_messages, get_message, get_replies, get_reactions, list_channels, list_members, get_guild, health_check, list_projects, list_bots    |
+| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log                                   |
+| `messaging`  | 8     | add_reaction, delete_message, edit_message, get_messages, get_message, get_replies, get_reactions, send_message                          |
+| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode                                   |
+| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks                                                |
 
 ### Using profiles
 

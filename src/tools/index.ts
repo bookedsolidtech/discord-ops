@@ -3,6 +3,9 @@ import type { ToolDefinition } from "./types.js";
 // Messaging
 import { sendMessage } from "./messaging/send-message.js";
 import { getMessages } from "./messaging/get-messages.js";
+import { getMessage } from "./messaging/get-message.js";
+import { getReactions } from "./messaging/get-reactions.js";
+import { getReplies } from "./messaging/get-replies.js";
 import { editMessage } from "./messaging/edit-message.js";
 import { deleteMessage } from "./messaging/delete-message.js";
 import { addReaction } from "./messaging/add-reaction.js";
@@ -73,6 +76,9 @@ export const allTools: ToolDefinition[] = [
   // Messaging
   sendMessage,
   getMessages,
+  getMessage,
+  getReactions,
+  getReplies,
   editMessage,
   deleteMessage,
   addReaction,

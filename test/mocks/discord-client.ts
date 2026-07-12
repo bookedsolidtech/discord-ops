@@ -9,6 +9,7 @@ export function createMockMessage(overrides: Record<string, unknown> = {}) {
     id: "111111111111111111",
     channelId: "222222222222222222",
     content: "Test message",
+    type: 0, // MessageType.Default — reply-shaped mocks override with 19 (Reply)
     author: { tag: "TestBot#0001", id: "333333333333333333" },
     createdAt: new Date("2026-01-01T00:00:00Z"),
     editedAt: null,

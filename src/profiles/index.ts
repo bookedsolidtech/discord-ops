@@ -20,6 +20,9 @@ export const PROFILES: Record<ProfileName, string[] | "all"> = {
   full: "all",
   monitoring: [
     "get_messages",
+    "get_message",
+    "get_reactions",
+    "get_replies",
     "send_message",
     "add_reaction",
     "create_thread",
@@ -29,6 +32,9 @@ export const PROFILES: Record<ProfileName, string[] | "all"> = {
   ],
   readonly: [
     "get_messages",
+    "get_message",
+    "get_reactions",
+    "get_replies",
     "list_channels",
     "list_members",
     "get_guild",
@@ -45,7 +51,16 @@ export const PROFILES: Record<ProfileName, string[] | "all"> = {
     "purge_messages",
     "query_audit_log",
   ],
-  messaging: ["add_reaction", "delete_message", "edit_message", "get_messages", "send_message"],
+  messaging: [
+    "add_reaction",
+    "delete_message",
+    "edit_message",
+    "get_message",
+    "get_messages",
+    "get_reactions",
+    "get_replies",
+    "send_message",
+  ],
   channels: [
     "create_channel",
     "delete_channel",

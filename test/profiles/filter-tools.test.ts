@@ -64,6 +64,9 @@ describe("filterTools", () => {
     const allNames = [
       "send_message",
       "get_messages",
+      "get_message",
+      "get_reactions",
+      "get_replies",
       "health_check",
       "list_channels",
       "list_members",
@@ -108,6 +111,9 @@ describe("filterTools", () => {
     const allNames = [
       "send_message",
       "get_messages",
+      "get_message",
+      "get_reactions",
+      "get_replies",
       "health_check",
       "list_channels",
       "list_members",
