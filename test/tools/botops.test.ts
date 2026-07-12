@@ -318,9 +318,7 @@ describe("update_application", () => {
     expect(result.isError).toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const options = app.edit.mock.calls[0][0];
-    expect(options.icon).toBe(
-      `data:image/png;base64,${Buffer.from(PNG_BYTES).toString("base64")}`,
-    );
+    expect(options.icon).toBe(`data:image/png;base64,${Buffer.from(PNG_BYTES).toString("base64")}`);
     expect(parseResult(result).icon_set).toBe(true);
   });
 
@@ -340,10 +338,7 @@ describe("update_application", () => {
 
   it("returns a routing error for an unknown project", async () => {
     const { ctx, app } = createBotopsCtx();
-    const result = await updateApplication.handle(
-      { project: "ghost", description: "hello" },
-      ctx,
-    );
+    const result = await updateApplication.handle({ project: "ghost", description: "hello" }, ctx);
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toContain('"ghost" not found');
     expect(app.edit).not.toHaveBeenCalled();

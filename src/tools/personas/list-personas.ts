@@ -70,8 +70,7 @@ export const listPersonas = defineTool({
     let guildId = input.guild_id;
     let projectName = input.project;
     if (!guildId) {
-      projectName =
-        projectName ?? getDefaultProjectName(ctx.config.global, ctx.config.perProject);
+      projectName = projectName ?? getDefaultProjectName(ctx.config.global, ctx.config.perProject);
       if (!projectName) {
         return toolResult(
           "Provide guild_id, project, or channel/channel_id to scope the persona listing",

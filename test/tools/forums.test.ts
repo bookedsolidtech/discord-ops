@@ -415,10 +415,7 @@ describe("update_forum_post", () => {
   it("errors when the target is not a thread", async () => {
     const ctx = createCtx();
     (ctx.discord.getAnyChannel as any).mockResolvedValue(createMockForumChannel());
-    const result = await updateForumPost.handle(
-      { thread_id: POST_THREAD, archived: true },
-      ctx,
-    );
+    const result = await updateForumPost.handle({ thread_id: POST_THREAD, archived: true }, ctx);
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toContain("is not a thread");
   });
@@ -427,10 +424,7 @@ describe("update_forum_post", () => {
     const { ctx } = createUpdateCtx({
       parent: { id: FORUM_CHANNEL, type: 0, availableTags: [] },
     });
-    const result = await updateForumPost.handle(
-      { thread_id: POST_THREAD, archived: true },
-      ctx,
-    );
+    const result = await updateForumPost.handle({ thread_id: POST_THREAD, archived: true }, ctx);
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toContain("not a forum post");
     expect(result.content[0]!.text).toContain("GuildText");
@@ -438,10 +432,7 @@ describe("update_forum_post", () => {
 
   it("fetches the parent forum by parentId when the cached parent is missing", async () => {
     const { ctx, thread, forum } = createUpdateCtx({ parent: null });
-    const result = await updateForumPost.handle(
-      { thread_id: POST_THREAD, tags: ["done"] },
-      ctx,
-    );
+    const result = await updateForumPost.handle({ thread_id: POST_THREAD, tags: ["done"] }, ctx);
     expect(result.isError).toBeUndefined();
     expect(ctx.discord.getAnyChannel).toHaveBeenCalledWith(FORUM_CHANNEL, undefined);
     expect(thread.setAppliedTags).toHaveBeenCalledWith([TAG_DONE]);

@@ -31,9 +31,7 @@ function createForwardCtx() {
   const sourceChannel = createMockChannel({
     id: SOURCE_CHANNEL,
     messages: {
-      fetch: vi
-        .fn()
-        .mockImplementation(async (id: string) => createMockMessage({ id, forward })),
+      fetch: vi.fn().mockImplementation(async (id: string) => createMockMessage({ id, forward })),
     },
   });
   (ctx.discord.getChannel as any).mockImplementation(async (id: string) =>

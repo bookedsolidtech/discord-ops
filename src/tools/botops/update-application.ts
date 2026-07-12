@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  OAuth2Scopes,
-  PermissionsBitField,
-  type ClientApplicationEditOptions,
-} from "discord.js";
+import { OAuth2Scopes, PermissionsBitField, type ClientApplicationEditOptions } from "discord.js";
 import { toolResult, toolResultJson } from "../types.js";
 import { isPublicHttpUrl } from "../../utils/og-fetch.js";
 import { defineBotopsTool, resolveApplicationTarget } from "./shared.js";
@@ -45,9 +41,7 @@ const inputSchema = z.object({
     .array(z.string().min(1))
     .max(20)
     .optional()
-    .describe(
-      'OAuth2 scopes for the default install link (e.g. ["bot", "applications.commands"])',
-    ),
+    .describe('OAuth2 scopes for the default install link (e.g. ["bot", "applications.commands"])'),
   install_params_permissions: z
     .string()
     .regex(/^\d+$/, "Must be a permissions bitfield as a decimal string")

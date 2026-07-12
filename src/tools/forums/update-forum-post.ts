@@ -17,10 +17,7 @@ const inputSchema = z.object({
     .max(5)
     .optional()
     .describe("Replace the post's applied tags with these tag names (max 5)"),
-  archived: z
-    .boolean()
-    .optional()
-    .describe("true archives (completes) the post; false reopens it"),
+  archived: z.boolean().optional().describe("true archives (completes) the post; false reopens it"),
   project: z.string().optional().describe("Project name for token resolution"),
 });
 
@@ -59,10 +56,7 @@ export const updateForumPost = defineTool({
     }
     const checked = asForumChannel(parent, parent.id);
     if ("error" in checked) {
-      return toolResult(
-        `Thread ${input.thread_id} is not a forum post — ${checked.error}`,
-        true,
-      );
+      return toolResult(`Thread ${input.thread_id} is not a forum post — ${checked.error}`, true);
     }
     const forum = checked.forum;
 

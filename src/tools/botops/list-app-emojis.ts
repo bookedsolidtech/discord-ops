@@ -6,9 +6,7 @@ const inputSchema = z.object({
   project: z
     .string()
     .optional()
-    .describe(
-      "Project name — the project's bot token selects whose application emojis are listed",
-    ),
+    .describe("Project name — the project's bot token selects whose application emojis are listed"),
 });
 
 export const listAppEmojis = defineBotopsTool({

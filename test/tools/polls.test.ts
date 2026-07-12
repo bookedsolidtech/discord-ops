@@ -267,9 +267,7 @@ describe("get_poll_results", () => {
     ]);
     expect(hold.answer_id).toBe(2);
     expect(hold.emoji).toBeNull();
-    expect(hold.voters).toEqual([
-      { id: "335555555555555555", username: "other-agent", bot: true },
-    ]);
+    expect(hold.voters).toEqual([{ id: "335555555555555555", username: "other-agent", bot: true }]);
   });
 
   it("caps voter fetches at the default limit of 25 per answer", async () => {

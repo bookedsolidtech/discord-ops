@@ -31,7 +31,7 @@ export const listForumPosts = defineTool({
   description:
     "List posts in a forum channel used as an agent work queue — each post is a task, its tags " +
     "are status/labels, archived means done. Filter by tag name to poll for work in a given " +
-    "state (e.g. tag: \"todo\" for unclaimed tasks). Active posts only by default; set " +
+    'state (e.g. tag: "todo" for unclaimed tasks). Active posts only by default; set ' +
     "include_archived to audit completed work. Returns thread_ids to read, reply to, or pass " +
     "to update_forum_post.",
   category: FORUMS_CATEGORY,
