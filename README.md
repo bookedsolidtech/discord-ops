@@ -356,7 +356,7 @@ get_reactions({ project: "my-app", channel: "engineering", message_id: "33333333
 
 Three read-side tools close the loop: `get_message` fetches a single message with its reply, thread, and reaction state; `get_reactions` reports who reacted with what; `get_replies` collects replies to a specific message. `get_messages` includes `reply_to` on every message, so scanning agents can reconstruct conversation structure. For exchanges longer than one round trip, `create_thread` from the original message keeps the channel clean.
 
-See [docs/agent-coordination.md](docs/agent-coordination.md) for the full protocol — reaction vocabulary, threads, polling guidance, multi-project setups, and anti-patterns.
+See [docs/agent-coordination.md](docs/agent-coordination.md) for the full protocol — reaction vocabulary, threads, polling guidance, multi-project setups, and anti-patterns. New to discord-ops? [docs/project-onboarding.md](docs/project-onboarding.md) is the start-to-finish walkthrough for adopting it as a team's coordination bus — project setup, the shared note board, personas, polls and forums, and least-privilege profiles.
 
 ## Tools
 
