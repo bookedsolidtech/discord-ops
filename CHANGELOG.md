@@ -1,5 +1,87 @@
 # discord-ops
 
+## 0.24.0
+
+### Minor Changes
+
+- 8a589a6: Add read-side primitives for bi-directional agent-to-agent communication over Discord.
+  - `get_message` — fetch a single message by ID with reply linkage (`reply_to`), pin state, edit timestamp, thread info (`has_thread`/`thread_id`), and the author's bot flag, so an agent can re-check a message it posted earlier.
+  - `get_reactions` — read who reacted to a message and with what emoji (with per-user bot flags), so an agent can detect acks, claims, and blocks left by humans or peer agents. Supports an emoji filter and a per-emoji user limit.
+  - `get_replies` — collect direct replies to a message by scanning messages posted after it, with `scanned`/`last_scanned_id` pagination fields and an `after` resume cursor.
+  - `get_messages` now includes `reply_to` on every returned message so reply chains are visible in bulk reads.
+  - `send_message` now returns `message_id` (alongside the existing `id`) so agents can capture it and poll for responses later.
+  - The new read tools are included in the `monitoring`, `readonly`, and `messaging` tool profiles.
+
+- ad0831a: Coordination platform expansion: four new tool suites (15 tools, 67 total).
+  - **Personas** — one bot, unlimited posting identities via per-message webhook
+    overrides: `create_persona`, `send_as`, `list_personas`. No new bot
+    applications, no developer-portal work; webhook tokens never appear in
+    results.
+  - **Polls** — native Discord polls as structured consensus: `send_poll`,
+    `get_poll_results` (per-answer voter lists with bot flags and pagination),
+    `end_poll` (idempotent, destructive-flagged).
+  - **Workflow** — `forward_message` (immutable cross-channel snapshots for
+    escalation) and forum channels as agent work queues: `create_forum_post`,
+    `list_forum_posts`, `update_forum_post` (tags by name as status labels,
+    archive to close).
+  - **Botops** — bot self-management without the developer portal:
+    `set_bot_nick`, `update_application` (description, SSRF-guarded icon
+    upload, tags, install params), and application emoji CRUD returning
+    `add_reaction`-ready identifiers.
+  - Profiles: `monitoring` gains `send_as`/`send_poll`/`get_poll_results`;
+    `readonly` gains the new read tools; `messaging` gains
+    `send_as`/`forward_message`.
+
+- e943136: Real-time event sidecar and security hardening for the coordination suites.
+  - **Gateway sidecar** — `discord-ops listen` opens a gateway connection per bot
+    token and streams `message_create`/`reaction_add` events to a local JSONL
+    sink; the new `get_events` tool reads that sink with a `last_seq` cursor
+    (mirroring `get_replies`) and zero Discord API calls per poll, reporting
+    `sink_active` so agents fall back to `get_messages` when the sidecar is down.
+    The sink is created `0600` (dir `0700`), refuses symlinked or traversal
+    paths, and writes one `JSON.stringify` object per line.
+  - **Botops** — `interactions_endpoint_url` is removed from `update_application`
+    (a control-plane field an agent must never be able to redirect); the tool now
+    documents that its edits are application-global.
+  - **Personas** — reserved authority names (`system`, `admin`, `moderator`,
+    `owner`, …) are blocked, with zero-width/obfuscation normalization, to blunt
+    impersonation.
+  - **Sanitizer** — the webhook-URL redaction now covers `discordapp.com`,
+    canary/ptb subdomains, and version-prefixed API paths, and returned (not just
+    thrown) error results are sanitized before they reach the audit log.
+
+- a74fd13: Project note board — directed, durable note-passing across concurrent sessions.
+  - **`leave_note`** posts a directed note to a project's shared board channel,
+    addressed to a session id, a role/name, or `all`, with tags for filtering.
+  - **`get_notes`** reads the board with recipient/sender/tag/unresolved filters
+    and an `after` cursor — the first call an agent makes on startup to pick up
+    hand-offs and see what other sessions have done.
+  - **`resolve_note`** marks a note handled (✅) with an optional reply, so open
+    hand-offs drop off the unresolved list.
+  - **`list_sessions`** reports which sessions are active on a project (derived
+    from note activity), so concurrent sessions on the same codebase can
+    coordinate instead of colliding.
+  - New `board_channel` project config field selects the board, with a fallback
+    chain (`board`/`agent-board` alias → `agent-logs` → `backchannel` →
+    `default_channel`). Session identity comes from `DISCORD_OPS_SESSION` or an
+    auto-derived id. The note tools are included in the `monitoring` profile.
+  - New `docs/project-onboarding.md` walks a project through adopting the full
+    system.
+
+### Patch Changes
+
+- 5f4cdcc: Fix validateConfig() treating missing token_env as fatal error in multi-org setups
+
+  When a global ~/.discord-ops.json contains projects from multiple organizations, the server
+  previously failed to start if any project had a missing token_env — even if that project
+  belonged to a completely different org irrelevant to the current context.
+
+  `loadConfig()` now warns about unavailable projects and starts successfully as long as at
+  least one project has a valid token. Only if all projects lack tokens does startup fail.
+
+  `validateConfig()` likewise downgrades per-project missing token_env from errors to warnings,
+  since the server can still serve other projects.
+
 ## 0.23.3
 
 ### Patch Changes
