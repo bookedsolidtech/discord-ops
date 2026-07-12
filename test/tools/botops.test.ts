@@ -13,6 +13,7 @@ import {
   MAX_ICON_BYTES,
   MAX_EMOJI_BYTES,
 } from "../../src/tools/botops/image-fetch.js";
+import { PermissionsBitField } from "discord.js";
 import { createMockConfig } from "../mocks/discord-client.js";
 import type { ToolContext } from "../../src/tools/types.js";
 
@@ -241,11 +242,23 @@ describe("update_application", () => {
     expect(options.installParams.permissions.bitfield).toBe(8n);
   });
 
-  it("defaults install params permissions to 0 when only scopes given", async () => {
+  it("defaults install params permissions to 0 when scopes given and none configured", async () => {
     const { ctx, app } = createBotopsCtx();
     await updateApplication.handle({ install_params_scopes: ["bot"] }, ctx);
     const options = app.edit.mock.calls[0][0];
     expect(options.installParams.permissions.bitfield).toBe(0n);
+  });
+
+  it("preserves existing install permissions when only scopes are updated", async () => {
+    // A scopes-only update must NOT wipe the app's configured install
+    // permissions (sending permissions: 0 would silently strip them).
+    const { ctx, app } = createBotopsCtx({
+      installParams: { scopes: ["bot"], permissions: new PermissionsBitField(2048n) },
+    });
+    await updateApplication.handle({ install_params_scopes: ["bot", "identify"] }, ctx);
+    const options = app.edit.mock.calls[0][0];
+    expect(options.installParams.scopes).toEqual(["bot", "identify"]);
+    expect(options.installParams.permissions.bitfield).toBe(2048n);
   });
 
   it("rejects invalid OAuth2 scopes", async () => {

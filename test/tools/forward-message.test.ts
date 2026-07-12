@@ -89,6 +89,24 @@ describe("forward_message", () => {
     expect(data.forwarded_from.channel_id).toBe(SOURCE_CHANNEL);
   });
 
+  it("allows a forward when source (by id) and destination (by alias) use the same default bot", async () => {
+    // Source by channel_id → token undefined; destination via a project on the
+    // default token → token string. Both resolve to the SAME effective bot, so
+    // the forward must NOT be falsely rejected as cross-token.
+    const { ctx, forward } = createForwardCtx();
+    const result = await forwardMessage.handle(
+      {
+        message_id: SOURCE_MESSAGE,
+        channel_id: SOURCE_CHANNEL,
+        project: "test-project",
+        to_channel: "builds",
+      },
+      ctx,
+    );
+    expect(result.isError).toBeUndefined();
+    expect(forward).toHaveBeenCalledTimes(1);
+  });
+
   it("errors when no destination is provided", async () => {
     const { ctx, forward } = createForwardCtx();
     const result = await forwardMessage.handle(

@@ -3,6 +3,7 @@ import type { AnyThreadChannel } from "discord.js";
 import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
+import { logger } from "../../utils/logger.js";
 import {
   FORUMS_CATEGORY,
   asForumChannel,
@@ -65,10 +66,28 @@ export const listForumPosts = defineTool({
     const posts: AnyThreadChannel[] = [...active.threads.values()];
 
     if (input.include_archived) {
-      const archived = await forum.threads.fetchArchived();
-      for (const thread of archived.threads.values()) {
-        if (!posts.some((t) => t.id === thread.id)) {
-          posts.push(thread);
+      // fetchArchived is paginated — a single call returns only the first page,
+      // silently dropping older completed posts. Walk pages via `before` (the
+      // oldest thread of each page) until Discord reports no more, bounded so a
+      // huge archive can't loop unboundedly.
+      const seen = new Set(posts.map((t) => t.id));
+      let before: string | undefined;
+      const MAX_PAGES = 20;
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const archived = await forum.threads.fetchArchived({ before, limit: 100 });
+        if (archived.threads.size === 0) break;
+        for (const thread of archived.threads.values()) {
+          if (!seen.has(thread.id)) {
+            seen.add(thread.id);
+            posts.push(thread);
+          }
+        }
+        if (!archived.hasMore) break;
+        before = [...archived.threads.keys()].pop();
+        if (page === MAX_PAGES - 1) {
+          logger.warn(
+            `list_forum_posts: archived thread pagination hit the ${MAX_PAGES}-page cap for forum ${forum.id}; older posts may be omitted`,
+          );
         }
       }
     }

@@ -106,6 +106,9 @@ export const updateApplication = defineBotopsTool({
       editOptions.customInstallURL = input.custom_install_url;
     }
 
+    // Validate scopes up front (pure input validation) — the installParams
+    // object is assembled after the app is fetched so we can preserve existing
+    // permissions when only scopes are updated.
     if (input.install_params_scopes !== undefined) {
       const validScopes = new Set<string>(Object.values(OAuth2Scopes));
       const invalid = input.install_params_scopes.filter((s) => !validScopes.has(s));
@@ -115,10 +118,6 @@ export const updateApplication = defineBotopsTool({
           true,
         );
       }
-      editOptions.installParams = {
-        scopes: input.install_params_scopes as OAuth2Scopes[],
-        permissions: new PermissionsBitField(BigInt(input.install_params_permissions ?? "0")),
-      };
     }
 
     if (input.icon_url !== undefined) {
@@ -136,6 +135,21 @@ export const updateApplication = defineBotopsTool({
         "Bot application unavailable — the Discord client may not be fully ready",
         true,
       );
+    }
+
+    if (input.install_params_scopes !== undefined) {
+      // Only rewrite the permission bitfield when the caller supplied one.
+      // Sending permissions: 0 for a scopes-only update would silently strip
+      // the app's existing install permissions, so default to the current
+      // configured permissions.
+      const permissions =
+        input.install_params_permissions !== undefined
+          ? new PermissionsBitField(BigInt(input.install_params_permissions))
+          : (app.installParams?.permissions ?? new PermissionsBitField(0n));
+      editOptions.installParams = {
+        scopes: input.install_params_scopes as OAuth2Scopes[],
+        permissions,
+      };
     }
 
     const updated = await app.edit(editOptions);

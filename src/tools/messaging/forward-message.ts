@@ -61,10 +61,14 @@ export const forwardMessage = defineTool({
 
     // Message.forward() executes through the SOURCE message's client, so the
     // source bot must also be able to reach the destination channel. When the
-    // two channels resolve to different bot tokens (e.g. cross-project between
-    // guilds with separate bots), no single bot is in both — the forward would
-    // post through the wrong bot or fail. Refuse clearly instead.
-    if (source.token !== destination.token) {
+    // two channels resolve to different bots (e.g. cross-project between guilds
+    // with separate bots), no single bot is in both — the forward would post
+    // through the wrong bot or fail. Compare the EFFECTIVE tokens: an undefined
+    // per-target token falls back to the server default, so "source by id,
+    // destination by alias" on the default bot must NOT be rejected.
+    const sourceToken = source.token ?? ctx.config.defaultToken;
+    const destToken = destination.token ?? ctx.config.defaultToken;
+    if (sourceToken !== destToken) {
       return toolResult(
         "forward_message needs one bot in both channels, but the source and destination " +
           "resolve to different bot tokens. Forward within a single project/guild, or re-post " +
