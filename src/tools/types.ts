@@ -23,7 +23,12 @@ export type ToolCategory =
   | "guilds"
   | "members"
   | "threads"
-  | "system";
+  | "system"
+  | "personas"
+  | "polls"
+  | "forums"
+  | "botops"
+  | "notes";
 
 export interface ToolDefinition {
   name: string;

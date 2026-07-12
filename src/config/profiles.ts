@@ -6,6 +6,7 @@ export interface ResolvedProject {
   channels: Record<string, string>;
   channelBots: Record<string, string>;
   defaultChannel?: string;
+  boardChannel?: string;
   notificationRouting?: Record<string, string>;
   bot?: string;
   toolProfile?: string;
@@ -57,6 +58,7 @@ export function resolveProject(
     channels,
     channelBots,
     defaultChannel: project.default_channel,
+    boardChannel: project.board_channel,
     notificationRouting,
     bot: project.bot,
     toolProfile: project.tool_profile,

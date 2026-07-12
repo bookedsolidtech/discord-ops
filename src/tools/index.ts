@@ -3,6 +3,9 @@ import type { ToolDefinition } from "./types.js";
 // Messaging
 import { sendMessage } from "./messaging/send-message.js";
 import { getMessages } from "./messaging/get-messages.js";
+import { getMessage } from "./messaging/get-message.js";
+import { getReactions } from "./messaging/get-reactions.js";
+import { getReplies } from "./messaging/get-replies.js";
 import { editMessage } from "./messaging/edit-message.js";
 import { deleteMessage } from "./messaging/delete-message.js";
 import { addReaction } from "./messaging/add-reaction.js";
@@ -13,6 +16,28 @@ import { listTemplatesCmd } from "./messaging/list-templates.js";
 import { pinMessage } from "./messaging/pin.js";
 import { unpinMessage } from "./messaging/unpin.js";
 import { notifyOwners } from "./messaging/notify-owners.js";
+import { forwardMessage } from "./messaging/forward-message.js";
+
+// Personas
+import { createPersona, sendAs, listPersonas } from "./personas/index.js";
+
+// Polls
+import { sendPoll, getPollResults, endPoll } from "./polls/index.js";
+
+// Forums
+import { createForumPost, listForumPosts, updateForumPost } from "./forums/index.js";
+
+// Botops
+import {
+  setBotNick,
+  updateApplication,
+  listAppEmojis,
+  createAppEmoji,
+  deleteAppEmoji,
+} from "./botops/index.js";
+
+// Notes (project board)
+import { leaveNote, getNotes, resolveNote, listSessions } from "./notes/index.js";
 
 // Channels
 import { listChannels } from "./channels/list-channels.js";
@@ -68,11 +93,15 @@ import { queryAuditLog } from "./audit/query-audit-log.js";
 import { healthCheck } from "./health-check.js";
 import { listProjects } from "./system/list-projects.js";
 import { listBots } from "./system/list-bots.js";
+import { getEvents } from "./system/get-events.js";
 
 export const allTools: ToolDefinition[] = [
   // Messaging
   sendMessage,
   getMessages,
+  getMessage,
+  getReactions,
+  getReplies,
   editMessage,
   deleteMessage,
   addReaction,
@@ -83,6 +112,35 @@ export const allTools: ToolDefinition[] = [
   pinMessage,
   unpinMessage,
   notifyOwners,
+  forwardMessage,
+
+  // Personas
+  createPersona,
+  sendAs,
+  listPersonas,
+
+  // Polls
+  sendPoll,
+  getPollResults,
+  endPoll,
+
+  // Forums
+  createForumPost,
+  listForumPosts,
+  updateForumPost,
+
+  // Botops
+  setBotNick,
+  updateApplication,
+  listAppEmojis,
+  createAppEmoji,
+  deleteAppEmoji,
+
+  // Notes (project board)
+  leaveNote,
+  getNotes,
+  resolveNote,
+  listSessions,
 
   // Channels
   listChannels,
@@ -138,4 +196,5 @@ export const allTools: ToolDefinition[] = [
   healthCheck,
   listProjects,
   listBots,
+  getEvents,
 ];

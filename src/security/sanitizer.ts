@@ -4,7 +4,10 @@
 
 const SNOWFLAKE_IN_URL = /\/\d{17,20}/g;
 const TOKEN_FRAGMENT = /[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27,}/g;
-const WEBHOOK_URL = /https:\/\/discord\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+/g;
+// Matches every Discord webhook URL shape: canary/ptb subdomains, the legacy
+// discordapp.com host, and version-prefixed API paths (/api/v10/webhooks/...).
+const WEBHOOK_URL =
+  /https:\/\/(?:canary\.|ptb\.)?discord(?:app)?\.com\/api\/(?:v\d+\/)?webhooks\/\d+\/[\w-]+/g;
 
 export function sanitizeError(error: unknown): string {
   let message: string;

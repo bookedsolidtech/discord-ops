@@ -12,6 +12,7 @@ import { runInit } from "./init.js";
 import { runSetup } from "./setup.js";
 import { runTool } from "./run.js";
 import { runValidate } from "./validate.js";
+import { runListen } from "./listen.js";
 import { validateFlags } from "./validate-flags.js";
 
 const require = createRequire(import.meta.url);
@@ -21,6 +22,13 @@ export { validateFlags } from "./validate-flags.js";
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
+
+  // Handle listen subcommand before global flag validation — it owns its own
+  // flags (--stdout), which runListen validates itself.
+  if (args[0] === "listen") {
+    await runListen(args.slice(1));
+    return;
+  }
 
   // Reject unrecognised flags early
   validateFlags(args);
@@ -197,6 +205,7 @@ USAGE:
   discord-ops setup        Interactive setup wizard for config
   discord-ops run <tool>   Run a single tool from the CLI
   discord-ops validate     Validate configuration files
+  discord-ops listen       Run the gateway listener sidecar (appends events to the sink)
   discord-ops --help       Show this help
   discord-ops --version    Show version
 
@@ -208,6 +217,7 @@ OPTIONS:
   --profile <name>           Tool profile: full, monitoring, readonly, moderation
   --tools <list>             Comma-separated list of tools to enable
   --dry-run                  Preview actions without executing
+  --stdout                   Also emit each event line to stdout (listen mode)
 
 INIT FLAGS:
   --project <name>         Project name (required)

@@ -8,8 +8,14 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **49 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
+- **72 MCP tools** — messaging, personas, polls, forums, notes, channels, moderation, roles, webhooks, botops, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
+- **Project note board** — a durable, directed-note log per project; agents leave hand-offs and read them on startup, aware of other concurrent sessions
+- **Webhook personas** — one bot, unlimited posting identities via per-message username/avatar overrides; never create another bot application
+- **Native polls** — structured agent/human consensus with per-answer voter reads and bot flags
+- **Forum work queues** — posts as tasks, tags as status labels, archive to close
+- **Real-time event feed** — optional `discord-ops listen` sidecar streams messages/reactions to a local sink read by `get_events`, zero API calls per poll
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
+- **Agent-to-agent coordination** — agents post tasks, peers reply and react, originators read results back via `get_replies` / `get_reactions` — Discord as a durable coordination bus
 - **Notification routing** — map notification types (`ci_build`, `deploy`, `error`) to channels per project
 - **Owner pings** — configure project owners so releases, errors, and alerts auto-mention the right people
 - **Bot personas** — named bots with identity metadata, per-channel bot assignment, and per-bot tool profiles
@@ -332,15 +338,42 @@ send_embed({
 
 Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich previews — the bot fetches the metadata so Discord's CDN doesn't cache-bust client-side unfurls.
 
+## Agent-to-Agent Coordination
+
+discord-ops doubles as a coordination bus for multi-agent systems. One agent posts a task as a message, peer agents (or humans) reply and react, and the originating agent reads the replies and reactions back. Because the exchange lives in Discord, it's durable across sessions, works between agent processes that share no memory, and every step is observable by the humans in the server.
+
+The loop is four tool calls:
+
+```
+# Agent A posts a task and records the returned message ID
+send_message({ project: "my-app", channel: "engineering", content: "TASK: verify the staging deploy", raw: true })
+→ { "id": "333333333333333333" }
+
+# Agent B claims it with a reaction, then replies
+add_reaction({ project: "my-app", channel: "engineering", message_id: "333333333333333333", emoji: "👀" })
+send_message({ project: "my-app", channel: "engineering", reply_to: "333333333333333333", content: "RESULT: verified, all checks green", raw: true })
+
+# Agent A collects results at its next task boundary
+get_replies({ project: "my-app", channel: "engineering", message_id: "333333333333333333" })
+get_reactions({ project: "my-app", channel: "engineering", message_id: "333333333333333333" })
+```
+
+Three read-side tools close the loop: `get_message` fetches a single message with its reply, thread, and reaction state; `get_reactions` reports who reacted with what; `get_replies` collects replies to a specific message. `get_messages` includes `reply_to` on every message, so scanning agents can reconstruct conversation structure. For exchanges longer than one round trip, `create_thread` from the original message keeps the channel clean.
+
+See [docs/agent-coordination.md](docs/agent-coordination.md) for the full protocol — reaction vocabulary, threads, polling guidance, multi-project setups, and anti-patterns. New to discord-ops? [docs/project-onboarding.md](docs/project-onboarding.md) is the start-to-finish walkthrough for adopting it as a team's coordination bus — project setup, the shared note board, personas, polls and forums, and least-privilege profiles.
+
 ## Tools
 
-### Messaging (12 tools)
+### Messaging (16 tools)
 
 | Tool              | Description                                                 |
 | ----------------- | ----------------------------------------------------------- |
 | `send_message`    | Send a message with project routing (auto-embed by default) |
 | `send_embed`      | Fetch OG metadata from a URL and post a rich embed          |
 | `get_messages`    | Fetch recent messages (supports ISO 8601 timestamps)        |
+| `get_message`     | Fetch one message with reply, thread, and reaction state    |
+| `get_reactions`   | List reactions on a message with per-user detail            |
+| `get_replies`     | Collect replies to a specific message                       |
 | `edit_message`    | Edit a bot message                                          |
 | `delete_message`  | Delete a message                                            |
 | `add_reaction`    | React to a message                                          |
@@ -350,6 +383,47 @@ Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich pr
 | `send_template`   | Send a styled embed using a built-in template               |
 | `list_templates`  | List available templates with required variables            |
 | `notify_owners`   | Ping project owners based on notification type              |
+| `forward_message` | Forward a message snapshot to another channel               |
+
+### Personas (3 tools)
+
+One bot, unlimited posting identities — persona identity is a per-message webhook username/avatar override, so no new Discord bots or developer-portal work are ever needed.
+
+| Tool             | Description                                                          |
+| ---------------- | -------------------------------------------------------------------- |
+| `create_persona` | Ensure a channel has a persona-capable webhook (token never exposed) |
+| `send_as`        | Post as any persona name/avatar; returns the message id              |
+| `list_personas`  | List persona webhooks per channel or guild                           |
+
+### Polls (3 tools)
+
+| Tool               | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `send_poll`        | Create a native poll (2-10 answers, multiselect, up to 32 days) |
+| `get_poll_results` | Read tallies and per-answer voters with bot flags               |
+| `end_poll`         | Immediately finalize a poll (idempotent)                        |
+
+### Forums (3 tools)
+
+Forum channels as durable work queues: a post is a task, tags are status labels, archiving closes it.
+
+| Tool                | Description                                        |
+| ------------------- | -------------------------------------------------- |
+| `create_forum_post` | Create a tagged forum post with an initial message |
+| `list_forum_posts`  | List posts, filterable by tag name                 |
+| `update_forum_post` | Replace tags and/or archive (close) a post         |
+
+### Botops (5 tools)
+
+Manage the bot application itself via API — no developer portal round-trips. (Creating _new_ bot applications remains portal-only by Discord's design; use personas instead.)
+
+| Tool                 | Description                                                         |
+| -------------------- | ------------------------------------------------------------------- |
+| `set_bot_nick`       | Set or clear the bot's per-guild nickname                           |
+| `update_application` | Edit description, icon, tags, and install params of the current app |
+| `list_app_emojis`    | List application-owned emojis                                       |
+| `create_app_emoji`   | Upload an app emoji; returns an `add_reaction`-ready identifier     |
+| `delete_app_emoji`   | Delete an app emoji                                                 |
 
 ### Channels (9 tools)
 
@@ -420,13 +494,25 @@ Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich pr
 | `list_threads`   | List active threads                    |
 | `archive_thread` | Archive (and optionally lock) a thread |
 
-### System (3 tools)
+### Notes (4 tools)
+
+A durable, directed-note log — one board channel per project — that agents read on startup and use for hand-offs across concurrent sessions. See [docs/project-onboarding.md](docs/project-onboarding.md).
+
+| Tool            | Description                                                       |
+| --------------- | ----------------------------------------------------------------- |
+| `leave_note`    | Leave a directed note (to a session, role, or `all`) on the board |
+| `get_notes`     | Read the board, filtered by recipient, sender, tag, or unresolved |
+| `resolve_note`  | Mark a note handled (✅) with an optional reply                   |
+| `list_sessions` | See which sessions are active on a project, from note activity    |
+
+### System (4 tools)
 
 | Tool            | Description                                                          |
 | --------------- | -------------------------------------------------------------------- |
 | `health_check`  | Bot status, version, connected guilds, and permission audit          |
 | `list_projects` | List all projects with guild mappings, token status, and validation  |
 | `list_bots`     | List all bot personas with project assignments and channel overrides |
+| `get_events`    | Read the local real-time event feed written by `discord-ops listen`  |
 
 ## Tool Profiles
 
@@ -434,15 +520,15 @@ Load only the tools an agent needs. Reduces schema token overhead by up to 85% f
 
 ### Built-in profiles
 
-| Profile      | Tools | Description                                                                                            |
-| ------------ | ----- | ------------------------------------------------------------------------------------------------------ |
-| `full`       | 49    | All tools (default)                                                                                    |
-| `monitoring` | 7     | get_messages, send_message, add_reaction, create_thread, health_check, list_projects, list_bots        |
-| `readonly`   | 7     | get_messages, list_channels, list_members, get_guild, health_check, list_projects, list_bots           |
-| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log |
-| `messaging`  | 5     | add_reaction, delete_message, edit_message, get_messages, send_message                                 |
-| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode |
-| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks              |
+| Profile      | Tools | Description                                                                                                                                                                                                                        |
+| ------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `full`       | 72    | All tools (default)                                                                                                                                                                                                                |
+| `monitoring` | 17    | get_messages, get_message, get_replies, get_reactions, send_message, send_as, add_reaction, create_thread, send_poll, get_poll_results, leave_note, get_notes, resolve_note, list_sessions, health_check, list_projects, list_bots |
+| `readonly`   | 13    | get_messages, get_message, get_replies, get_reactions, get_poll_results, list_personas, list_forum_posts, list_channels, list_members, get_guild, health_check, list_projects, list_bots                                           |
+| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log                                                                                                                             |
+| `messaging`  | 10    | add_reaction, delete_message, edit_message, forward_message, get_messages, get_message, get_replies, get_reactions, send_as, send_message                                                                                          |
+| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode                                                                                                                             |
+| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks                                                                                                                                          |
 
 ### Using profiles
 

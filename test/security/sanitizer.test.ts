@@ -17,6 +17,20 @@ describe("sanitizeError", () => {
     expect(sanitized).toContain("[REDACTED_WEBHOOK_URL]");
   });
 
+  it("strips webhook URLs across host and version-path variants", () => {
+    const variants = [
+      "https://discord.com/api/v10/webhooks/123456789012345678/tokenAbc-123",
+      "https://discordapp.com/api/webhooks/123456789012345678/tokenAbc-123",
+      "https://ptb.discord.com/api/v9/webhooks/123456789012345678/tokenAbc-123",
+      "https://canary.discord.com/api/webhooks/123456789012345678/tokenAbc-123",
+    ];
+    for (const url of variants) {
+      const sanitized = sanitizeError(`POST ${url} 401`);
+      expect(sanitized, url).not.toContain("tokenAbc-123");
+      expect(sanitized, url).toContain("[REDACTED_WEBHOOK_URL]");
+    }
+  });
+
   it("handles Error objects", () => {
     const err = new Error("Something went wrong");
     expect(sanitizeError(err)).toBe("Something went wrong");

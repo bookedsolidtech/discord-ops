@@ -34,6 +34,14 @@ const SNOWFLAKE_PARAMS = new Set([
  */
 const SNOWFLAKE_OR_TIMESTAMP_PARAMS = new Set(["before", "after"]);
 
+/**
+ * Some `after` params are NOT snowflake/timestamp cursors. get_events.after is
+ * a numeric event-sequence cursor (union of string|number) that intentionally
+ * accepts the numeric last_seq it returns, so the numeric-rejection invariant
+ * does not apply to it.
+ */
+const NON_SNOWFLAKE_CURSORS = new Set(["get_events.after"]);
+
 /** Valid snowflake for testing -- 18-digit string */
 const VALID_SNOWFLAKE = "123456789012345678";
 
@@ -72,6 +80,7 @@ describe("snowflake ID schema enforcement", () => {
       const isSnowflake = SNOWFLAKE_PARAMS.has(key);
       const isSnowflakeOrTimestamp = SNOWFLAKE_OR_TIMESTAMP_PARAMS.has(key);
       if (!isSnowflake && !isSnowflakeOrTimestamp) continue;
+      if (NON_SNOWFLAKE_CURSORS.has(`${tool.name}.${key}`)) continue;
 
       describe(`${tool.name}.${key}`, () => {
         // Unwrap optional wrapper if present
