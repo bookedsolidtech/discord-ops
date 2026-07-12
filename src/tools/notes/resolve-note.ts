@@ -36,7 +36,9 @@ export const resolveNote = defineTool({
     "outcome and who closed it. Use this to close hand-offs and requests instead of leaving them " +
     "to pile up.",
   category: NOTES_CATEGORY,
-  destructive: false,
+  // Mutates Discord (adds a reaction, optionally posts a reply), so dry-run
+  // must simulate rather than actually react.
+  destructive: true,
   inputSchema,
   handle: async (input, ctx) => {
     const board = resolveBoardChannel(

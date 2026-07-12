@@ -59,10 +59,14 @@ export function resolveBoardChannel(
 ): { project: string; board: string } | { error: string } {
   const name = projectName ?? getDefaultProjectName(config.global, config.perProject);
   if (!name) {
+    // A direct channel_id/board_channel override routes on its own, so it does
+    // not need a project or default project at all.
+    if (hasOverride) return { project: "", board: "" };
     return { error: "No project specified and no default project configured." };
   }
   const project = resolveProject(name, config.global, config.perProject);
   if (!project) {
+    if (hasOverride) return { project: projectName ? name : "", board: "" };
     return { error: `Project "${name}" not found in config.` };
   }
   const has = (alias: string) => alias in project.channels;
