@@ -34,7 +34,8 @@ export const listPersonas = defineTool({
     "List persona-capable webhooks — the carriers of agent persona identities. Scope to one channel via " +
     "channel/channel_id, or list guild-wide via guild_id or project. Any persona name can be used per-message " +
     "through these webhooks via send_as; no per-persona registration exists on Discord's side. " +
-    "Requires ManageWebhooks permission.",
+    "The guild-wide listing enumerates through the project's bot; in multi-bot setups, persona webhooks owned " +
+    "by a per-channel OVERRIDE bot are best listed with that channel's scope. Requires ManageWebhooks permission.",
   category: "personas",
   inputSchema,
   permissions: ["ManageWebhooks"],

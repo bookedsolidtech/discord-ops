@@ -80,20 +80,29 @@ export const getEvents = defineTool({
       if (rotated.length > 0) all = [...rotated, ...active];
     }
 
-    // Resolve a project+channel alias filter to the underlying channel id.
-    // Events for a shared channel are stored once under whichever route the
-    // sidecar registered first, so matching by identity (channel_id) — not by
-    // the stored alias label — keeps the channel queryable under EVERY route
-    // that points at it, while the sink still holds one copy of each event.
-    let effectiveChannelId = input.channel_id;
-    if (!effectiveChannelId && input.project && input.channel) {
-      const proj = resolveProject(input.project, ctx.config.global, ctx.config.perProject);
-      effectiveChannelId = proj?.channels[input.channel];
-    }
+    // Match a shared channel by IDENTITY, not by the stored alias label. Events
+    // for a channel shared across routes are stored once under whichever route
+    // the sidecar registered first, so identity matching keeps the channel
+    // queryable under EVERY route that points at it while the sink holds one
+    // copy of each event.
+    //  - project + channel → resolve to that one channel id.
+    //  - project only → the SET of the project's channel ids (so a project poll
+    //    still finds shared-channel events labeled with another route).
+    const proj =
+      input.project && (input.channel || !input.channel_id)
+        ? resolveProject(input.project, ctx.config.global, ctx.config.perProject)
+        : undefined;
+    const effectiveChannelId =
+      input.channel_id ?? (input.channel ? proj?.channels[input.channel] : undefined);
+    const projectChannelIds =
+      !effectiveChannelId && input.project && !input.channel && proj
+        ? new Set(Object.values(proj.channels))
+        : undefined;
 
     const matches = (e: SinkEvent): boolean => {
       if (input.types && !input.types.includes(e.type)) return false;
       if (effectiveChannelId) return e.channel_id === effectiveChannelId;
+      if (projectChannelIds) return projectChannelIds.has(e.channel_id);
       if (input.project && e.project !== input.project) return false;
       if (input.channel && e.channel !== input.channel) return false;
       return true;

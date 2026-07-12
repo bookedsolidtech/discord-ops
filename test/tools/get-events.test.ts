@@ -232,6 +232,26 @@ describe("get_events", () => {
     expect(data.events.map((e: SinkEvent) => e.seq)).toEqual([1]);
   });
 
+  it("matches shared-channel events on a project-only poll", async () => {
+    const SHARED_ID = "444444444444444444";
+    writeEvents(sink, [
+      ev(1, { project: "primary", channel: "dev", channel_id: SHARED_ID }),
+      ev(2, { project: "other", channel: "misc", channel_id: "555555555555555555" }),
+    ]);
+    const ctx = createCtx();
+    // "secondary" includes the shared channel under a different alias; a
+    // project-only poll must still find the event labeled with "primary".
+    (ctx.config as any).global.projects = {
+      secondary: {
+        guild_id: "900000000000000001",
+        channels: { ops: SHARED_ID, other: "666666666666666666" },
+      },
+    };
+
+    const data = parse(await getEvents.handle({ after: 0, project: "secondary", limit: 50 }, ctx));
+    expect(data.events.map((e: SinkEvent) => e.seq)).toEqual([1]);
+  });
+
   it("tail mode does not replay the rotated file when the active sink has events", async () => {
     // A no-cursor read returns the NEWEST events (active sink) and must not
     // prepend the older rotated file, which would replay stale events.

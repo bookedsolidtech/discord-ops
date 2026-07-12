@@ -2,6 +2,7 @@ import { z } from "zod";
 import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
+import { resolveProject } from "../../config/profiles.js";
 import { FORUMS_CATEGORY, asForumChannel, resolveTagNames, tagIdsToNames } from "./forum-shared.js";
 
 const inputSchema = z.object({
@@ -63,16 +64,26 @@ export const createForumPost = defineTool({
       ...(appliedTags ? { appliedTags } : {}),
     });
 
+    // Echo the routing so a follow-up update_forum_post can reuse the SAME bot
+    // token — essential when the forum has a per-channel bot override. Recover
+    // the channel ALIAS even when the caller routed by channel_id, since
+    // getTokenForChannel (used by update) is keyed on the alias.
+    let echoChannel = input.channel;
+    if (!echoChannel && target.project) {
+      const proj = resolveProject(target.project, ctx.config.global, ctx.config.perProject);
+      echoChannel = proj
+        ? Object.entries(proj.channels).find(([, id]) => id === target.channelId)?.[0]
+        : undefined;
+    }
+
     return toolResultJson({
       thread_id: thread.id,
       // Discord invariant: a forum post's starter message shares the thread's ID.
       message_id: thread.id,
       title: thread.name,
       applied_tags: tagIdsToNames(forum, thread.appliedTags ?? appliedTags ?? []),
-      // Echo the routing so a follow-up update_forum_post can reuse the SAME
-      // bot token — essential when the forum has a per-channel bot override.
       ...(target.project ? { project: target.project } : {}),
-      ...(input.channel ? { channel: input.channel } : {}),
+      ...(echoChannel ? { channel: echoChannel } : {}),
     });
   },
 });
