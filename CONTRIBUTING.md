@@ -9,6 +9,12 @@ Thank you for your interest in contributing to discord-ops!
 3. Install dependencies: `npm install`
 4. Create a branch: `git checkout -b feat/your-feature`
 
+### Requirements
+
+- **Node 22+** for development. The published package supports Node 20+
+  at runtime, but the dev toolchain (including `@bookedsolid/rea`, which
+  powers the repo's governance hooks) requires Node 22 or newer.
+
 ## Development
 
 ```bash

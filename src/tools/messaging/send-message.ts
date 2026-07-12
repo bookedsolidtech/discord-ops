@@ -23,7 +23,7 @@ const inputSchema = z.object({
 export const sendMessage = defineTool({
   name: "send_message",
   description:
-    "Send a message to a Discord channel. Messages are automatically wrapped in a polished embed. Set raw=true for plain text. For richer formatting, use send_template instead.",
+    "Send a message to a Discord channel. Messages are automatically wrapped in a polished embed. Set raw=true for plain text. For richer formatting, use send_template instead. Returns message_id — capture it to later observe responses with get_replies, get_reactions, or get_message.",
   category: "messaging",
   inputSchema,
   handle: async (input, ctx) => {
@@ -46,6 +46,7 @@ export const sendMessage = defineTool({
 
       return toolResultJson({
         id: message.id,
+        message_id: message.id,
         channel_id: message.channelId,
         template: "simple",
         author: message.author.tag,
@@ -61,6 +62,7 @@ export const sendMessage = defineTool({
 
     return toolResultJson({
       id: message.id,
+      message_id: message.id,
       channel_id: message.channelId,
       content: message.content,
       author: message.author.tag,

@@ -64,7 +64,7 @@ describe("validateConfig", () => {
     expect(result.projects.every((p) => p.tokenSet)).toBe(true);
   });
 
-  it("errors when token_env is not set in environment", () => {
+  it("warns when token_env is not set in environment", () => {
     // ORG_A_TOKEN is NOT set in env
     const config: LoadedConfig = {
       defaultToken: undefined,
@@ -80,9 +80,10 @@ describe("validateConfig", () => {
     };
 
     const result = validateConfig(config);
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors[0]).toContain("ORG_A_TOKEN");
-    expect(result.errors[0]).toContain("not set");
+    expect(result.errors).toHaveLength(0);
+    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.warnings[0]).toContain("ORG_A_TOKEN");
+    expect(result.warnings[0]).toContain("not set");
   });
 
   it("errors when no token and no token_env", () => {

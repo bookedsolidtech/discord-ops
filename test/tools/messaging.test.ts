@@ -76,6 +76,27 @@ describe("send_message", () => {
     );
   });
 
+  it("returns message_id so agents can poll for replies and reactions later", async () => {
+    const ctx = createCtx();
+
+    const embedResult = await sendMessage.handle(
+      { content: "Task posted", project: "test-project", channel: "dev" },
+      ctx,
+    );
+    expect(embedResult.isError).toBeUndefined();
+    const embedData = JSON.parse(embedResult.content[0]!.text);
+    expect(embedData.message_id).toBe("111111111111111111");
+    expect(embedData.id).toBe(embedData.message_id);
+
+    const rawResult = await sendMessage.handle(
+      { content: "Task posted", raw: true, project: "test-project", channel: "dev" },
+      ctx,
+    );
+    expect(rawResult.isError).toBeUndefined();
+    const rawData = JSON.parse(rawResult.content[0]!.text);
+    expect(rawData.message_id).toBe("111111111111111111");
+  });
+
   it("sends plain text when raw=true", async () => {
     const ctx = createCtx();
     const result = await sendMessage.handle(
@@ -104,6 +125,37 @@ describe("get_messages", () => {
     const msg = data.messages[0];
     expect(Array.isArray(msg.embeds)).toBe(true);
     expect(Array.isArray(msg.attachments)).toBe(true);
+  });
+
+  it("includes reply_to on each message so reply chains are visible in bulk reads", async () => {
+    const replyMsg = createMockMessage({
+      id: "111111111111111112",
+      content: "replying to your task",
+      type: 19, // MessageType.Reply
+      reference: { messageId: "111111111111111111" },
+    });
+    const plainMsg = createMockMessage({ id: "111111111111111113", content: "not a reply" });
+
+    const mockChannel = createMockChannel({
+      messages: {
+        fetch: vi.fn().mockResolvedValue(
+          new Map([
+            ["111111111111111112", replyMsg],
+            ["111111111111111113", plainMsg],
+          ]),
+        ),
+      },
+    });
+
+    const ctx = createCtx();
+    (ctx.discord.getChannel as any).mockResolvedValue(mockChannel);
+
+    const result = await getMessages.handle({ channel_id: "222222222222222222", limit: 10 }, ctx);
+    expect(result.isError).toBeUndefined();
+
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.messages[0].reply_to).toBe("111111111111111111");
+    expect(data.messages[1].reply_to).toBeNull();
   });
 
   it("returns full embed content instead of just a count", async () => {

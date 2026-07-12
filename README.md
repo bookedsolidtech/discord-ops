@@ -8,8 +8,14 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **49 MCP tools** — messaging, channels, moderation, roles, webhooks, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
+- **72 MCP tools** — messaging, personas, polls, forums, notes, channels, moderation, roles, webhooks, botops, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
+- **Project note board** — a durable, directed-note log per project; agents leave hand-offs and read them on startup, aware of other concurrent sessions
+- **Webhook personas** — one bot, unlimited posting identities via per-message username/avatar overrides; never create another bot application
+- **Native polls** — structured agent/human consensus with per-answer voter reads and bot flags
+- **Forum work queues** — posts as tasks, tags as status labels, archive to close
+- **Real-time event feed** — optional `discord-ops listen` sidecar streams messages/reactions to a local sink read by `get_events`, zero API calls per poll
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
+- **Agent-to-agent coordination** — agents post tasks, peers reply and react, originators read results back via `get_replies` / `get_reactions` — Discord as a durable coordination bus
 - **Notification routing** — map notification types (`ci_build`, `deploy`, `error`) to channels per project
 - **Owner pings** — configure project owners so releases, errors, and alerts auto-mention the right people
 - **Bot personas** — named bots with identity metadata, per-channel bot assignment, and per-bot tool profiles
@@ -202,7 +208,9 @@ Give bots names, roles, and per-channel assignment. This is ideal when your Disc
       "name": "Clarity Courier",
       "role": "Technical operations",
       "token_env": "COURIER_TOKEN",
-      "default_profile": "full"
+      "default_profile": "full",
+      "profile_add": ["send_template"],
+      "profile_remove": []
     }
   },
   "projects": {
@@ -228,6 +236,8 @@ Give bots names, roles, and per-channel assignment. This is ideal when your Disc
 - **`project.bot`** — default bot for the project (all channels use this bot unless overridden)
 - **Channel `bot` override** — individual channels can use a different bot: `{ "id": "...", "bot": "claire" }`
 - **`default_profile`** — per-bot tool profile (restricts which tools a bot can use at runtime)
+- **`profile_add`** — additional tools to load on top of the bot's `default_profile`
+- **`profile_remove`** — tools to exclude from the bot's `default_profile`
 - **Token resolution** — channel bot → project bot → project `token_env` → default `DISCORD_TOKEN`
 - **Bot persona in routing** — resolved targets include `bot: { name, role }` metadata for agent context
 - **Backwards compatible** — `bots` is optional; channels accept both `"ID"` and `{ "id": "ID", "bot": "name" }` formats
@@ -316,10 +326,10 @@ send_message({ project: "my-app", channel: "dev", content: "pong", raw: true })
 
 ```
 send_embed({
-  url: "https://www.npmjs.com/package/discord-ops/v/0.14.0",
+  url: "https://www.npmjs.com/package/discord-ops/v/0.23.0",
   project: "my-app",
   channel: "releases",
-  title: "discord-ops v0.14.0",
+  title: "discord-ops v0.23.0",
   description: "Owner pings, smart channel resolution, category editing",
   color: 5763719,
   footer: "Released April 3, 2026"
@@ -328,15 +338,42 @@ send_embed({
 
 Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich previews — the bot fetches the metadata so Discord's CDN doesn't cache-bust client-side unfurls.
 
+## Agent-to-Agent Coordination
+
+discord-ops doubles as a coordination bus for multi-agent systems. One agent posts a task as a message, peer agents (or humans) reply and react, and the originating agent reads the replies and reactions back. Because the exchange lives in Discord, it's durable across sessions, works between agent processes that share no memory, and every step is observable by the humans in the server.
+
+The loop is four tool calls:
+
+```
+# Agent A posts a task and records the returned message ID
+send_message({ project: "my-app", channel: "engineering", content: "TASK: verify the staging deploy", raw: true })
+→ { "id": "333333333333333333" }
+
+# Agent B claims it with a reaction, then replies
+add_reaction({ project: "my-app", channel: "engineering", message_id: "333333333333333333", emoji: "👀" })
+send_message({ project: "my-app", channel: "engineering", reply_to: "333333333333333333", content: "RESULT: verified, all checks green", raw: true })
+
+# Agent A collects results at its next task boundary
+get_replies({ project: "my-app", channel: "engineering", message_id: "333333333333333333" })
+get_reactions({ project: "my-app", channel: "engineering", message_id: "333333333333333333" })
+```
+
+Three read-side tools close the loop: `get_message` fetches a single message with its reply, thread, and reaction state; `get_reactions` reports who reacted with what; `get_replies` collects replies to a specific message. `get_messages` includes `reply_to` on every message, so scanning agents can reconstruct conversation structure. For exchanges longer than one round trip, `create_thread` from the original message keeps the channel clean.
+
+See [docs/agent-coordination.md](docs/agent-coordination.md) for the full protocol — reaction vocabulary, threads, polling guidance, multi-project setups, and anti-patterns. New to discord-ops? [docs/project-onboarding.md](docs/project-onboarding.md) is the start-to-finish walkthrough for adopting it as a team's coordination bus — project setup, the shared note board, personas, polls and forums, and least-privilege profiles.
+
 ## Tools
 
-### Messaging (12 tools)
+### Messaging (16 tools)
 
 | Tool              | Description                                                 |
 | ----------------- | ----------------------------------------------------------- |
 | `send_message`    | Send a message with project routing (auto-embed by default) |
 | `send_embed`      | Fetch OG metadata from a URL and post a rich embed          |
 | `get_messages`    | Fetch recent messages (supports ISO 8601 timestamps)        |
+| `get_message`     | Fetch one message with reply, thread, and reaction state    |
+| `get_reactions`   | List reactions on a message with per-user detail            |
+| `get_replies`     | Collect replies to a specific message                       |
 | `edit_message`    | Edit a bot message                                          |
 | `delete_message`  | Delete a message                                            |
 | `add_reaction`    | React to a message                                          |
@@ -346,6 +383,47 @@ Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich pr
 | `send_template`   | Send a styled embed using a built-in template               |
 | `list_templates`  | List available templates with required variables            |
 | `notify_owners`   | Ping project owners based on notification type              |
+| `forward_message` | Forward a message snapshot to another channel               |
+
+### Personas (3 tools)
+
+One bot, unlimited posting identities — persona identity is a per-message webhook username/avatar override, so no new Discord bots or developer-portal work are ever needed.
+
+| Tool             | Description                                                          |
+| ---------------- | -------------------------------------------------------------------- |
+| `create_persona` | Ensure a channel has a persona-capable webhook (token never exposed) |
+| `send_as`        | Post as any persona name/avatar; returns the message id              |
+| `list_personas`  | List persona webhooks per channel or guild                           |
+
+### Polls (3 tools)
+
+| Tool               | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `send_poll`        | Create a native poll (2-10 answers, multiselect, up to 32 days) |
+| `get_poll_results` | Read tallies and per-answer voters with bot flags               |
+| `end_poll`         | Immediately finalize a poll (idempotent)                        |
+
+### Forums (3 tools)
+
+Forum channels as durable work queues: a post is a task, tags are status labels, archiving closes it.
+
+| Tool                | Description                                        |
+| ------------------- | -------------------------------------------------- |
+| `create_forum_post` | Create a tagged forum post with an initial message |
+| `list_forum_posts`  | List posts, filterable by tag name                 |
+| `update_forum_post` | Replace tags and/or archive (close) a post         |
+
+### Botops (5 tools)
+
+Manage the bot application itself via API — no developer portal round-trips. (Creating _new_ bot applications remains portal-only by Discord's design; use personas instead.)
+
+| Tool                 | Description                                                         |
+| -------------------- | ------------------------------------------------------------------- |
+| `set_bot_nick`       | Set or clear the bot's per-guild nickname                           |
+| `update_application` | Edit description, icon, tags, and install params of the current app |
+| `list_app_emojis`    | List application-owned emojis                                       |
+| `create_app_emoji`   | Upload an app emoji; returns an `add_reaction`-ready identifier     |
+| `delete_app_emoji`   | Delete an app emoji                                                 |
 
 ### Channels (9 tools)
 
@@ -416,13 +494,25 @@ Useful for sharing GitHub PRs, npm releases, blog posts, or any URL with rich pr
 | `list_threads`   | List active threads                    |
 | `archive_thread` | Archive (and optionally lock) a thread |
 
-### System (3 tools)
+### Notes (4 tools)
+
+A durable, directed-note log — one board channel per project — that agents read on startup and use for hand-offs across concurrent sessions. See [docs/project-onboarding.md](docs/project-onboarding.md).
+
+| Tool            | Description                                                       |
+| --------------- | ----------------------------------------------------------------- |
+| `leave_note`    | Leave a directed note (to a session, role, or `all`) on the board |
+| `get_notes`     | Read the board, filtered by recipient, sender, tag, or unresolved |
+| `resolve_note`  | Mark a note handled (✅) with an optional reply                   |
+| `list_sessions` | See which sessions are active on a project, from note activity    |
+
+### System (4 tools)
 
 | Tool            | Description                                                          |
 | --------------- | -------------------------------------------------------------------- |
 | `health_check`  | Bot status, version, connected guilds, and permission audit          |
 | `list_projects` | List all projects with guild mappings, token status, and validation  |
 | `list_bots`     | List all bot personas with project assignments and channel overrides |
+| `get_events`    | Read the local real-time event feed written by `discord-ops listen`  |
 
 ## Tool Profiles
 
@@ -430,15 +520,15 @@ Load only the tools an agent needs. Reduces schema token overhead by up to 85% f
 
 ### Built-in profiles
 
-| Profile      | Tools | Description                                                                                            |
-| ------------ | ----- | ------------------------------------------------------------------------------------------------------ |
-| `full`       | 49    | All tools (default)                                                                                    |
-| `monitoring` | 7     | get_messages, send_message, add_reaction, create_thread, health_check, list_projects, list_bots        |
-| `readonly`   | 7     | get_messages, list_channels, list_members, get_guild, health_check, list_projects, list_bots           |
-| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log |
-| `messaging`  | 5     | add_reaction, delete_message, edit_message, get_messages, send_message                                 |
-| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode |
-| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks              |
+| Profile      | Tools | Description                                                                                                                                                                                                                        |
+| ------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `full`       | 72    | All tools (default)                                                                                                                                                                                                                |
+| `monitoring` | 17    | get_messages, get_message, get_replies, get_reactions, send_message, send_as, add_reaction, create_thread, send_poll, get_poll_results, leave_note, get_notes, resolve_note, list_sessions, health_check, list_projects, list_bots |
+| `readonly`   | 13    | get_messages, get_message, get_replies, get_reactions, get_poll_results, list_personas, list_forum_posts, list_channels, list_members, get_guild, health_check, list_projects, list_bots                                           |
+| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log                                                                                                                             |
+| `messaging`  | 10    | add_reaction, delete_message, edit_message, forward_message, get_messages, get_message, get_replies, get_reactions, send_as, send_message                                                                                          |
+| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode                                                                                                                             |
+| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks                                                                                                                                          |
 
 ### Using profiles
 
@@ -464,16 +554,16 @@ Profiles can be set per project in `~/.discord-ops.json` so each agent gets only
       "guild_id": "123456789012345678",
       "channels": { "dev": "CHANNEL_ID", "alerts": "CHANNEL_ID" },
       "tool_profile": "monitoring",
-      "tool_profile_add": ["send_message"],
-      "tool_profile_remove": ["list_members"]
+      "profile_add": ["send_message"],
+      "profile_remove": ["list_members"]
     }
   }
 }
 ```
 
 - **`tool_profile`** — base profile to use for this project
-- **`tool_profile_add`** — add tools not included in the base profile
-- **`tool_profile_remove`** — remove tools from the base profile
+- **`profile_add`** — add tools not included in the base profile
+- **`profile_remove`** — remove tools from the base profile
 
 ## CLI
 
@@ -481,6 +571,7 @@ Profiles can be set per project in `~/.discord-ops.json` so each agent gets only
 discord-ops                        Start MCP server (stdio transport)
 discord-ops serve                  Start MCP server (HTTP/SSE transport)
 discord-ops run <tool> --args '{…}' Run any tool directly (no AI/MCP required)
+discord-ops init                   Scaffold a per-project .discord-ops.json
 discord-ops setup                  Interactive setup wizard (single + multi-bot)
 discord-ops health                 Run health check + permission audit
 discord-ops validate               Validate config without connecting to Discord
@@ -520,6 +611,44 @@ npx discord-ops@latest run send_template \
 ```
 
 Any tool name accepted by the MCP server works here — `send_message`, `send_template`, `send_embed`, `list_channels`, etc. The same input schema applies; validation errors are printed with field paths and exit code 1.
+
+### `init` — scaffold a per-project config
+
+The `init` subcommand creates a `.discord-ops.json` file in the current directory for per-project configuration.
+
+```bash
+discord-ops init --project my-app --guild-id 123456789012345678
+
+# With channels and custom token env var
+discord-ops init --project my-app --guild-id 123456789012345678 \
+  --token-env MY_APP_TOKEN \
+  --channel builds=987654321098765432 \
+  --channel releases=111222333444555666
+
+# Overwrite existing and mark as default project
+discord-ops init --project my-app --guild-id 123456789012345678 --force --default
+```
+
+**Flags:**
+
+| Flag                     | Required | Description                                          |
+| ------------------------ | -------- | ---------------------------------------------------- |
+| `--project <name>`       | Yes      | Project name                                         |
+| `--guild-id <snowflake>` | Yes      | Discord guild/server snowflake ID                    |
+| `--token-env <VAR>`      | No       | Env var for bot token (default: `DISCORD_TOKEN`)     |
+| `--channel <alias>=<id>` | No       | Channel alias mapping, repeatable                    |
+| `--force`                | No       | Overwrite existing `.discord-ops.json`               |
+| `--default`              | No       | Mark this project as `default_project` in the config |
+
+### `serve` flags
+
+The `serve` subcommand accepts additional flags for HTTP transport configuration:
+
+| Flag                        | Description                                                                  |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| `--port <port>`             | HTTP port (default: 3000)                                                    |
+| `--allowed-origin <origin>` | Allowed CORS origin (default: `http://localhost`)                            |
+| `--allow-unauthenticated`   | Start without requiring `DISCORD_OPS_HTTP_TOKEN` (insecure, shows a warning) |
 
 ## Environment Variables
 
@@ -701,11 +830,11 @@ In dry-run mode, destructive tools return a simulated success response showing w
 send_template({
   template: "release",
   vars: {
-    version: "v0.14.0",
+    version: "v0.23.0",
     name: "discord-ops",
     highlights: "• Owner pings\n• Smart channel resolution\n• Category channel editing",
-    npm: "npm install discord-ops@0.14.0",
-    npm_url: "https://www.npmjs.com/package/discord-ops/v/0.14.0",
+    npm: "npm install discord-ops@0.23.0",
+    npm_url: "https://www.npmjs.com/package/discord-ops/v/0.23.0",
     link: "https://github.com/bookedsolidtech/discord-ops/pull/20",
     footer: "Released April 3, 2026",
     author_name: "Booked Solid Technology"
@@ -780,7 +909,9 @@ Full `~/.discord-ops.json` schema with all options:
       "role": "General purpose",
       "description": "Handles all operations",
       "token_env": "MY_BOT_TOKEN",
-      "default_profile": "full"
+      "default_profile": "full",
+      "profile_add": [],
+      "profile_remove": []
     }
   },
   "projects": {
@@ -800,13 +931,7 @@ Full `~/.discord-ops.json` schema with all options:
       "notify_owners_on": ["release", "error", "alert"],
       "tool_profile": "full",
       "profile_add": [],
-      "profile_remove": [],
-      "notification_routing": {
-        "ci_build": "builds",
-        "deploy": "builds",
-        "release": "releases",
-        "error": "alerts"
-      }
+      "profile_remove": []
     }
   },
   "default_project": "my-app",
@@ -822,11 +947,11 @@ Full `~/.discord-ops.json` schema with all options:
 
 **Global fields:**
 
-| Field                  | Description                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------- |
-| `bots`                 | Named bot personas with `name`, `role`, `description`, `token_env`, `default_profile` |
-| `default_project`      | Project used when no `project` param is provided                                      |
-| `notification_routing` | Global notification type → channel alias routing                                      |
+| Field                  | Description                                                                                                            |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `bots`                 | Named bot personas with `name`, `role`, `description`, `token_env`, `default_profile`, `profile_add`, `profile_remove` |
+| `default_project`      | Project used when no `project` param is provided                                                                       |
+| `notification_routing` | Global notification type → channel alias routing                                                                       |
 
 **Project fields:**
 
@@ -842,7 +967,7 @@ Full `~/.discord-ops.json` schema with all options:
 | `tool_profile`         | Base tool profile for this project (`full`, `monitoring`, etc.) — enforced at runtime |
 | `profile_add`          | Additional tools to load on top of the base profile                                   |
 | `profile_remove`       | Tools to exclude from the base profile                                                |
-| `notification_routing` | Per-project override of global notification → channel routing                         |
+| `notification_routing` | Per-repo config only (`.discord-ops.json`), not a project field in global config      |
 
 Per-project profiles are enforced at runtime — all tools stay registered on the MCP server, but tool calls are filtered when the resolved project or bot has a profile set. This means agents can discover all tools via MCP schema, but per-project restrictions are applied on each call.
 

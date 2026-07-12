@@ -235,7 +235,10 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
           params,
           durationMs: Date.now() - start,
           success: !result.isError,
-          error: result.isError ? result.content[0]?.text : undefined,
+          // Sanitize returned error text before it reaches the audit log —
+          // a tool can return isError:true without throwing, so this branch
+          // needs the same redaction as the thrown-exception path below.
+          error: result.isError ? sanitizeError(result.content[0]?.text) : undefined,
         });
 
         return result;

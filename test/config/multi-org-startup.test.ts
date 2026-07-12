@@ -131,24 +131,37 @@ describe("multi-org startup (no default token)", () => {
     expect(Object.keys(config.global.projects)).toHaveLength(6);
   });
 
-  it("loadConfig throws naming the project when one token_env is missing", () => {
+  it("loadConfig succeeds with warning when one token_env is missing", () => {
     process.env.CLARITY_DISCORD_BOT_TOKEN = "fake-clarity-token";
     process.env.BOOKED_DISCORD_BOT_TOKEN = "fake-booked-token";
     delete process.env.CLARITY_CLAIRE_DISCORD_BOT_TOKEN;
     process.env.DISCORD_OPS_CONFIG = JSON.stringify(multiOrgConfig);
 
-    expect(() => loadConfig()).toThrow("clarity-bot");
+    // Should not throw — clarity-bot is unavailable but others work fine
+    const config = loadConfig();
+    expect(config.defaultToken).toBeUndefined();
+    expect(Object.keys(config.global.projects)).toHaveLength(6);
   });
 
-  it("loadConfig throws naming ALL projects with missing tokens", () => {
+  it("loadConfig succeeds with warnings when multiple projects have missing tokens", () => {
     process.env.CLARITY_DISCORD_BOT_TOKEN = "fake-clarity-token";
     delete process.env.BOOKED_DISCORD_BOT_TOKEN;
     delete process.env.CLARITY_CLAIRE_DISCORD_BOT_TOKEN;
     process.env.DISCORD_OPS_CONFIG = JSON.stringify(multiOrgConfig);
 
-    expect(() => {
-      loadConfig();
-    }).toThrow(/helix.*booked-solid-tech.*discord-ops.*clarity-bot/s);
+    // clarity-house and clarity-house-ops are available — should not throw
+    const config = loadConfig();
+    expect(config.defaultToken).toBeUndefined();
+    expect(Object.keys(config.global.projects)).toHaveLength(6);
+  });
+
+  it("loadConfig throws when ALL projects have missing tokens", () => {
+    delete process.env.CLARITY_DISCORD_BOT_TOKEN;
+    delete process.env.BOOKED_DISCORD_BOT_TOKEN;
+    delete process.env.CLARITY_CLAIRE_DISCORD_BOT_TOKEN;
+    process.env.DISCORD_OPS_CONFIG = JSON.stringify(multiOrgConfig);
+
+    expect(() => loadConfig()).toThrow();
   });
 
   it("getTokenForProject returns correct per-project token", () => {
@@ -260,13 +273,16 @@ describe("multi-org startup with bot personas (no default token)", () => {
     expect(Object.keys(config.global.bots!)).toHaveLength(2);
   });
 
-  it("loadConfig throws when bot token_env is missing", () => {
+  it("loadConfig succeeds with warning when bot token_env is missing but other project has token", () => {
     // COURIER_BOT_TOKEN not set — clarity-house uses bot: "courier"
     process.env.CLAIRE_BOT_TOKEN = "fake-claire";
     process.env.HELIX_TOKEN = "fake-helix";
     process.env.DISCORD_OPS_CONFIG = JSON.stringify(botPersonaConfig);
 
-    expect(() => loadConfig()).toThrow("clarity-house");
+    // clarity-house unavailable, helix available — should not throw
+    const config = loadConfig();
+    expect(config.defaultToken).toBeUndefined();
+    expect(Object.keys(config.global.projects)).toHaveLength(2);
   });
 
   it("getTokenForProject resolves bot token for bot-based project", () => {
@@ -444,19 +460,30 @@ describe("mixed config: some projects with bot, some with token_env, no default"
     expect(getTokenForProject("token-project", config)).toBe("direct-val");
   });
 
-  it("loadConfig fails when bot token_env missing but token_env project is fine", () => {
+  it("loadConfig succeeds with warning when bot token_env missing but token_env project is fine", () => {
     // COURIER_TOKEN not set
     process.env.DIRECT_TOKEN = "direct-val";
     process.env.DISCORD_OPS_CONFIG = JSON.stringify(mixedConfig);
 
-    expect(() => loadConfig()).toThrow("bot-project");
+    // bot-project unavailable, token-project available — should not throw
+    const config = loadConfig();
+    expect(config.defaultToken).toBeUndefined();
   });
 
-  it("loadConfig fails when token_env project missing but bot project is fine", () => {
+  it("loadConfig succeeds with warning when token_env project missing but bot project is fine", () => {
     process.env.COURIER_TOKEN = "courier-val";
     // DIRECT_TOKEN not set
     process.env.DISCORD_OPS_CONFIG = JSON.stringify(mixedConfig);
 
-    expect(() => loadConfig()).toThrow("token-project");
+    // token-project unavailable, bot-project available — should not throw
+    const config = loadConfig();
+    expect(config.defaultToken).toBeUndefined();
+  });
+
+  it("loadConfig throws when all projects have missing tokens", () => {
+    // Neither COURIER_TOKEN nor DIRECT_TOKEN set
+    process.env.DISCORD_OPS_CONFIG = JSON.stringify(mixedConfig);
+
+    expect(() => loadConfig()).toThrow();
   });
 });
