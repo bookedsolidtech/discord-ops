@@ -48,6 +48,12 @@ export function buildTokenChannelMap(
   const allowlist =
     listen.channels && listen.channels.length > 0 ? new Set(listen.channels) : undefined;
   const byToken = new Map<string, Map<string, ChannelRoute>>();
+  // Global across tokens: a channel is forwarded by exactly ONE connection.
+  // The same channel can be configured under different bot tokens (two bots in
+  // one guild) — without this, each bot's gateway would emit the event and the
+  // sink would get duplicates. First token (config order) wins; it records
+  // which route owns the channel so the collision is logged, not silent.
+  const claimedBy = new Map<string, ChannelRoute & { token: string }>();
 
   for (const [projectName, project] of Object.entries(config.global.projects)) {
     for (const [alias, value] of Object.entries(project.channels)) {
@@ -64,25 +70,26 @@ export function buildTokenChannelMap(
         continue;
       }
 
+      const owner = claimedBy.get(id);
+      if (owner) {
+        // Already forwarded by an earlier route. Log only when the collision
+        // crosses tokens (two bots would otherwise double-emit) or changes the
+        // label; either way we keep the first owner and skip this entry.
+        logger.info(
+          `Channel ${id} already watched via "${owner.project}/${owner.channel}"` +
+            (owner.token === token ? " (shared channel)" : " (shared across bot tokens)") +
+            `; not adding "${projectName}/${alias}"`,
+        );
+        continue;
+      }
+      claimedBy.set(id, { project: projectName, channel: alias, token });
+
       let channels = byToken.get(token);
       if (!channels) {
         channels = new Map();
         byToken.set(token, channels);
       }
-      const existing = channels.get(id);
-      if (!existing) {
-        channels.set(id, { project: projectName, channel: alias });
-      } else {
-        // The same channel id is configured under multiple project/alias
-        // entries on the same token (common when projects share channels).
-        // Events are still captured once; we keep the first route (stable,
-        // config-order) for their project/channel labels — but log it so the
-        // labeling is a documented choice, not a silent collapse.
-        logger.info(
-          `Channel ${id} is shared: keeping route "${existing.project}/${existing.channel}", ` +
-            `events will not be labeled "${projectName}/${alias}"`,
-        );
-      }
+      channels.set(id, { project: projectName, channel: alias });
     }
   }
 

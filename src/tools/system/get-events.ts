@@ -66,11 +66,15 @@ export const getEvents = defineTool({
 
     const active = readSinkFile(sink);
 
-    // Pull in the rotated file when the cursor (or a tail read over a freshly
-    // rotated, near-empty sink) needs history that already rotated out.
+    // Pull in the rotated file only when it is actually needed: the active sink
+    // is empty (so any history lives in the rotated file), OR a cursor predates
+    // the active sink's oldest event. A no-cursor tail read over a non-empty
+    // active sink must NOT prepend the rotated file — tail mode returns the
+    // NEWEST events, and the rotated file is older; including it would replay
+    // stale events right after a rotation.
     let all = active;
     const minActiveSeq = active.length > 0 ? active[0].seq : undefined;
-    if (after === undefined || minActiveSeq === undefined || after < minActiveSeq - 1) {
+    if (minActiveSeq === undefined || (after !== undefined && after < minActiveSeq - 1)) {
       const rotated = readSinkFile(rotatedPath(sink));
       if (rotated.length > 0) all = [...rotated, ...active];
     }

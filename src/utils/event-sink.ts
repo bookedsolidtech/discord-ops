@@ -36,6 +36,13 @@ export function assertSafeSinkPath(sinkPath: string): void {
   if (sinkPath.split(/[/\\]/).includes("..")) {
     throw new Error(`Refusing sink path with parent traversal ("..") : ${sinkPath}`);
   }
+  // Reject the sink file (and its rotation target) being a symlink — writing
+  // through it would mutate the link target, reading through it would expose an
+  // arbitrary file as "events". We deliberately do NOT walk the parent chain
+  // rejecting every symlinked directory: macOS symlinks /tmp and /var, and many
+  // setups symlink home or mount points, so a parent-chain ban rejects
+  // legitimate sink locations. The sink path is operator-owned config (already
+  // a trust boundary); the file-level check is the proportionate guard.
   for (const p of [sinkPath, rotatedPath(sinkPath)]) {
     let st;
     try {

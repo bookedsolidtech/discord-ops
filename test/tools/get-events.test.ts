@@ -212,6 +212,31 @@ describe("get_events", () => {
     expect(data.scanned).toBe(10);
   });
 
+  it("tail mode does not replay the rotated file when the active sink has events", async () => {
+    // A no-cursor read returns the NEWEST events (active sink) and must not
+    // prepend the older rotated file, which would replay stale events.
+    writeEvents(
+      rotatedPath(sink),
+      Array.from({ length: 5 }, (_, i) => ev(i + 1)),
+    );
+    writeEvents(sink, [ev(6), ev(7), ev(8)]);
+
+    const data = parse(await getEvents.handle({ limit: 50 }, createCtx()));
+    expect(data.events.map((e: SinkEvent) => e.seq)).toEqual([6, 7, 8]);
+    expect(data.scanned).toBe(3);
+  });
+
+  it("tail mode falls back to the rotated file only when the active sink is empty", async () => {
+    writeEvents(
+      rotatedPath(sink),
+      Array.from({ length: 3 }, (_, i) => ev(i + 1)),
+    );
+    writeEvents(sink, []);
+
+    const data = parse(await getEvents.handle({ limit: 50 }, createCtx()));
+    expect(data.events.map((e: SinkEvent) => e.seq)).toEqual([1, 2, 3]);
+  });
+
   it("tail mode hands back the max seq even when the newest event is filtered out", async () => {
     writeEvents(sink, [ev(1), ev(2), ev(3, { type: "reaction_add", emoji: "✅" })]);
 
