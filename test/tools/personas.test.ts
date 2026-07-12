@@ -228,6 +228,29 @@ describe("create_persona", () => {
     });
     expect(tooLong.success).toBe(false);
   });
+
+  it("blocks authority impersonation names, including obfuscated forms", () => {
+    for (const name of ["System", "admin", " Moderator ", "OWNER", "root"]) {
+      const r = createPersona.inputSchema.safeParse({
+        name,
+        channel_id: "222222222222222222",
+      });
+      expect(r.success, `"${name}" should be rejected`).toBe(false);
+    }
+    // Zero-width space inside "System" must not slip past normalization.
+    const obfuscated = createPersona.inputSchema.safeParse({
+      name: "Sy​stem",
+      channel_id: "222222222222222222",
+    });
+    expect(obfuscated.success).toBe(false);
+
+    // A normal persona name still passes.
+    const ok = createPersona.inputSchema.safeParse({
+      name: "planner",
+      channel_id: "222222222222222222",
+    });
+    expect(ok.success).toBe(true);
+  });
 });
 
 // --- send_as ---

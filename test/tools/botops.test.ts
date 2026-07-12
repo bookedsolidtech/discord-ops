@@ -275,32 +275,37 @@ describe("update_application", () => {
     expect(app.edit).not.toHaveBeenCalled();
   });
 
-  it("maps interactions endpoint and custom install URLs", async () => {
+  it("maps the custom install URL", async () => {
     const { ctx, app } = createBotopsCtx();
     const result = await updateApplication.handle(
-      {
-        interactions_endpoint_url: "https://api.example.com/interactions",
-        custom_install_url: "https://example.com/install",
-      },
+      { custom_install_url: "https://example.com/install" },
       ctx,
     );
     expect(result.isError).toBeUndefined();
     expect(app.edit).toHaveBeenCalledWith({
-      interactionsEndpointURL: "https://api.example.com/interactions",
       customInstallURL: "https://example.com/install",
     });
   });
 
-  it("rejects non-HTTPS and private interaction endpoint URLs at the schema level", () => {
+  it("does not expose interactions_endpoint_url — it is a control-plane field", () => {
+    // B2: pointing a bot's interaction traffic at an attacker URL is a
+    // control-plane hijack, so the field must not be accepted at all.
+    const parsed = updateApplication.inputSchema.safeParse({
+      interactions_endpoint_url: "https://api.example.com/interactions",
+    });
+    // Unknown key is stripped by Zod, leaving no updatable field.
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect("interactions_endpoint_url" in parsed.data).toBe(false);
+    }
+    expect(updateApplication.description).toMatch(/control-plane field/i);
+  });
+
+  it("rejects non-HTTPS and private custom install URLs at the schema level", () => {
     const httpUrl = updateApplication.inputSchema.safeParse({
-      interactions_endpoint_url: "http://api.example.com/interactions",
+      custom_install_url: "http://example.com/install",
     });
     expect(httpUrl.success).toBe(false);
-
-    const privateUrl = updateApplication.inputSchema.safeParse({
-      interactions_endpoint_url: "https://localhost/interactions",
-    });
-    expect(privateUrl.success).toBe(false);
 
     const privateInstall = updateApplication.inputSchema.safeParse({
       custom_install_url: "https://192.168.1.10/install",
@@ -352,7 +357,8 @@ describe("update_application", () => {
   });
 
   it("documents that global application name changes are not supported", () => {
-    expect(updateApplication.description).toMatch(/NAME changes are intentionally NOT supported/);
+    expect(updateApplication.description).toMatch(/NAME changes/);
+    expect(updateApplication.description).toMatch(/intentionally NOT supported/);
     expect(updateApplication.description).toContain("set_bot_nick");
   });
 });

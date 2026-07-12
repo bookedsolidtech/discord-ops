@@ -49,20 +49,22 @@ const inputSchema = z.object({
     .describe(
       'Permissions bitfield as a decimal string for the default install link (e.g. "277025508352"). Requires install_params_scopes.',
     ),
-  interactions_endpoint_url: publicHttpsUrl("interactions_endpoint_url")
-    .optional()
-    .describe(
-      "HTTPS endpoint that receives interactions via outgoing webhook. Discord validates the endpoint (it must ack a PING) or the edit fails.",
-    ),
+  // interactions_endpoint_url is deliberately NOT exposed here. It is a bot
+  // control-plane field: pointing it at an attacker URL hands over every
+  // future interaction payload (tokens, user data) and lets the attacker
+  // respond as the bot. An agent that ingests untrusted channel content must
+  // never be one prompt-injection away from redirecting the control plane.
+  // If interactions are ever supported, they belong behind a separate
+  // opt-in tool that only accepts URLs matching trusted config.
   custom_install_url: publicHttpsUrl("custom_install_url")
     .optional()
-    .describe("Custom URL users are sent to when installing the app"),
+    .describe("Custom URL users are sent to when installing the app (install-page redirect only)"),
 });
 
 export const updateApplication = defineBotopsTool({
   name: "update_application",
   description:
-    "Edit the current Discord application of the bot serving this project — the project's token selects which application is edited. Supports description, icon (fetched from a public URL), tags, default install params, interactions endpoint, and custom install URL, with no developer-portal visit needed. NOTE: global application NAME changes are intentionally NOT supported (rate-limited and verification-sensitive) — for per-guild identity use set_bot_nick or bot personas.",
+    "Edit the current Discord application of the bot serving this project — the project's token selects which application is edited. Supports description, icon (fetched from a public URL), tags, default install params, and custom install URL, with no developer-portal visit needed. Changes are application-GLOBAL (they apply in every guild the app is in), unlike the per-guild rest of this surface. NOTE: global application NAME changes and the interactions endpoint are intentionally NOT supported (name is rate-limited/verification-sensitive; the interactions endpoint is a control-plane field kept out of agent reach) — for per-guild identity use set_bot_nick or bot personas.",
   category: "botops",
   inputSchema,
   handle: async (input, ctx) => {
@@ -72,12 +74,11 @@ export const updateApplication = defineBotopsTool({
       input.tags,
       input.install_params_scopes,
       input.install_params_permissions,
-      input.interactions_endpoint_url,
       input.custom_install_url,
     ];
     if (editableFields.every((v) => v === undefined)) {
       return toolResult(
-        "Provide at least one field to update: description, icon_url, tags, install_params_scopes, interactions_endpoint_url, or custom_install_url.",
+        "Provide at least one field to update: description, icon_url, tags, install_params_scopes, or custom_install_url.",
         true,
       );
     }
@@ -101,9 +102,6 @@ export const updateApplication = defineBotopsTool({
 
     if (input.description !== undefined) editOptions.description = input.description;
     if (input.tags !== undefined) editOptions.tags = input.tags;
-    if (input.interactions_endpoint_url !== undefined) {
-      editOptions.interactionsEndpointURL = input.interactions_endpoint_url;
-    }
     if (input.custom_install_url !== undefined) {
       editOptions.customInstallURL = input.custom_install_url;
     }

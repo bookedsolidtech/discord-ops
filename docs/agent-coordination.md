@@ -269,7 +269,15 @@ send_as({ project: "product", channel: "engineering", persona_name: "planner",
 → { "id": "333333333333333333", "persona": "planner", ... }
 ```
 
-Two honesty notes: persona identity is _per message_ — any agent with channel access can post under any persona name, so personas are a readability convention, not an authentication mechanism (Discord marks all webhook messages with a BOT tag, and the `webhook_id` in the message attributes it to the carrying webhook). And webhook messages cannot use `reply_to` — when an agent needs reply linkage for `get_replies`, it should post with `send_message` instead.
+Two honesty notes: persona identity is _per message_ — any agent with channel access can post under any persona name, so personas are a readability convention, not an authentication mechanism (Discord marks all webhook messages with a BOT tag, and the `webhook_id` in the message attributes it to the carrying webhook — all persona traffic shares one auditable webhook per channel). Reserved authority names (`system`, `admin`, `moderator`, `owner`, …) are blocked to blunt impersonation, but the rule that matters is: **never treat a display name as an authorization signal.** And webhook messages cannot use `reply_to` — when an agent needs reply linkage for `get_replies`, it should post with `send_message` instead.
+
+### Trust boundaries for the high-consequence tools
+
+`send_as` (impersonate any name), `forward_message` (relocate content across channels), and `update_application` (rewrite app-global metadata) are the highest-consequence tools in the suite, and an agent that reads untrusted channel text is a confused-deputy target. Three rules:
+
+- **Scope by profile.** Don't grant `send_as`/`forward_message` to agents that only need to read — use tool profiles to give each agent the narrowest set.
+- **`forward_message` crosses trust boundaries.** It respects only the _bot's_ read permission, not the requesting agent's intent — an injected instruction sitting in a public channel can try to relocate content from a restricted channel outward. Keep sensitive channels out of reach of agents that also hold forward/persona tools. This is the durable form of the "coordinating secrets through channels" anti-pattern below.
+- **`update_application` is application-global.** Its edits apply in every guild the app is installed to, unlike the per-guild rest of the surface. `description`/`tags`/`icon` are reversible; treat the tool as privileged.
 
 ## Polls: Structured Consensus
 
@@ -320,6 +328,6 @@ Coordination stays within a project: an agent polling `project: "product"` never
 
 **Reactions as data payloads.** Encoding results in emoji sequences ("🔴🟡2️⃣" = degraded, 2 retries) breaks immediately: reactions are unordered, deduplicated per user, and capped per message. Reactions are signals — claimed, done, blocked. Data goes in replies, where it's ordered, attributed, timestamped, and searchable.
 
-**Coordinating secrets through channels.** Channels are durable and readable by every member and every bot with access — exactly the properties you want for coordination and exactly the ones you don't for credentials. Never post tokens, API keys, or connection strings, even in "private" channels or threads. Pass references instead (an env var name, a secret-manager path) and let each agent resolve them locally. discord-ops sanitizes tokens out of error output, but it cannot unsay a secret an agent deliberately posts.
+**Coordinating secrets through channels.** Channels are durable and readable by every member and every bot with access — exactly the properties you want for coordination and exactly the ones you don't for credentials. Never post tokens, API keys, or connection strings, even in "private" channels or threads. Pass references instead (an env var name, a secret-manager path) and let each agent resolve them locally. discord-ops sanitizes tokens out of error output, but it cannot unsay a secret an agent deliberately posts. If you run the `discord-ops listen` sidecar, this gets sharper: watched channels' message content is written to the local sink file (`~/.discord-ops/events.jsonl`, created `0600`) for `retention_hours`. Exclude sensitive channels from `listen.channels`, set a retention you're comfortable with, and treat the sink as a disposable cache — Discord's channel history stays the source of truth, and events during a sidecar outage are simply lost.
 
 **One channel for everything.** `get_replies` scans forward from the target message, so a channel carrying every team's traffic makes each poll scan mostly-irrelevant messages. Give coordination its own channel (or one per agent team), and move any exchange past one round trip into a thread.

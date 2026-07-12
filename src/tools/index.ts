@@ -90,6 +90,7 @@ import { queryAuditLog } from "./audit/query-audit-log.js";
 import { healthCheck } from "./health-check.js";
 import { listProjects } from "./system/list-projects.js";
 import { listBots } from "./system/list-bots.js";
+import { getEvents } from "./system/get-events.js";
 
 export const allTools: ToolDefinition[] = [
   // Messaging
@@ -186,4 +187,5 @@ export const allTools: ToolDefinition[] = [
   healthCheck,
   listProjects,
   listBots,
+  getEvents,
 ];
