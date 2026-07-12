@@ -55,6 +55,14 @@ export const ProjectConfigSchema = z.object({
   guild_id: z.string().regex(/^\d{17,20}$/, "Must be a valid Discord snowflake ID"),
   channels: z.record(z.string(), ChannelConfigSchema),
   default_channel: z.string().optional(),
+  /**
+   * Channel alias (or snowflake) used as this project's note board — the
+   * durable, directed-note log that agents read on startup and post to. When
+   * unset, the board resolves through a fallback chain (see resolveBoard):
+   * a "board"/"agent-board" alias, then "agent-logs", then "backchannel",
+   * then default_channel.
+   */
+  board_channel: z.string().optional(),
   token_env: z.string().optional(),
   bot: z.string().optional(),
   tool_profile: ToolProfileEnum.optional(),

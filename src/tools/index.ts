@@ -36,6 +36,9 @@ import {
   deleteAppEmoji,
 } from "./botops/index.js";
 
+// Notes (project board)
+import { leaveNote, getNotes, resolveNote, listSessions } from "./notes/index.js";
+
 // Channels
 import { listChannels } from "./channels/list-channels.js";
 import { getChannel } from "./channels/get-channel.js";
@@ -132,6 +135,12 @@ export const allTools: ToolDefinition[] = [
   listAppEmojis,
   createAppEmoji,
   deleteAppEmoji,
+
+  // Notes (project board)
+  leaveNote,
+  getNotes,
+  resolveNote,
+  listSessions,
 
   // Channels
   listChannels,

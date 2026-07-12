@@ -8,10 +8,12 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **67 MCP tools** — messaging, personas, polls, forums, channels, moderation, roles, webhooks, botops, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
+- **72 MCP tools** — messaging, personas, polls, forums, notes, channels, moderation, roles, webhooks, botops, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
+- **Project note board** — a durable, directed-note log per project; agents leave hand-offs and read them on startup, aware of other concurrent sessions
 - **Webhook personas** — one bot, unlimited posting identities via per-message username/avatar overrides; never create another bot application
 - **Native polls** — structured agent/human consensus with per-answer voter reads and bot flags
 - **Forum work queues** — posts as tasks, tags as status labels, archive to close
+- **Real-time event feed** — optional `discord-ops listen` sidecar streams messages/reactions to a local sink read by `get_events`, zero API calls per poll
 - **Multi-guild project routing** — `send_message({ project: "my-app", channel: "builds" })` instead of raw channel IDs
 - **Agent-to-agent coordination** — agents post tasks, peers reply and react, originators read results back via `get_replies` / `get_reactions` — Discord as a durable coordination bus
 - **Notification routing** — map notification types (`ci_build`, `deploy`, `error`) to channels per project
@@ -488,13 +490,25 @@ Manage the bot application itself via API — no developer portal round-trips. (
 | `list_threads`   | List active threads                    |
 | `archive_thread` | Archive (and optionally lock) a thread |
 
-### System (3 tools)
+### Notes (4 tools)
+
+A durable, directed-note log — one board channel per project — that agents read on startup and use for hand-offs across concurrent sessions. See [docs/project-onboarding.md](docs/project-onboarding.md).
+
+| Tool            | Description                                                       |
+| --------------- | ----------------------------------------------------------------- |
+| `leave_note`    | Leave a directed note (to a session, role, or `all`) on the board |
+| `get_notes`     | Read the board, filtered by recipient, sender, tag, or unresolved |
+| `resolve_note`  | Mark a note handled (✅) with an optional reply                   |
+| `list_sessions` | See which sessions are active on a project, from note activity    |
+
+### System (4 tools)
 
 | Tool            | Description                                                          |
 | --------------- | -------------------------------------------------------------------- |
 | `health_check`  | Bot status, version, connected guilds, and permission audit          |
 | `list_projects` | List all projects with guild mappings, token status, and validation  |
 | `list_bots`     | List all bot personas with project assignments and channel overrides |
+| `get_events`    | Read the local real-time event feed written by `discord-ops listen`  |
 
 ## Tool Profiles
 
@@ -502,15 +516,15 @@ Load only the tools an agent needs. Reduces schema token overhead by up to 85% f
 
 ### Built-in profiles
 
-| Profile      | Tools | Description                                                                                                                                                                              |
-| ------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `full`       | 67    | All tools (default)                                                                                                                                                                      |
-| `monitoring` | 13    | get_messages, get_message, get_replies, get_reactions, send_message, send_as, add_reaction, create_thread, send_poll, get_poll_results, health_check, list_projects, list_bots           |
-| `readonly`   | 13    | get_messages, get_message, get_replies, get_reactions, get_poll_results, list_personas, list_forum_posts, list_channels, list_members, get_guild, health_check, list_projects, list_bots |
-| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log                                                                                   |
-| `messaging`  | 10    | add_reaction, delete_message, edit_message, forward_message, get_messages, get_message, get_replies, get_reactions, send_as, send_message                                                |
-| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode                                                                                   |
-| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks                                                                                                |
+| Profile      | Tools | Description                                                                                                                                                                                                                        |
+| ------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `full`       | 72    | All tools (default)                                                                                                                                                                                                                |
+| `monitoring` | 17    | get_messages, get_message, get_replies, get_reactions, send_message, send_as, add_reaction, create_thread, send_poll, get_poll_results, leave_note, get_notes, resolve_note, list_sessions, health_check, list_projects, list_bots |
+| `readonly`   | 13    | get_messages, get_message, get_replies, get_reactions, get_poll_results, list_personas, list_forum_posts, list_channels, list_members, get_guild, health_check, list_projects, list_bots                                           |
+| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log                                                                                                                             |
+| `messaging`  | 10    | add_reaction, delete_message, edit_message, forward_message, get_messages, get_message, get_replies, get_reactions, send_as, send_message                                                                                          |
+| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode                                                                                                                             |
+| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks                                                                                                                                          |
 
 ### Using profiles
 

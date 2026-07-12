@@ -27,7 +27,8 @@ export type ToolCategory =
   | "personas"
   | "polls"
   | "forums"
-  | "botops";
+  | "botops"
+  | "notes";
 
 export interface ToolDefinition {
   name: string;
