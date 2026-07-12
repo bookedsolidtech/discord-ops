@@ -1,6 +1,27 @@
 import { MessageType, type Message, type MessageReaction } from "discord.js";
 
 /**
+ * Fetch a message, distinguishing "not found" (Unknown Message, code 10008)
+ * from other failures (missing permissions, bad routing, network) so polling
+ * agents never mistake an access problem for a deleted message.
+ */
+export async function fetchMessageOrError(
+  channel: { messages: { fetch: (id: string) => Promise<Message> } },
+  messageId: string,
+  channelId: string,
+): Promise<{ message: Message } | { error: string }> {
+  try {
+    return { message: await channel.messages.fetch(messageId) };
+  } catch (err) {
+    if ((err as { code?: number }).code === 10008) {
+      return { error: `Message ${messageId} not found in channel ${channelId}` };
+    }
+    const detail = err instanceof Error ? err.message : String(err);
+    return { error: `Failed to fetch message ${messageId}: ${detail}` };
+  }
+}
+
+/**
  * Shared per-message serialization used by get_messages, get_message, and
  * get_replies. Includes `reply_to` so agents can trace reply chains back to
  * messages they posted earlier.

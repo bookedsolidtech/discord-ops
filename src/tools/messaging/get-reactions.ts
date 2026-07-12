@@ -2,6 +2,7 @@ import { z } from "zod";
 import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
+import { fetchMessageOrError } from "./message-shape.js";
 
 const inputSchema = z.object({
   message_id: snowflakeId.describe("ID of the message to read reactions from"),
@@ -37,13 +38,11 @@ export const getReactions = defineTool({
     }
 
     const channel = await ctx.discord.getChannel(target.channelId, target.token);
-    const message = await channel.messages.fetch(input.message_id).catch(() => undefined);
-    if (!message) {
-      return toolResult(
-        `Message ${input.message_id} not found in channel ${target.channelId}`,
-        true,
-      );
+    const fetched = await fetchMessageOrError(channel, input.message_id, target.channelId);
+    if ("error" in fetched) {
+      return toolResult(fetched.error, true);
     }
+    const message = fetched.message;
 
     const limit = input.limit ?? 100;
     const allReactions = [...(message.reactions?.cache?.values?.() ?? [])];

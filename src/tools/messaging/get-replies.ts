@@ -3,7 +3,7 @@ import { MessageType } from "discord.js";
 import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { resolveTarget } from "../../routing/resolver.js";
-import { serializeMessage } from "./message-shape.js";
+import { fetchMessageOrError, serializeMessage } from "./message-shape.js";
 
 const inputSchema = z.object({
   message_id: snowflakeId.describe("ID of the message whose replies to collect"),
@@ -45,12 +45,9 @@ export const getReplies = defineTool({
     // A deleted/foreign anchor must be an error, not an empty reply list —
     // callers would otherwise read "nobody replied" from a message that no
     // longer exists.
-    const anchor = await channel.messages.fetch(input.message_id).catch(() => undefined);
-    if (!anchor) {
-      return toolResult(
-        `Message ${input.message_id} not found in channel ${target.channelId}`,
-        true,
-      );
+    const anchor = await fetchMessageOrError(channel, input.message_id, target.channelId);
+    if ("error" in anchor) {
+      return toolResult(anchor.error, true);
     }
 
     // Discord's `after` pagination selects the messages immediately following

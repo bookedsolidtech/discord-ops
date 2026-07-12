@@ -95,7 +95,11 @@ describe("get_message", () => {
 
   it("returns an error when the message does not exist", async () => {
     const mockChannel = createMockChannel({
-      messages: { fetch: vi.fn().mockRejectedValue(new Error("Unknown Message")) },
+      messages: {
+        fetch: vi
+          .fn()
+          .mockRejectedValue(Object.assign(new Error("Unknown Message"), { code: 10008 })),
+      },
     });
     const ctx = createCtx();
     (ctx.discord.getChannel as any).mockResolvedValue(mockChannel);
@@ -106,6 +110,26 @@ describe("get_message", () => {
     );
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toContain("not found");
+  });
+
+  it("surfaces non-not-found fetch failures instead of reporting not found", async () => {
+    const mockChannel = createMockChannel({
+      messages: {
+        fetch: vi
+          .fn()
+          .mockRejectedValue(Object.assign(new Error("Missing Access"), { code: 50001 })),
+      },
+    });
+    const ctx = createCtx();
+    (ctx.discord.getChannel as any).mockResolvedValue(mockChannel);
+
+    const result = await getMessage.handle(
+      { message_id: "123456789012345678", channel_id: "222222222222222222" },
+      ctx,
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("Missing Access");
+    expect(result.content[0]!.text).not.toContain("not found");
   });
 
   it("returns error for unresolvable routing", async () => {
@@ -246,7 +270,11 @@ describe("get_reactions", () => {
 
   it("returns an error when the message does not exist", async () => {
     const mockChannel = createMockChannel({
-      messages: { fetch: vi.fn().mockRejectedValue(new Error("Unknown Message")) },
+      messages: {
+        fetch: vi
+          .fn()
+          .mockRejectedValue(Object.assign(new Error("Unknown Message"), { code: 10008 })),
+      },
     });
     const ctx = createCtx();
     (ctx.discord.getChannel as any).mockResolvedValue(mockChannel);
@@ -436,7 +464,7 @@ describe("get_replies", () => {
       .fn()
       .mockImplementation((arg) =>
         typeof arg === "string"
-          ? Promise.reject(new Error("Unknown Message"))
+          ? Promise.reject(Object.assign(new Error("Unknown Message"), { code: 10008 }))
           : Promise.resolve(new Map()),
       );
     const channel = createMockChannel({ messages: { fetch } });
