@@ -516,12 +516,15 @@ describe("fetchImageAsDataUri", () => {
     }
   });
 
-  it("pins the request to the resolved IP with the original Host header", async () => {
+  it("keeps the original hostname (valid TLS) and pins the connection via a dispatcher", async () => {
     const fetchMock = stubFetchResponse(PNG_BYTES);
     await fetchImageAsDataUri("https://cdn.example.com/ok.png", MAX_ICON_BYTES);
-    const [pinnedUrl, options] = fetchMock.mock.calls[0];
-    expect(pinnedUrl).toBe("https://93.184.216.34/ok.png");
-    expect(options.headers.Host).toBe("cdn.example.com");
+    const [requestUrl, options] = fetchMock.mock.calls[0];
+    // URL is unchanged so TLS SNI + cert validation use the real hostname;
+    // rebinding is prevented by the pinned dispatcher, not by URL rewriting.
+    expect(requestUrl).toBe("https://cdn.example.com/ok.png");
+    expect(options.headers.Host).toBeUndefined();
+    expect(options.dispatcher).toBeDefined();
     expect(options.redirect).toBe("manual");
   });
 

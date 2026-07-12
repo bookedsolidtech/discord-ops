@@ -1,4 +1,6 @@
 import { lookup } from "node:dns/promises";
+import type { LookupFunction } from "node:net";
+import { Agent } from "undici";
 import { isPublicHttpUrl } from "../../utils/og-fetch.js";
 import { logger } from "../../utils/logger.js";
 
@@ -63,9 +65,10 @@ export async function fetchImageAsDataUri(
   const isIpv4Literal = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname);
   const isIpv6Literal = hostname.includes(":");
   let address = hostname;
+  let family = isIpv6Literal ? 6 : 4;
   if (!isIpv4Literal && !isIpv6Literal) {
     try {
-      ({ address } = await lookup(hostname));
+      ({ address, family } = await lookup(hostname));
     } catch (err) {
       logger.warn("Blocked image fetch: DNS lookup failed", {
         hostname,
@@ -88,91 +91,108 @@ export async function fetchImageAsDataUri(
     }
   }
 
-  // Step 3: pin the request to the validated IP; original hostname rides in
-  // the Host header so virtual hosting still works (same pattern as og-fetch).
-  const pinnedUrl = new URL(url);
-  pinnedUrl.hostname = address.includes(":") ? `[${address}]` : address;
-
-  let response: Response;
-  try {
-    response = await fetch(pinnedUrl.toString(), {
-      headers: {
-        "User-Agent": "discord-ops/1.0 (image fetcher)",
-        Host: hostname,
-      },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      redirect: "manual",
-    });
-  } catch (err) {
-    return {
-      ok: false,
-      error: `Image fetch failed: ${err instanceof Error ? err.message : String(err)}`,
-    };
-  }
-
-  // Step 4: refuse redirects — following them would bypass the IP validation.
-  if (response.status >= 300 && response.status < 400) {
-    logger.warn("Blocked redirect from image fetch URL", { url });
-    return { ok: false, error: "Redirects are not followed — provide the final image URL" };
-  }
-
-  if (!response.ok) {
-    return { ok: false, error: `Image fetch returned HTTP ${response.status}` };
-  }
-
-  const contentType = (response.headers.get("content-type") ?? "")
-    .split(";")[0]
-    .trim()
-    .toLowerCase();
-  if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
-    return {
-      ok: false,
-      error: `Unsupported content-type "${contentType || "unknown"}" — expected one of: ${[...ALLOWED_IMAGE_TYPES].join(", ")}`,
-    };
-  }
-
-  // Refuse oversized bodies before reading when the server declares a length.
-  const declaredLength = response.headers.get("content-length");
-  if (declaredLength && Number(declaredLength) > maxBytes) {
-    return {
-      ok: false,
-      error: `Image is ${declaredLength} bytes — exceeds the ${formatLimit(maxBytes)} limit`,
-    };
-  }
-
-  if (!response.body) {
-    return { ok: false, error: "Image response had no body" };
-  }
-
-  // Stream with a hard cap — never trust the declared content-length alone.
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) {
-      total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel().catch(() => {});
-        return {
-          ok: false,
-          error: `Image exceeds the ${formatLimit(maxBytes)} limit`,
-        };
-      }
-      chunks.push(value);
+  // Step 3: pin the TCP connection to the validated IP via a custom DNS lookup,
+  // while fetching the ORIGINAL url. This keeps TLS SNI + certificate
+  // validation on the real hostname (rewriting the URL to the IP and setting a
+  // Host header breaks HTTPS cert checks — the Host header is not the SNI) AND
+  // prevents DNS rebinding (the connection can only reach the address we
+  // already vetted). Redirects are still refused below.
+  // Custom lookup that ignores the hostname and always returns the vetted IP.
+  // Handles both the single-address and `all` array callback shapes so it works
+  // regardless of how undici's connector invokes it.
+  const pinnedLookup: LookupFunction = (_hostname, options, callback) => {
+    if (options && (options as { all?: boolean }).all) {
+      callback(null, [{ address, family }]);
+    } else {
+      callback(null, address, family);
     }
-  }
-
-  if (total === 0) {
-    return { ok: false, error: "Image response was empty" };
-  }
-
-  const buffer = Buffer.concat(chunks);
-  return {
-    ok: true,
-    dataUri: `data:${contentType};base64,${buffer.toString("base64")}`,
-    contentType,
-    bytes: total,
   };
+  const pinnedDispatcher = new Agent({ connect: { lookup: pinnedLookup } });
+
+  // The dispatcher owns the pinned connection until the body is fully read, so
+  // it is closed in `finally` — after all body consumption — on every path.
+  try {
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: { "User-Agent": "discord-ops/1.0 (image fetcher)" },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        redirect: "manual",
+        dispatcher: pinnedDispatcher,
+      } as RequestInit & { dispatcher: Agent });
+    } catch (err) {
+      return {
+        ok: false,
+        error: `Image fetch failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+
+    // Step 4: refuse redirects — following them would bypass the IP validation.
+    if (response.status >= 300 && response.status < 400) {
+      logger.warn("Blocked redirect from image fetch URL", { url });
+      return { ok: false, error: "Redirects are not followed — provide the final image URL" };
+    }
+
+    if (!response.ok) {
+      return { ok: false, error: `Image fetch returned HTTP ${response.status}` };
+    }
+
+    const contentType = (response.headers.get("content-type") ?? "")
+      .split(";")[0]
+      .trim()
+      .toLowerCase();
+    if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
+      return {
+        ok: false,
+        error: `Unsupported content-type "${contentType || "unknown"}" — expected one of: ${[...ALLOWED_IMAGE_TYPES].join(", ")}`,
+      };
+    }
+
+    // Refuse oversized bodies before reading when the server declares a length.
+    const declaredLength = response.headers.get("content-length");
+    if (declaredLength && Number(declaredLength) > maxBytes) {
+      return {
+        ok: false,
+        error: `Image is ${declaredLength} bytes — exceeds the ${formatLimit(maxBytes)} limit`,
+      };
+    }
+
+    if (!response.body) {
+      return { ok: false, error: "Image response had no body" };
+    }
+
+    // Stream with a hard cap — never trust the declared content-length alone.
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        total += value.byteLength;
+        if (total > maxBytes) {
+          await reader.cancel().catch(() => {});
+          return {
+            ok: false,
+            error: `Image exceeds the ${formatLimit(maxBytes)} limit`,
+          };
+        }
+        chunks.push(value);
+      }
+    }
+
+    if (total === 0) {
+      return { ok: false, error: "Image response was empty" };
+    }
+
+    const buffer = Buffer.concat(chunks);
+    return {
+      ok: true,
+      dataUri: `data:${contentType};base64,${buffer.toString("base64")}`,
+      contentType,
+      bytes: total,
+    };
+  } finally {
+    void pinnedDispatcher.close().catch(() => {});
+  }
 }

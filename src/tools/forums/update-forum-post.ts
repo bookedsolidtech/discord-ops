@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ThreadChannel } from "discord.js";
 import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
-import { getTokenForProject } from "../../config/index.js";
+import { getTokenForProject, getTokenForChannel } from "../../config/index.js";
 import {
   FORUMS_CATEGORY,
   asForumChannel,
@@ -19,6 +19,13 @@ const inputSchema = z.object({
     .describe("Replace the post's applied tags with these tag names (max 5)"),
   archived: z.boolean().optional().describe("true archives (completes) the post; false reopens it"),
   project: z.string().optional().describe("Project name for token resolution"),
+  channel: z
+    .string()
+    .optional()
+    .describe(
+      "Forum channel alias — pass this when the forum has a per-channel bot override so the " +
+        "correct bot token is used (matches create_forum_post's routing)",
+    ),
 });
 
 export const updateForumPost = defineTool({
@@ -38,7 +45,19 @@ export const updateForumPost = defineTool({
       return toolResult("Nothing to update — provide tags and/or archived", true);
     }
 
-    const token = input.project ? getTokenForProject(input.project, ctx.config) : undefined;
+    // Resolve the channel-aware token when a forum alias is given (honors a
+    // per-channel bot override, matching create_forum_post); otherwise fall
+    // back to the project default token.
+    let token: string | undefined;
+    if (input.project && input.channel) {
+      try {
+        token = getTokenForChannel(input.project, input.channel, ctx.config);
+      } catch {
+        token = getTokenForProject(input.project, ctx.config);
+      }
+    } else if (input.project) {
+      token = getTokenForProject(input.project, ctx.config);
+    }
     const channel = await ctx.discord.getAnyChannel(input.thread_id, token);
 
     if (!("isThread" in channel) || typeof channel.isThread !== "function" || !channel.isThread()) {

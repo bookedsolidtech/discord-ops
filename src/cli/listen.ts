@@ -69,7 +69,20 @@ export function buildTokenChannelMap(
         channels = new Map();
         byToken.set(token, channels);
       }
-      if (!channels.has(id)) channels.set(id, { project: projectName, channel: alias });
+      const existing = channels.get(id);
+      if (!existing) {
+        channels.set(id, { project: projectName, channel: alias });
+      } else {
+        // The same channel id is configured under multiple project/alias
+        // entries on the same token (common when projects share channels).
+        // Events are still captured once; we keep the first route (stable,
+        // config-order) for their project/channel labels — but log it so the
+        // labeling is a documented choice, not a silent collapse.
+        logger.info(
+          `Channel ${id} is shared: keeping route "${existing.project}/${existing.channel}", ` +
+            `events will not be labeled "${projectName}/${alias}"`,
+        );
+      }
     }
   }
 
