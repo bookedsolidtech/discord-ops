@@ -65,6 +65,18 @@ export const getEvents = defineTool({
       return toolResult(`Invalid after cursor: "${input.after}" is not a number`, true);
     }
 
+    // A project/channel filter is resolved to a channel id when it exists in
+    // config (identity matching for shared channels). When it does NOT resolve,
+    // we deliberately fall back to matching the event's stored label rather than
+    // erroring: the sink is a durable-ish cache whose events carry the config
+    // labels present WHEN THEY WERE WRITTEN, so a project since renamed/removed
+    // must still be readable by its historical label. (Codex suggested hard-
+    // rejecting unresolved filters for typo clarity; that conflicts with reading
+    // historical sink data, so we keep the label fallback.)
+    const filterProj = input.project
+      ? resolveProject(input.project, ctx.config.global, ctx.config.perProject)
+      : undefined;
+
     const active = readSinkFile(sink);
 
     // Pull in the rotated file only when it is actually needed: the active sink
@@ -84,25 +96,23 @@ export const getEvents = defineTool({
     // for a channel shared across routes are stored once under whichever route
     // the sidecar registered first, so identity matching keeps the channel
     // queryable under EVERY route that points at it while the sink holds one
-    // copy of each event.
+    // copy of each event. filterProj was resolved (and validated) above.
     //  - project + channel → resolve to that one channel id.
     //  - project only → the SET of the project's channel ids (so a project poll
     //    still finds shared-channel events labeled with another route).
-    const proj =
-      input.project && (input.channel || !input.channel_id)
-        ? resolveProject(input.project, ctx.config.global, ctx.config.perProject)
-        : undefined;
     const effectiveChannelId =
-      input.channel_id ?? (input.channel ? proj?.channels[input.channel] : undefined);
+      input.channel_id ?? (input.channel ? filterProj?.channels[input.channel] : undefined);
     const projectChannelIds =
-      !effectiveChannelId && input.project && !input.channel && proj
-        ? new Set(Object.values(proj.channels))
+      !effectiveChannelId && input.project && !input.channel && filterProj
+        ? new Set(Object.values(filterProj.channels))
         : undefined;
 
     const matches = (e: SinkEvent): boolean => {
       if (input.types && !input.types.includes(e.type)) return false;
       if (effectiveChannelId) return e.channel_id === effectiveChannelId;
       if (projectChannelIds) return projectChannelIds.has(e.channel_id);
+      // Label fallback (filter did not resolve to a config channel/project):
+      // match the event's stored project/channel labels.
       if (input.project && e.project !== input.project) return false;
       if (input.channel && e.channel !== input.channel) return false;
       return true;

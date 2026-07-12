@@ -51,10 +51,17 @@ export function resolveApplicationTarget(
     return { error: `Project "${project}" not found in config` };
   }
   const projectName = project ?? getDefaultProjectName(config.global, config.perProject);
-  if (projectName && config.global.projects[projectName]) {
+  if (projectName) {
+    // projectName is either the (already-validated) explicit project or the
+    // configured default. A default_project that points at a typoed/removed
+    // project must be a HARD error — falling through to the server default
+    // token would edit the WRONG application, far worse than a routing error.
+    if (!config.global.projects[projectName]) {
+      return { error: `Default project "${projectName}" is not defined in config` };
+    }
     return { token: getTokenForProject(projectName, config), project: projectName };
   }
-  // No project context. Fall back to the server default token only if one
+  // No project context at all. Fall back to the server default token only if one
   // exists — in per-project-token installs (no default DISCORD_TOKEN) there is
   // no bot to act as, so surface a clear routing error instead of a confusing
   // "token missing" failure deep in the Discord client.

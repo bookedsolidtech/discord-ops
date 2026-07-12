@@ -360,6 +360,17 @@ describe("update_application", () => {
     expect(app.edit).not.toHaveBeenCalled();
   });
 
+  it("errors when the configured default project does not exist (never edits the wrong app)", async () => {
+    const { ctx, app } = createBotopsCtx();
+    // A typoed/removed default_project must be a hard error, not a silent
+    // fallback to the server default token editing the wrong application.
+    (ctx.config as any).global.default_project = "gone";
+    const result = await updateApplication.handle({ description: "hello" }, ctx);
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toMatch(/default project "gone" is not defined/i);
+    expect(app.edit).not.toHaveBeenCalled();
+  });
+
   it("errors cleanly when the client application is unavailable", async () => {
     const { ctx } = createBotopsCtx({ nullApplication: true });
     const result = await updateApplication.handle({ description: "hello" }, ctx);
