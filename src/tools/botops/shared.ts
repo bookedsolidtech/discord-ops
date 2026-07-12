@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import type { ClientApplication, PermissionResolvable } from "discord.js";
 import type { ToolContext, ToolDefinition, ToolResult } from "../types.js";
-import { getTokenForProject, type LoadedConfig } from "../../config/index.js";
+import type { LoadedConfig } from "../../config/index.js";
 import { getDefaultProjectName, resolveProject } from "../../config/profiles.js";
 
 /**
@@ -35,6 +35,36 @@ export interface ResolvedBotTarget {
 }
 
 /**
+ * Strict token resolution for botops — which act ON a specific bot's identity
+ * (application edits, nickname). Unlike getTokenForProject (which falls back to
+ * the server default token for general routing), this REFUSES to fall back when
+ * a project declares its own `bot`/`token_env` whose value is unset: acting as
+ * the default bot would edit/rename the WRONG bot. Only when the project
+ * declares no dedicated token does the default token become the intended bot.
+ */
+function resolveProjectBotToken(
+  projectName: string,
+  config: LoadedConfig,
+): { token: string } | { error: string } {
+  const project = config.global.projects[projectName];
+  const bot = project?.bot ? config.global.bots?.[project.bot] : undefined;
+  const declaredEnv = bot?.token_env ?? project?.token_env;
+  if (declaredEnv) {
+    const token = process.env[declaredEnv];
+    if (token) return { token };
+    return {
+      error:
+        `Project "${projectName}" is bound to a specific bot whose token env "${declaredEnv}" ` +
+        "is not set. botops tools must act as that exact bot — set the variable rather than " +
+        "falling back to the default bot.",
+    };
+  }
+  // No project-specific token declared → the default token IS the intended bot.
+  if (config.defaultToken) return { token: config.defaultToken };
+  return { error: `No token available for project "${projectName}"` };
+}
+
+/**
  * Resolves which bot token — and therefore which Discord application — a
  * botops tool operates on. The project's token selects the application:
  * in multi-bot setups each project (or its bot persona) maps to its own app.
@@ -59,13 +89,11 @@ export function resolveApplicationTarget(
     if (!config.global.projects[projectName]) {
       return { error: `Default project "${projectName}" is not defined in config` };
     }
-    // getTokenForProject throws when the project's token env var is unset;
-    // surface that as a routing error rather than an unhandled exception.
-    try {
-      return { token: getTokenForProject(projectName, config), project: projectName };
-    } catch (err) {
-      return { error: err instanceof Error ? err.message : String(err) };
-    }
+    // Strict: a project bound to a specific bot must resolve THAT bot's token —
+    // never fall back to the default bot and edit the wrong application.
+    const resolved = resolveProjectBotToken(projectName, config);
+    if ("error" in resolved) return resolved;
+    return { token: resolved.token, project: projectName };
   }
   // No project context at all. Fall back to the server default token only if one
   // exists — in per-project-token installs (no default DISCORD_TOKEN) there is
@@ -96,7 +124,9 @@ export function resolveGuildTarget(
       if (!config.global.projects[input.project]) {
         return { error: `Project "${input.project}" not found in config` };
       }
-      return { guildId: input.guild_id, token: getTokenForProject(input.project, config) };
+      const resolved = resolveProjectBotToken(input.project, config);
+      if ("error" in resolved) return resolved;
+      return { guildId: input.guild_id, token: resolved.token };
     }
     return { guildId: input.guild_id };
   }
@@ -109,7 +139,9 @@ export function resolveGuildTarget(
   if (!project) {
     return { error: `Project "${projectName}" not found in config` };
   }
-  return { guildId: project.guildId, token: getTokenForProject(projectName, config) };
+  const resolved = resolveProjectBotToken(projectName, config);
+  if ("error" in resolved) return resolved;
+  return { guildId: project.guildId, token: resolved.token };
 }
 
 /**
