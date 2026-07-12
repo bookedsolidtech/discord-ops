@@ -9,6 +9,7 @@ import {
   readFileSync,
   readSync,
   renameSync,
+  rmSync,
   statSync,
   utimesSync,
   writeFileSync,
@@ -257,7 +258,13 @@ export class SinkWriter {
   }
 
   private rotate(): void {
-    renameSync(this.path, rotatedPath(this.path));
+    // renameSync fails on Windows when the destination exists, so a second
+    // rotation would leave the sidecar unable to write. Remove the previous
+    // rotated file first (POSIX rename overwrites, so this is a no-op there
+    // beyond the extra stat).
+    const rotated = rotatedPath(this.path);
+    rmSync(rotated, { force: true });
+    renameSync(this.path, rotated);
     writeFileSync(this.path, "", { mode: SINK_FILE_MODE });
     this.bytes = 0;
   }
