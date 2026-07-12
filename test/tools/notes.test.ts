@@ -234,6 +234,20 @@ describe("get_notes", () => {
     expect(ids).toContain("300000000000000001");
   });
 
+  it("returns a resume cursor covering filtered-out messages", async () => {
+    const { channel } = boardChannel();
+    const ctx = createCtx();
+    (ctx.discord.getChannel as any).mockResolvedValue(channel);
+
+    // Filter to a sender that matches nothing; the human message (…0003) is a
+    // non-note. The cursor must still advance to the newest scanned id so a
+    // follow-up poll does not re-scan the same window.
+    const result = await getNotes.handle({ project: "test-project", from: "nobody" }, ctx);
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.count).toBe(0);
+    expect(data.last_scanned_id).toBe("300000000000000004");
+  });
+
   it("filters by tag and sender", async () => {
     const { channel } = boardChannel();
     const ctx = createCtx();

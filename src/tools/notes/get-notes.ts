@@ -71,6 +71,16 @@ export const getNotes = defineTool({
       ...(input.after ? { after: input.after } : {}),
     });
 
+    // Track the newest scanned message id (note or not) so callers can page
+    // with `after` even when the window held messages that were filtered out.
+    // Empty scan → keep the incoming cursor so a poll doesn't rewind.
+    let lastScannedId = input.after ?? null;
+    for (const msg of fetched.values()) {
+      if (lastScannedId === null || BigInt(msg.id) > BigInt(lastScannedId)) {
+        lastScannedId = msg.id;
+      }
+    }
+
     const notes: ParsedNote[] = [];
     for (const msg of fetched.values()) {
       const parsed = parseNoteContent(msg.content);
@@ -109,6 +119,7 @@ export const getNotes = defineTool({
       board_channel: input.board_channel ?? board.board,
       channel_id: target.channelId,
       scanned: fetched.size,
+      last_scanned_id: lastScannedId,
       count: notes.length,
       notes,
     });

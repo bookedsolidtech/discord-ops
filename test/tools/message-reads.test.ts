@@ -454,9 +454,33 @@ describe("get_replies", () => {
     const data = JSON.parse(result.content[0]!.text);
     expect(data.scanned).toBe(0);
     expect(data.replies).toEqual([]);
-    expect(data.last_scanned_id).toBeNull();
+    // Empty scan preserves the cursor (no `after` here → the anchor) instead of
+    // rewinding to null, so a follow-up poll doesn't rescan from the top.
+    expect(data.last_scanned_id).toBe(targetId);
     // limit defaults to 100 when not provided (handle bypasses Zod defaults)
     expect(fetch).toHaveBeenCalledWith({ after: targetId, limit: 100 });
+  });
+
+  it("preserves the after cursor across a quiet poll", async () => {
+    const fetch = vi
+      .fn()
+      .mockImplementation((arg) =>
+        typeof arg === "string"
+          ? Promise.resolve(createMockMessage({ id: arg }))
+          : Promise.resolve(new Map()),
+      );
+    const channel = createMockChannel({ messages: { fetch } });
+    const ctx = createCtx();
+    (ctx.discord.getChannel as any).mockResolvedValue(channel);
+
+    const cursor = "500000000000000042";
+    const result = await getReplies.handle(
+      { message_id: targetId, channel_id: "222222222222222222", after: cursor },
+      ctx,
+    );
+    const data = JSON.parse(result.content[0]!.text);
+    // The incoming cursor is returned unchanged, not reset to the anchor or null.
+    expect(data.last_scanned_id).toBe(cursor);
   });
 
   it("returns an error when the anchor message does not exist", async () => {

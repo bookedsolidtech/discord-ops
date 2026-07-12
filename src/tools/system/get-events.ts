@@ -2,6 +2,7 @@ import { z } from "zod";
 import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
 import { ListenEventTypeSchema } from "../../config/schema.js";
+import { resolveProject } from "../../config/profiles.js";
 import {
   assertSafeSinkPath,
   isSinkActive,
@@ -79,11 +80,24 @@ export const getEvents = defineTool({
       if (rotated.length > 0) all = [...rotated, ...active];
     }
 
-    const matches = (e: SinkEvent): boolean =>
-      (!input.project || e.project === input.project) &&
-      (!input.channel || e.channel === input.channel) &&
-      (!input.channel_id || e.channel_id === input.channel_id) &&
-      (!input.types || input.types.includes(e.type));
+    // Resolve a project+channel alias filter to the underlying channel id.
+    // Events for a shared channel are stored once under whichever route the
+    // sidecar registered first, so matching by identity (channel_id) — not by
+    // the stored alias label — keeps the channel queryable under EVERY route
+    // that points at it, while the sink still holds one copy of each event.
+    let effectiveChannelId = input.channel_id;
+    if (!effectiveChannelId && input.project && input.channel) {
+      const proj = resolveProject(input.project, ctx.config.global, ctx.config.perProject);
+      effectiveChannelId = proj?.channels[input.channel];
+    }
+
+    const matches = (e: SinkEvent): boolean => {
+      if (input.types && !input.types.includes(e.type)) return false;
+      if (effectiveChannelId) return e.channel_id === effectiveChannelId;
+      if (input.project && e.project !== input.project) return false;
+      if (input.channel && e.channel !== input.channel) return false;
+      return true;
+    };
 
     const limit = input.limit ?? 50;
     let events: SinkEvent[];

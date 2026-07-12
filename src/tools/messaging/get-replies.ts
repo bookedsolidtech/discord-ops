@@ -67,10 +67,13 @@ export const getReplies = defineTool({
       )
       .map((msg) => serializeMessage(msg));
 
-    // Newest scanned ID (max snowflake) — the resume cursor for a follow-up scan.
-    const lastScannedId = messages.reduce<string | null>(
-      (max, msg) => (max === null || BigInt(msg.id) > BigInt(max) ? msg.id : max),
-      null,
+    // Newest scanned ID (max snowflake) — the resume cursor for a follow-up
+    // scan. When the scan is empty (a quiet channel on a polling call), keep the
+    // caller's cursor where it was — the incoming `after`, or the anchor
+    // message_id — so a follow-up poll does NOT rewind and rescan from the top.
+    const lastScannedId = messages.reduce<string>(
+      (max, msg) => (BigInt(msg.id) > BigInt(max) ? msg.id : max),
+      input.after ?? input.message_id,
     );
 
     return toolResultJson({
