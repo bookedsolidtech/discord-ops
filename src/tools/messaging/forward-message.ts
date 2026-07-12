@@ -59,15 +59,30 @@ export const forwardMessage = defineTool({
       return toolResult("Destination channel is the same as the source channel", true);
     }
 
+    // Message.forward() executes through the SOURCE message's client, so the
+    // source bot must also be able to reach the destination channel. When the
+    // two channels resolve to different bot tokens (e.g. cross-project between
+    // guilds with separate bots), no single bot is in both — the forward would
+    // post through the wrong bot or fail. Refuse clearly instead.
+    if (source.token !== destination.token) {
+      return toolResult(
+        "forward_message needs one bot in both channels, but the source and destination " +
+          "resolve to different bot tokens. Forward within a single project/guild, or re-post " +
+          "the content into the other project manually.",
+        true,
+      );
+    }
+
     const sourceChannel = await ctx.discord.getChannel(source.channelId, source.token);
     const fetched = await fetchMessageOrError(sourceChannel, input.message_id, source.channelId);
     if ("error" in fetched) {
       return toolResult(fetched.error, true);
     }
 
-    // Fetch the destination through the same client to fail fast on bad IDs
-    // or non-text channels before calling forward().
-    const destChannel = await ctx.discord.getChannel(destination.channelId, destination.token);
+    // Fetch the destination through the SOURCE client (same token, verified
+    // above) so the channel object and forward() share one client, and to fail
+    // fast on bad IDs or non-text channels before calling forward().
+    const destChannel = await ctx.discord.getChannel(destination.channelId, source.token);
     const forwarded = await fetched.message.forward(destChannel as TextChannel);
 
     return toolResultJson({

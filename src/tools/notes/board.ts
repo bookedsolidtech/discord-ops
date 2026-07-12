@@ -159,3 +159,20 @@ export const boardRoutingFields = {
     .describe("Override the resolved board channel (alias or id) for this call"),
   channel_id: snowflakeId.optional().describe("Direct board channel ID override"),
 };
+
+/**
+ * Build resolveTarget params for a board, routing a raw snowflake as a direct
+ * channel_id and an alias as `channel`. Precedence: an explicit channel_id
+ * override wins, then an explicit board_channel override, then the resolved
+ * board value (which itself may be a snowflake from `board_channel` config or
+ * an alias from the fallback chain). Without this, a snowflake board is
+ * mistakenly looked up as a channel alias and never resolves.
+ */
+export function boardTargetParams(
+  project: string,
+  board: string,
+  input: { board_channel?: string; channel_id?: string },
+): { project: string; channel?: string; channel_id?: string } {
+  const raw = input.channel_id ?? input.board_channel ?? board;
+  return /^\d{17,20}$/.test(raw) ? { project, channel_id: raw } : { project, channel: raw };
+}

@@ -7,6 +7,7 @@ import {
   encodeNote,
   parseNoteContent,
   resolveBoardChannel,
+  boardTargetParams,
   defaultSessionId,
   RESOLVED_EMOJI,
 } from "../../src/tools/notes/board.js";
@@ -91,6 +92,24 @@ describe("notes board helpers", () => {
   it("errors on an unknown project", () => {
     const result = resolveBoardChannel("ghost", createMockConfig());
     expect("error" in result).toBe(true);
+  });
+
+  it("routes a snowflake board as channel_id, an alias as channel", () => {
+    // A raw-snowflake board_channel must be a direct id, not a (failing) alias lookup.
+    expect(boardTargetParams("p", "222222222222222222", {})).toEqual({
+      project: "p",
+      channel_id: "222222222222222222",
+    });
+    expect(boardTargetParams("p", "dev", {})).toEqual({ project: "p", channel: "dev" });
+    // Overrides: channel_id wins, then board_channel; snowflake detection applies to each.
+    expect(boardTargetParams("p", "dev", { channel_id: "333333333333333333" })).toEqual({
+      project: "p",
+      channel_id: "333333333333333333",
+    });
+    expect(boardTargetParams("p", "dev", { board_channel: "alerts" })).toEqual({
+      project: "p",
+      channel: "alerts",
+    });
   });
 
   it("honors DISCORD_OPS_SESSION for the default session id", () => {

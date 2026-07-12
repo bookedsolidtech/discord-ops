@@ -7,6 +7,7 @@ import {
   NOTES_CATEGORY,
   RESOLVED_EMOJI,
   boardRoutingFields,
+  boardTargetParams,
   parseNoteContent,
   recipientToken,
   resolveBoardChannel,
@@ -58,11 +59,7 @@ export const getNotes = defineTool({
     if ("error" in board) return toolResult(board.error, true);
 
     const target = await resolveTarget(
-      {
-        project: board.project,
-        channel: input.board_channel ?? board.board,
-        channel_id: input.channel_id,
-      },
+      boardTargetParams(board.project, board.board, input),
       ctx.config,
       ctx.discord,
     );
