@@ -11,19 +11,8 @@ RESTART.md
 .mcp.json
 .claude/
 
-# === rea managed — do not edit between markers ===
-.rea/audit.jsonl
-.rea/audit-*.jsonl
-.rea/HALT
-.rea/metrics.jsonl
-.rea/serve.pid
-.rea/serve.state.json
-.rea/fingerprints.json
-.rea/last-review.json
-.rea/*.tmp
-.rea/*.tmp.*
-.rea/install-manifest.json.bak
-.rea/install-manifest.json.tmp
+# rea is a LOCAL/global developer governance tool — never committed, never in
+# CI. The global rea CLI operates on a gitignored .rea/ directory per project.
+.rea/
 .gitignore.rea-tmp-*
 .rea.lock
-# === end rea managed ===
