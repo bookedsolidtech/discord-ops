@@ -4,18 +4,21 @@
 # Enforces zero-bad-code policy: NOTHING reaches the remote without passing
 # all available quality gates. Every gate that exists in the project runs.
 #
+# rea governance (codex push-gate, HALT) is a LOCAL/global developer tool and
+# is intentionally NOT invoked here — it must never run in CI. The global rea
+# CLI installs its own git hooks in .git/hooks/ (not committed) for developers
+# who use it.
+#
 # Gates (skipped gracefully if script/tool not present):
 #   1. Format check  (prettier --check .)
 #   2. Lint          (eslint .)
 #   3. Type check    (tsc --noEmit)
 #   4. Tests         (vitest run / jest / node --test)
 #   5. Build         (npm run build / pnpm run build)
-#   6. REA push gate (rea hook push-gate)
 #
 # Exit codes:
 #   0 = all applicable gates passed
 #   1 = a gate failed — push blocked
-#   2 = REA push gate refused or CLI unavailable — push blocked
 
 set -e
 
@@ -68,21 +71,6 @@ if [ -n "$FAILED" ]; then
   echo "pre-push: FAILED gates:$FAILED"
   echo "All quality gates must pass before push. Fix failures and retry."
   exit 1
-fi
-
-# ── Gate 6: REA push gate ─────────────────────────────────────────────────────
-# Governance layer: HALT check + codex review of the diff via `rea hook
-# push-gate`. Resolve the project-local rea first, then PATH, then npx.
-echo "pre-push: running REA push gate..."
-if [ -x "node_modules/.bin/rea" ]; then
-  node_modules/.bin/rea hook push-gate "$@" || exit 2
-elif command -v rea >/dev/null 2>&1; then
-  rea hook push-gate "$@" || exit 2
-elif command -v npx >/dev/null 2>&1; then
-  npx --no-install @bookedsolid/rea hook push-gate "$@" || exit 2
-else
-  echo "rea: cannot locate the rea CLI for push-gate — install with: npm install" >&2
-  exit 2
 fi
 
 echo "pre-push: all quality gates passed"
