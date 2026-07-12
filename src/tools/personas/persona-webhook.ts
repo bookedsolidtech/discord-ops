@@ -11,8 +11,12 @@ import { snowflakeId } from "../schema.js";
  * developer-portal involvement.
  */
 
-/** Default name for the webhook that carries persona messages on a channel. */
-export const PERSONA_WEBHOOK_NAME = "discord-ops personas";
+/**
+ * Default name for the webhook that carries persona messages on a channel.
+ * Discord rejects webhook names containing "discord" (USERNAME_INVALID_CONTAINS,
+ * verified live), so the package name cannot appear here.
+ */
+export const PERSONA_WEBHOOK_NAME = "agent personas";
 
 export type ChannelWebhook = Webhook<WebhookType.ChannelFollower | WebhookType.Incoming>;
 export type ChannelWebhookCollection = Collection<Snowflake, ChannelWebhook>;
