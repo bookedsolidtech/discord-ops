@@ -38,7 +38,9 @@ export function serializeMessage(msg: Message) {
       timestamp: e.timestamp ?? null,
     })),
     reactions: [...(msg.reactions?.cache?.values?.() ?? [])].map((r: MessageReaction) => ({
-      emoji: r.emoji.name,
+      // Round-trippable into add_reaction (unicode char or <:name:id>).
+      emoji: r.emoji.toString(),
+      emoji_name: r.emoji.name,
       count: r.count,
     })),
   };

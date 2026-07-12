@@ -57,7 +57,11 @@ export const getReactions = defineTool({
     for (const reaction of filtered) {
       const users = await reaction.users.fetch({ limit });
       reactions.push({
-        emoji: reaction.emoji.name,
+        // toString() is round-trippable into add_reaction: the bare char for
+        // unicode, <:name:id> for custom emojis (name alone collapses
+        // distinct custom emojis and cannot be re-sent).
+        emoji: reaction.emoji.toString(),
+        emoji_name: reaction.emoji.name,
         count: reaction.count,
         users: [...users.values()].map((u) => ({
           id: u.id,

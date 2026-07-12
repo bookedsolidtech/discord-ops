@@ -142,6 +142,7 @@ describe("get_reactions", () => {
     expect(data.reactions).toHaveLength(2);
     expect(data.reactions[0]).toEqual({
       emoji: "✅",
+      emoji_name: "✅",
       count: 2,
       users: [
         { id: "333333333333333333", username: "peer-agent", bot: true },
@@ -201,6 +202,34 @@ describe("get_reactions", () => {
     );
     expect(result.isError).toBeUndefined();
     expect(ack.users.fetch).toHaveBeenCalledWith({ limit: 5 });
+  });
+
+  it("returns a round-trippable identifier for custom emojis", async () => {
+    const customReaction = {
+      emoji: { name: "deploy", toString: () => "<:deploy:123456789012345678>" },
+      count: 1,
+      users: {
+        fetch: vi
+          .fn()
+          .mockResolvedValue(new Map([["1", { id: "1", username: "ops-bot", bot: true }]])),
+      },
+    };
+    const msg = createMockMessage({
+      reactions: { cache: [customReaction] },
+    });
+    const mockChannel = createMockChannel({
+      messages: { fetch: vi.fn().mockResolvedValue(msg) },
+    });
+    const ctx = createCtx();
+    (ctx.discord.getChannel as any).mockResolvedValue(mockChannel);
+
+    const result = await getReactions.handle(
+      { message_id: "111111111111111111", channel_id: "222222222222222222" },
+      ctx,
+    );
+    const data = JSON.parse(result.content[0]!.text);
+    expect(data.reactions[0].emoji).toBe("<:deploy:123456789012345678>");
+    expect(data.reactions[0].emoji_name).toBe("deploy");
   });
 
   it("returns an empty list for a message with no reactions", async () => {
