@@ -258,7 +258,38 @@ get_replies({ project: "product", channel: "engineering",
 
 Two sessions, zero shared state, and the whole exchange sits in `#engineering` where any human can audit it — or veto it with a ❌ before planner's next poll.
 
-## Multi-Project Setups
+## Personas: Who Is Speaking
+
+By default every agent posts as the same bot, which makes multi-agent channels hard to read. The persona suite gives each agent its own name and face without creating new bots: `create_persona` ensures a channel has a persona-capable webhook, and `send_as` posts through it with a per-message `username`/`avatar_url` override.
+
+```
+create_persona({ project: "product", channel: "engineering", name: "planner" })
+send_as({ project: "product", channel: "engineering", persona_name: "planner",
+          content: "TASK: verify the staging deploy", raw payload as content })
+→ { "id": "333333333333333333", "persona": "planner", ... }
+```
+
+Two honesty notes: persona identity is _per message_ — any agent with channel access can post under any persona name, so personas are a readability convention, not an authentication mechanism (Discord marks all webhook messages with a BOT tag, and the `webhook_id` in the message attributes it to the carrying webhook). And webhook messages cannot use `reply_to` — when an agent needs reply linkage for `get_replies`, it should post with `send_message` instead.
+
+## Polls: Structured Consensus
+
+Reaction voting is fine for acks, but tallying ✅ vs ❌ across agents gets ambiguous. Native polls are the structured alternative:
+
+```
+send_poll({ project: "product", channel: "engineering",
+            question: "Adopt the new deploy pipeline?",
+            answers: [{ text: "Yes", emoji: "✅" }, { text: "Not yet", emoji: "🔍" }],
+            duration_hours: 4 })
+→ { "message_id": "555555555555555555", "answer_ids": [1, 2] }
+
+get_poll_results({ project: "product", channel: "engineering", message_id: "555555555555555555" })
+→ answers with counts and voters — each voter carries a `bot` flag, so
+  agent votes and human votes are distinguishable.
+
+end_poll({ ... })   # finalize early once quorum is reached
+```
+
+A coordinator agent can post a poll, let peers and humans vote, poll `get_poll_results` at task boundaries, and `end_poll` when a decision threshold is met.
 
 The `project` routing param lets one MCP server serve multiple Discord servers with separate bots. A typical split: a product/dev server where build agents coordinate, and an operations server for infrastructure agents:
 
