@@ -110,6 +110,7 @@ export async function runSetup(): Promise<void> {
 
       const channelMap = await assignChannelAliases(rl, channels);
       const defaultChannel = await selectDefaultChannel(rl, channelMap);
+      const boardChannel = await selectBoardChannel(rl, channelMap, defaultChannel);
 
       // Ask about per-project bot token
       let tokenEnv: string | undefined;
@@ -133,6 +134,7 @@ export async function runSetup(): Promise<void> {
         guild_id: guild.id,
         channels: channelMap,
         default_channel: defaultChannel,
+        ...(boardChannel ? { board_channel: boardChannel } : {}),
         ...(tokenEnv ? { token_env: tokenEnv } : {}),
       };
     }
@@ -175,6 +177,9 @@ export async function runSetup(): Promise<void> {
 
     // Step 10: Optionally generate per-project config
     await maybeGeneratePerProjectConfig(rl, config);
+
+    // Step 11: Optionally write .mcp.json so Claude Code loads discord-ops here
+    await maybeGenerateMcpJson(rl, config, defaultProject);
 
     console.log("\n  Setup complete. Run `discord-ops health` to verify.\n");
 
@@ -416,6 +421,72 @@ async function assignChannelAliases(
   return channelMap;
 }
 
+/**
+ * Compute the alias the note board resolves to under the smart fallback chain,
+ * mirroring resolveBoardChannel: an explicit `board`/`agent-board` alias →
+ * `agent-logs` → `backchannel` → the default channel. Pure + exported for tests.
+ */
+export function computeBoardDefault(
+  channelMap: Record<string, string>,
+  defaultChannel: string | undefined,
+): string | undefined {
+  const has = (a: string) => a in channelMap;
+  if (has("board")) return "board";
+  if (has("agent-board")) return "agent-board";
+  if (has("agent-logs")) return "agent-logs";
+  if (has("backchannel")) return "backchannel";
+  return defaultChannel;
+}
+
+/**
+ * Build (or merge into) the .mcp.json Claude Code reads to load discord-ops.
+ * Preserves any other mcpServers already present. Pure + exported for tests.
+ */
+export function buildMcpJson(
+  existing: unknown,
+  tokenEnv: string,
+): { mcpServers: Record<string, unknown> } {
+  const base =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? (existing as { mcpServers?: Record<string, unknown> })
+      : {};
+  const mcpServers = { ...(base.mcpServers ?? {}) };
+  mcpServers["discord-ops"] = {
+    command: "npx",
+    args: ["-y", "discord-ops@latest"],
+    env: { [tokenEnv]: `\${${tokenEnv}}` },
+  };
+  return { ...base, mcpServers };
+}
+
+async function selectBoardChannel(
+  rl: ReturnType<typeof createInterface>,
+  channelMap: Record<string, string>,
+  defaultChannel: string | undefined,
+): Promise<string | undefined> {
+  const aliases = Object.keys(channelMap);
+  if (aliases.length === 0) return undefined;
+
+  const fallback = computeBoardDefault(channelMap, defaultChannel);
+  console.log("\n  Coordination note board — where agents leave directed notes.");
+  if (fallback) {
+    console.log(`  Smart default resolves to: ${fallback}`);
+  }
+  const answer = await askQuestion(
+    rl,
+    `  Board channel alias [${fallback ?? "none"}] (Enter to accept, or type an alias): `,
+  );
+  const chosen = answer.trim() || fallback;
+  // Only persist board_channel when it differs from what the fallback already
+  // resolves to — otherwise leave it unset and let resolveBoardChannel decide.
+  if (!chosen || chosen === fallback) return undefined;
+  if (!aliases.includes(chosen)) {
+    console.log(`    "${chosen}" is not a known alias — leaving board unset (smart fallback).`);
+    return undefined;
+  }
+  return chosen;
+}
+
 async function selectDefaultChannel(
   rl: ReturnType<typeof createInterface>,
   channelMap: Record<string, string>,
@@ -533,6 +604,52 @@ async function maybeGeneratePerProjectConfig(
   const localPath = join(process.cwd(), ".discord-ops.json");
   writeFileSync(localPath, JSON.stringify(perProject, null, 2) + "\n", "utf-8");
   console.log(`  Per-project config written to: ${localPath}`);
+}
+
+async function maybeGenerateMcpJson(
+  rl: ReturnType<typeof createInterface>,
+  config: GlobalConfig,
+  defaultProject: string | undefined,
+): Promise<void> {
+  const projectNames = Object.keys(config.projects);
+  if (projectNames.length === 0) return;
+
+  const want = await askQuestion(
+    rl,
+    "\n  Write .mcp.json here so Claude Code loads discord-ops in this project? [Y/n]: ",
+  );
+  if (want.trim().toLowerCase() === "n") return;
+
+  // Pick the project whose token env this .mcp.json should reference.
+  let projectName = defaultProject ?? projectNames[0];
+  if (projectNames.length > 1) {
+    console.log("\n  Which project is this directory?");
+    for (let i = 0; i < projectNames.length; i++) {
+      console.log(`    [${i + 1}] ${projectNames[i]}`);
+    }
+    const choice = await askQuestion(rl, `  Select [1]: `);
+    const idx = parseInt(choice.trim() || "1", 10) - 1;
+    if (idx >= 0 && idx < projectNames.length) projectName = projectNames[idx];
+  }
+
+  const tokenEnv =
+    config.projects[projectName]?.token_env ?? process.env.DISCORD_OPS_TOKEN_ENV ?? "DISCORD_TOKEN";
+
+  const mcpPath = join(process.cwd(), ".mcp.json");
+  let existing: unknown = undefined;
+  if (existsSync(mcpPath)) {
+    try {
+      existing = JSON.parse(readFileSync(mcpPath, "utf-8"));
+    } catch {
+      console.log("  Existing .mcp.json is invalid JSON — leaving it untouched.");
+      return;
+    }
+  }
+
+  const merged = buildMcpJson(existing, tokenEnv);
+  writeFileSync(mcpPath, JSON.stringify(merged, null, 2) + "\n", "utf-8");
+  console.log(`  Wrote .mcp.json (discord-ops → ${tokenEnv}) to: ${mcpPath}`);
+  console.log(`  Export ${tokenEnv} in your shell (from your vault) and restart Claude Code.`);
 }
 
 function slugify(name: string): string {

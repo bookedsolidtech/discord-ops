@@ -29,7 +29,7 @@ Agency-grade Discord MCP server with multi-guild project routing.
 - **HTTP/SSE + stdio transports** — stdio for Claude Code, HTTP/SSE for remote MCP clients
 - **HTTP transport auth** — bearer token auth via `DISCORD_OPS_HTTP_TOKEN` with constant-time comparison
 - **Dry-run mode** — simulate destructive operations without calling Discord API
-- **Interactive setup wizard** — `discord-ops setup` supports single-bot and multi-bot configuration
+- **Interactive setup wizard** — `discord-ops setup` discovers guilds/channels live, configures single/multi-bot routing and the coordination board, and writes a project `.mcp.json` for one-command install
 - **Security hardening** — rate limiting, permission pre-flight checks, snowflake ID validation, self-protection guards
 - **Lazy login** — tools enumerate before Discord connects; first tool call triggers login
 - **Zod validation** — all inputs validated before execution
@@ -42,7 +42,8 @@ Agency-grade Discord MCP server with multi-guild project routing.
 # Install
 npm install -g discord-ops
 
-# Interactive setup (creates ~/.discord-ops.json)
+# Interactive setup — connects to your bot, discovers guilds/channels, and
+# writes ~/.discord-ops.json + a project .mcp.json (so Claude Code loads it)
 discord-ops setup
 
 # Or manual setup
