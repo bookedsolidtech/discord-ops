@@ -21,17 +21,20 @@ vi.mock("../../src/templates/registry.js", () => ({
 // Mock discord.js ActionRowBuilder/ButtonBuilder
 vi.mock("discord.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("discord.js")>();
-  const ButtonBuilderMock = vi.fn().mockImplementation(() => ({
-    setLabel: vi.fn().mockReturnThis(),
-    setStyle: vi.fn().mockReturnThis(),
-    setURL: vi.fn().mockReturnThis(),
-    setCustomId: vi.fn().mockReturnThis(),
-    setEmoji: vi.fn().mockReturnThis(),
-    setDisabled: vi.fn().mockReturnThis(),
-  }));
-  const ActionRowBuilderMock = vi.fn().mockImplementation(() => ({
-    addComponents: vi.fn().mockReturnThis(),
-  }));
+  // vitest 4+: mocks invoked with `new` need a function (not arrow) implementation.
+  const ButtonBuilderMock = vi.fn().mockImplementation(function () {
+    return {
+      setLabel: vi.fn().mockReturnThis(),
+      setStyle: vi.fn().mockReturnThis(),
+      setURL: vi.fn().mockReturnThis(),
+      setCustomId: vi.fn().mockReturnThis(),
+      setEmoji: vi.fn().mockReturnThis(),
+      setDisabled: vi.fn().mockReturnThis(),
+    };
+  });
+  const ActionRowBuilderMock = vi.fn().mockImplementation(function () {
+    return { addComponents: vi.fn().mockReturnThis() };
+  });
   return {
     ...actual,
     ButtonBuilder: ButtonBuilderMock,
