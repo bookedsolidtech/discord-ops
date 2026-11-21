@@ -7,15 +7,11 @@ import { sanitizeError } from "./security/sanitizer.js";
 import { auditToolCall } from "./security/audit.js";
 import { RateLimiter } from "./security/rate-limiter.js";
 import { checkPermissions } from "./security/permissions.js";
-import {
-  filterTools,
-  validateProfileToolNames,
-  PROFILES,
-  isProfileName,
-} from "./profiles/index.js";
+import { filterTools, validateProfileToolNames } from "./profiles/index.js";
 import { logger } from "./utils/logger.js";
-import { getTokenForProject, getBotPersona } from "./config/index.js";
-import { resolveProject } from "./config/profiles.js";
+import { getTokenForProject } from "./config/index.js";
+import { profileGateError } from "./config/tool-gate.js";
+import { directPostGateError } from "./config/direct-post-gate.js";
 
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
@@ -119,52 +115,25 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
 
         // Per-project/per-bot tool profile enforcement — runtime gate
         if (typeof parsed.project === "string") {
-          const resolvedProj = resolveProject(
-            parsed.project,
-            ctx.config.global,
-            ctx.config.perProject,
-          );
-          if (resolvedProj) {
-            // Determine effective profile: project tool_profile, or bot's default_profile
-            let effectiveProfile = resolvedProj.toolProfile;
-            let effectiveAdd = resolvedProj.toolProfileAdd;
-            let effectiveRemove = resolvedProj.toolProfileRemove;
-
-            if (!effectiveProfile) {
-              const channelAlias = typeof parsed.channel === "string" ? parsed.channel : undefined;
-              const persona = getBotPersona(parsed.project, channelAlias, ctx.config);
-              if (persona) {
-                effectiveProfile = persona.default_profile;
-                if (!effectiveAdd) effectiveAdd = persona.profile_add;
-                if (!effectiveRemove) effectiveRemove = persona.profile_remove;
-              }
-            }
-
-            if (effectiveProfile && isProfileName(effectiveProfile)) {
-              const profileTools = PROFILES[effectiveProfile];
-              if (profileTools !== "all") {
-                const allowed = new Set(profileTools);
-                // Apply add/remove overrides
-                if (effectiveAdd) {
-                  for (const name of effectiveAdd) allowed.add(name);
-                }
-                if (effectiveRemove) {
-                  for (const name of effectiveRemove) allowed.delete(name);
-                }
-                if (!allowed.has(tool.name)) {
-                  return {
-                    content: [
-                      {
-                        type: "text" as const,
-                        text: `Tool "${tool.name}" is not allowed by the "${effectiveProfile}" profile for project "${parsed.project}"`,
-                      },
-                    ],
-                    isError: true,
-                  };
-                }
-              }
-            }
+          const channelAlias = typeof parsed.channel === "string" ? parsed.channel : undefined;
+          const gateError = profileGateError(tool.name, parsed.project, channelAlias, ctx.config, {
+            projectLevelOnly: tool.gatesOwnChannels === true,
+          });
+          if (gateError) {
+            return {
+              content: [{ type: "text" as const, text: gateError }],
+              isError: true,
+            };
           }
+        }
+
+        // posts.require_approval — direct-post tools refuse for gated projects' guilds.
+        const directPostError = await directPostGateError(tool.name, parsed, ctx);
+        if (directPostError) {
+          return {
+            content: [{ type: "text" as const, text: directPostError }],
+            isError: true,
+          };
         }
 
         // Permission pre-flight — check bot has required perms before calling Discord API.

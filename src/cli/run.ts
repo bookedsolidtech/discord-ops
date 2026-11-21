@@ -1,6 +1,7 @@
 import { loadConfig } from "../config/index.js";
 import { DiscordClient } from "../client.js";
 import { allTools } from "../tools/index.js";
+import { directPostGateError } from "../config/direct-post-gate.js";
 
 export async function runTool(toolName: string, rawArgs: string): Promise<void> {
   // Find tool
@@ -35,6 +36,14 @@ export async function runTool(toolName: string, rawArgs: string): Promise<void> 
   const discord = new DiscordClient(config.defaultToken);
 
   try {
+    // Same posts.require_approval gate the MCP server applies — the CLI is
+    // not a way around the posting kit.
+    const blocked = await directPostGateError(toolName, parsed.data, { discord, config });
+    if (blocked) {
+      console.error(blocked);
+      process.exit(1);
+    }
+
     const result = await tool.handle(parsed.data, { discord, config });
 
     if (result.isError) {

@@ -21,6 +21,9 @@ import { forwardMessage } from "./messaging/forward-message.js";
 // Personas
 import { createPersona, sendAs, listPersonas } from "./personas/index.js";
 
+// Posts (SMP posting kit)
+import { previewPost, publishPost, sendPost, listPosts, previewPosts } from "./posts/index.js";
+
 // Polls
 import { sendPoll, getPollResults, endPoll } from "./polls/index.js";
 
@@ -118,6 +121,13 @@ export const allTools: ToolDefinition[] = [
   createPersona,
   sendAs,
   listPersonas,
+
+  // Posts (SMP posting kit)
+  previewPost,
+  publishPost,
+  sendPost,
+  listPosts,
+  previewPosts,
 
   // Polls
   sendPoll,

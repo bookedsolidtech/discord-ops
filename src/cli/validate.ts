@@ -1,5 +1,6 @@
 import { loadConfig } from "../config/index.js";
 import { isProfileName } from "../profiles/index.js";
+import { validatePostingKit } from "../config/validate.js";
 
 /**
  * Validates the discord-ops configuration files.
@@ -65,6 +66,11 @@ export async function runValidate(): Promise<void> {
           `Project "${projectName}": tool_profile "${project.tool_profile}" is not a valid profile name`,
         );
       }
+
+      // Persona presets and posting-kit wiring
+      const postingKit = validatePostingKit(projectName, project);
+      warnings.push(...postingKit.warnings);
+      errors.push(...postingKit.errors);
 
       // Check channel-level bot overrides
       for (const [alias, channelConfig] of Object.entries(project.channels)) {

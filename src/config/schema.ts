@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { personaName } from "./persona-name.js";
+import { isPublicHttpUrl } from "../utils/og-fetch.js";
 
 const BUILTIN_NOTIFICATION_TYPES = [
   "ci_build",
@@ -51,6 +53,75 @@ export const ChannelConfigSchema = z.union([
 
 export type ChannelConfig = z.infer<typeof ChannelConfigSchema>;
 
+const snowflake = z.string().regex(/^\d{17,20}$/, "Must be a valid Discord snowflake ID");
+
+/**
+ * A named persona preset: a posting identity configured once per project and
+ * referenced by key (or name) from send_as and the posting-kit tools. The name
+ * goes through the same rules as send_as persona names (length, Discord's
+ * "clyde"/"discord" ban, reserved authority names).
+ */
+export const PersonaPresetSchema = z.object({
+  name: personaName,
+  avatar_url: z
+    .string()
+    .url()
+    .refine(isPublicHttpUrl, {
+      message:
+        "avatar_url must be a public http(s) URL (private and reserved addresses are refused)",
+    })
+    .optional(),
+  color: z.number().int().min(0).max(0xffffff).optional(),
+  footer: z.string().max(2048).optional(),
+  default_channel: z.string().optional(),
+});
+
+export type PersonaPreset = z.infer<typeof PersonaPresetSchema>;
+
+/** Post types the posting kit renders (see src/posts). */
+export const POST_TYPES = [
+  "welcome",
+  "rules",
+  "announcement",
+  "video_upload",
+  "server_status",
+  "event",
+  "build_spotlight",
+  "character_line",
+  "schedule_update",
+  "custom",
+  "forum_post",
+] as const;
+export const PostTypeEnum = z.enum(POST_TYPES);
+export type PostType = z.infer<typeof PostTypeEnum>;
+
+export const DEFAULT_PREVIEW_CHANNEL = "feed-preview";
+
+/**
+ * Posting-kit approval config. Every field is optional; defaults are applied
+ * by resolvePostsConfig so config literals stay assignable to the inferred type.
+ */
+export const PostsConfigSchema = z.object({
+  /** Channel alias where previews are posted (default "feed-preview") */
+  preview_channel: z.string().optional(),
+  approver_user_ids: z.array(snowflake).optional(),
+  approver_role_ids: z.array(snowflake).optional(),
+  /**
+   * Types that may post directly with send_post and need no ✅ (default []).
+   * Every other type goes preview_post → approver ✅ → publish_post, every time.
+   */
+  auto_types: z.array(PostTypeEnum).optional(),
+  /**
+   * When true, the direct-posting tools (send_message, send_as, send_embed,
+   * send_template, execute_webhook, send_poll, forward_message,
+   * create_forum_post, create_thread with a starter message, edit_message)
+   * refuse for this project's guild. Posts go through the posting kit only.
+   */
+  require_approval: z.boolean().optional(),
+});
+
+export type PostsConfig = z.infer<typeof PostsConfigSchema>;
+
 export const ProjectConfigSchema = z.object({
   guild_id: z.string().regex(/^\d{17,20}$/, "Must be a valid Discord snowflake ID"),
   channels: z.record(z.string(), ChannelConfigSchema),
@@ -70,6 +141,10 @@ export const ProjectConfigSchema = z.object({
   profile_remove: z.array(z.string()).optional(),
   owners: z.array(z.string().regex(/^\d{17,20}$/)).optional(),
   notify_owners_on: z.array(notificationType).optional(),
+  /** Persona presets keyed by a short id (e.g. "meelah"), used by send_as and the posting kit */
+  personas: z.record(z.string(), PersonaPresetSchema).optional(),
+  /** Posting-kit preview/approval config */
+  posts: PostsConfigSchema.optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
