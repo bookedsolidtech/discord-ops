@@ -1,0 +1,12 @@
+---
+"discord-ops": minor
+---
+
+SMP posting kit: persona presets and approval-gated typed posts.
+
+- **Persona presets.** Projects can define `personas` (name, optional avatar, color, footer, default channel). `send_as` applies a preset when `persona_name` matches its key or name, and `list_personas` lists a project's presets. `discord-ops validate` reports presets with reserved names, private avatar URLs, unknown default channels, or duplicate names.
+- **Typed posts.** Eleven post types (`welcome`, `rules`, `announcement`, `video_upload`, `server_status`, `event`, `schedule_update`, `build_spotlight`, `character_line`, `custom`, `forum_post`) render into persona webhook messages; `forum_post` publishes a forum thread. Every post targets a channel alias or `channel_id` and can be pinned. Every URL must be public https, and posts never ping @everyone, roles, or users.
+- **Preview, approve, publish.** New tools `preview_post`, `preview_posts`, `publish_post`, `send_post`, and `list_posts`. A post is previewed in the project's preview channel, an approver reacts ✅ on it, then `publish_post` posts it — every post, every time. Only types listed in `posts.auto_types` skip the ✅ and may post directly with `send_post`. State lives in a local ledger at `~/.discord-ops/posts/<project>.json` (0600).
+- **`posts.require_approval`.** When true, the direct-posting tools (`send_message`, `send_as`, `send_embed`, `send_template`, `execute_webhook`, `send_poll`, `forward_message`, `create_forum_post`, `create_thread` with a starter message, `edit_message`, `pin_message`, `notify_owners`, and `leave_note`/`resolve_note` outside the project's configured `board_channel`) refuse for that project's guild, enforced centrally by the server.
+- **Video safety.** `video_upload` looks videos up with YouTube oEmbed and refuses private, deleted, or unavailable ones. Unlisted and scheduled videos cannot be detected, so Counting Cubes videos need `confirm_public: true`, and Counting Cubes posts always need a ✅ on their own preview (`preview_post` → ✅ → `publish_post`; `send_post` refuses them even when their type is in `auto_types`).
+- **Publish integrity.** `publish_post` re-reads the preview message from Discord (never a cached copy), refuses if the post or the preview changed since it was approved, and claims the ledger record before sending so two agent sessions cannot publish the same preview twice. Posting-kit tools enforce the tool profile of the bot serving each destination channel.
