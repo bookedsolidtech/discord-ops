@@ -34,7 +34,8 @@ export interface ToolDefinition {
   name: string;
   description: string;
   category: ToolCategory;
-  inputSchema: z.ZodType;
+  // zod 4's bare ZodType outputs `unknown`; v3 defaulted to `any`. Keep v3 semantics.
+  inputSchema: z.ZodType<any>;
   permissions?: PermissionResolvable[];
   destructive?: boolean;
   requiresGuild?: boolean;
