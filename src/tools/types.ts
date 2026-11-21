@@ -28,7 +28,8 @@ export type ToolCategory =
   | "polls"
   | "forums"
   | "botops"
-  | "notes";
+  | "notes"
+  | "posts";
 
 export interface ToolDefinition {
   name: string;
@@ -39,6 +40,12 @@ export interface ToolDefinition {
   permissions?: PermissionResolvable[];
   destructive?: boolean;
   requiresGuild?: boolean;
+  /**
+   * The tool resolves its own destination channels (from nested input or
+   * stored state) and applies the per-bot profile gate to each one. The
+   * server then enforces only the project-level tool_profile up front.
+   */
+  gatesOwnChannels?: boolean;
   /**
    * The erased handle type at the interface level. `input` is typed as `any`
    * here because `ToolDefinition` is not generic over its input schema — the
@@ -63,6 +70,7 @@ export function defineTool<TSchema extends z.ZodType>(definition: {
   permissions?: PermissionResolvable[];
   destructive?: boolean;
   requiresGuild?: boolean;
+  gatesOwnChannels?: boolean;
   handle: (input: z.infer<TSchema>, ctx: ToolContext) => Promise<ToolResult>;
 }): ToolDefinition {
   return definition as ToolDefinition;

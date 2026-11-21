@@ -22,61 +22,47 @@ export type ChannelWebhook = Webhook<WebhookType.ChannelFollower | WebhookType.I
 export type ChannelWebhookCollection = Collection<Snowflake, ChannelWebhook>;
 
 /**
- * Reserved persona names that must not be impersonable. A persona is a
- * per-message display name with no authentication behind it, so a name that
- * reads as an authority (an operator, a moderator, or Discord itself) is a
- * social-engineering vector against humans skim-reading the channel. This is
- * defense-in-depth, not authentication — the tool descriptions and docs state
- * plainly that a display name is never an authorization signal.
+ * Persona display-name validator. Lives in config/ so the persona-preset
+ * config schema can share it; re-exported here for the persona tools.
  */
-const RESERVED_PERSONA_NAMES = new Set([
-  "system",
-  "admin",
-  "administrator",
-  "moderator",
-  "mod",
-  "discord",
-  "clyde",
-  "everyone",
-  "here",
-  "owner",
-  "root",
-]);
+export { personaName } from "../../config/persona-name.js";
 
-/**
- * Zero-width and bidirectional control characters (U+200B–U+200F, U+202A–
- * U+202E, U+2060, U+FEFF). Built via RegExp from escapes (rather than a
- * literal) so the source stays free of irregular whitespace. Used to defeat
- * obfuscated authority names like a "System" with a zero-width space inside.
- */
-const INVISIBLE_CHARS = new RegExp("[\\u200B-\\u200F\\u202A-\\u202E\\u2060\\uFEFF]", "g");
-
-/**
- * Normalize a name for reserved-word comparison: strip invisible characters,
- * collapse whitespace, and lowercase, so a zero-width-obfuscated "System" or a
- * padded " Admin " cannot slip past the blocklist.
- */
-function normalizeForBlocklist(name: string): string {
-  return name.replace(INVISIBLE_CHARS, "").trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-/**
- * Persona display name — used as the per-message webhook username override.
- * Discord rejects webhook usernames containing "clyde" or "discord"
- * (case-insensitive) and caps them at 80 characters; on top of that we block
- * reserved authority names to blunt impersonation.
- */
-export const personaName = z
-  .string()
-  .min(1)
-  .max(80)
-  .refine((name) => !/clyde|discord/i.test(name), {
-    message: 'Discord rejects webhook usernames containing "clyde" or "discord"',
-  })
-  .refine((name) => !RESERVED_PERSONA_NAMES.has(normalizeForBlocklist(name)), {
-    message:
-      "Reserved persona name — names that read as an authority (system, admin, moderator, owner, etc.) are blocked to prevent impersonation. A persona name is not an authorization signal.",
-  });
+/** Embed passthrough for send_as and posting-kit custom posts — same shape as execute_webhook. */
+export const personaEmbedSchema = z.object({
+  title: z.string().max(256).optional(),
+  description: z.string().max(4096).optional(),
+  color: z.number().optional(),
+  url: z.string().url().optional().describe("Embed URL — must be a public HTTP/HTTPS URL"),
+  footer: z.object({ text: z.string() }).optional(),
+  timestamp: z.string().optional(),
+  image: z
+    .object({ url: z.string().url().describe("Image URL — must be a public HTTP/HTTPS URL") })
+    .optional(),
+  thumbnail: z
+    .object({ url: z.string().url().describe("Thumbnail URL — must be a public HTTP/HTTPS URL") })
+    .optional(),
+  author: z
+    .object({
+      name: z.string(),
+      url: z.string().url().optional().describe("Author URL — must be a public HTTP/HTTPS URL"),
+      icon_url: z
+        .string()
+        .url()
+        .optional()
+        .describe("Author icon URL — must be a public HTTP/HTTPS URL"),
+    })
+    .optional(),
+  fields: z
+    .array(
+      z.object({
+        name: z.string().max(256),
+        value: z.string().max(1024),
+        inline: z.boolean().optional(),
+      }),
+    )
+    .max(25)
+    .optional(),
+});
 
 /** Routing inputs shared by all persona tools — mirrors resolver.ResolveParams. */
 export const routingFields = {

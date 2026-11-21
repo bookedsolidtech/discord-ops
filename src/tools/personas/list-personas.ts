@@ -3,6 +3,7 @@ import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { resolveTarget } from "../../routing/resolver.js";
 import { getTokenForProject } from "../../config/index.js";
 import { getDefaultProjectName, resolveProject } from "../../config/profiles.js";
+import { serializePresets } from "../../config/personas.js";
 import {
   type ChannelWebhook,
   NO_WEBHOOK_CHANNEL_ERROR,
@@ -35,7 +36,9 @@ export const listPersonas = defineTool({
     "channel/channel_id, or list guild-wide via guild_id or project. Any persona name can be used per-message " +
     "through these webhooks via send_as; no per-persona registration exists on Discord's side. " +
     "The guild-wide listing enumerates through the project's bot; in multi-bot setups, persona webhooks owned " +
-    "by a per-channel OVERRIDE bot are best listed with that channel's scope. Requires ManageWebhooks permission.",
+    "by a per-channel OVERRIDE bot are best listed with that channel's scope. When a project resolves, also " +
+    "returns its persona presets (key, name, has_avatar, color, default_channel) from config. " +
+    "Requires ManageWebhooks permission.",
   category: "personas",
   inputSchema,
   permissions: ["ManageWebhooks"],
@@ -63,6 +66,9 @@ export const listPersonas = defineTool({
         ...(target.project ? { project: target.project } : {}),
         count: personaWebhooks.length,
         persona_webhooks: personaWebhooks,
+        ...(target.project
+          ? { presets: serializePresets(ctx.config.global.projects[target.project]) }
+          : {}),
         note: PERSONA_NOTE,
       });
     }
@@ -100,6 +106,9 @@ export const listPersonas = defineTool({
       ...(projectName ? { project: projectName } : {}),
       count: personaWebhooks.length,
       persona_webhooks: personaWebhooks,
+      ...(projectName
+        ? { presets: serializePresets(ctx.config.global.projects[projectName]) }
+        : {}),
       note: PERSONA_NOTE,
     });
   },

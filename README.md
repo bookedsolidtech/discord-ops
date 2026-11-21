@@ -8,9 +8,10 @@ Agency-grade Discord MCP server with multi-guild project routing.
 
 ## Features
 
-- **72 MCP tools** — messaging, personas, polls, forums, notes, channels, moderation, roles, webhooks, botops, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
+- **77 MCP tools** — messaging, personas, SMP posting kit, polls, forums, notes, channels, moderation, roles, webhooks, botops, audit log, threads, guilds, invites, permissions, search, 23 templates, OG embed unfurling, project introspection
 - **Project note board** — a durable, directed-note log per project; agents leave hand-offs and read them on startup, aware of other concurrent sessions
 - **Webhook personas** — one bot, unlimited posting identities via per-message username/avatar overrides; never create another bot application
+- **SMP posting kit** — persona presets plus typed community posts (welcome, rules, announcements, YouTube uploads, server status, events, schedule updates, build spotlights, character lines, free-form and forum posts) with a preview → ✅ approve → publish flow
 - **Native polls** — structured agent/human consensus with per-answer voter reads and bot flags
 - **Forum work queues** — posts as tasks, tags as status labels, archive to close
 - **Real-time event feed** — optional `discord-ops listen` sidecar streams messages/reactions to a local sink read by `get_events`, zero API calls per poll
@@ -363,6 +364,62 @@ Three read-side tools close the loop: `get_message` fetches a single message wit
 
 See [docs/agent-coordination.md](docs/agent-coordination.md) for the full protocol — reaction vocabulary, threads, polling guidance, multi-project setups, and anti-patterns. New to discord-ops? [docs/project-onboarding.md](docs/project-onboarding.md) is the start-to-finish walkthrough for adopting it as a team's coordination bus — project setup, the shared note board, personas, polls and forums, and least-privilege profiles.
 
+## SMP posting kit
+
+Typed community posts for a game-server Discord, posted through persona webhooks and gated by a human approver. Built for a kid-friendly Minecraft SMP, usable by any project.
+
+```json
+{
+  "projects": {
+    "strawn-games": {
+      "guild_id": "123456789012345678",
+      "owners": ["111111111111111111"],
+      "channels": {
+        "feed-preview": "222222222222222222",
+        "welcome": "333333333333333333",
+        "announcements": "444444444444444444",
+        "videos": "555555555555555555",
+        "build-forum": "666666666666666660"
+      },
+      "personas": {
+        "strawn": {
+          "name": "Strawn Games",
+          "avatar_url": "https://cdn.example.com/strawn.png",
+          "color": 3447003,
+          "footer": "Strawn Games SMP",
+          "default_channel": "announcements"
+        },
+        "meelah": { "name": "Meelah", "default_channel": "welcome" },
+        "counting-cubes": { "name": "Counting Cubes", "default_channel": "videos" }
+      },
+      "posts": {
+        "preview_channel": "feed-preview",
+        "approver_user_ids": ["666666666666666666"],
+        "approver_role_ids": ["777777777777777777"],
+        "auto_types": ["server_status"],
+        "require_approval": true
+      }
+    }
+  }
+}
+```
+
+**Persona presets** (`personas`) are keyed by a short id. `name` follows the `send_as` persona rules (no reserved authority names); `avatar_url`, `color`, `footer`, and `default_channel` are optional. `send_as` applies a preset when `persona_name` matches its key or name (case-insensitive): preset name and avatar, `default_channel` when no channel is given, and color/footer on embeds that leave them unset. `list_personas` lists a project's presets.
+
+**Post types:** `welcome` and `rules` (title, body, up to 25 sections), `announcement` (title, body, image, link), `video_upload` (YouTube URL; title and thumbnail come from YouTube), `server_status` (`up` / `down` / `maintenance`, address, version, players — use `down` or `maintenance` for downtime), `event` (major schedules; ISO 8601 `starts_at`/`ends_at` rendered as Discord timestamps), `schedule_update` (a small time change or cancellation; amber, red when `cancelled`), `build_spotlight` (builder plus a required image), `character_line` (a line of dialogue), `custom` (free-form `content` and/or up to 10 `embeds`, same shape as `send_as`), and `forum_post` (title, content, embeds, and tag names; publishing creates a thread in the target forum). Every post names a `persona` preset, a target `channel` alias or `channel_id` (defaulting to the preset's `default_channel`), and an optional `pin`. All URLs must be public `https://`, and posts never ping @everyone, roles, or users.
+
+**Approval flow:**
+
+1. `preview_post` (or `preview_posts` for up to 10) posts a `PREVIEW → #<target> · <type>` header to the preview channel, then the post exactly as it will be published, and records it in a local ledger (`~/.discord-ops/posts/<project>.json`, mode 0600).
+2. An approver reacts ✅ on the preview message. Approvers are `approver_user_ids`, the project `owners`, and members holding an `approver_role_ids` role. Bot reactions never count.
+3. `publish_post` re-renders the post and re-reads the preview message, refuses if either no longer matches what was previewed, checks the ✅, and posts to the target. A `forum_post` becomes a forum thread posted as the persona (or by the bot if the webhook is refused). A cross-process claim in the ledger stops a preview from being published twice.
+
+**Approval is per type.** Every post needs a fresh ✅ on its own preview, every time — an earlier approval unlocks nothing. The only exception is types listed in `posts.auto_types` (default none): those may post directly with `send_post`, and their previews publish without a ✅.
+
+**`posts.require_approval: true`** blocks the direct-posting tools (`send_message`, `send_as`, `send_embed`, `send_template`, `execute_webhook`, `send_poll`, `forward_message`, `create_forum_post`, `create_thread` with a starter message, `edit_message`, `pin_message`, `notify_owners`, and `leave_note`/`resolve_note` except on the project's explicitly configured `board_channel`) for that project's guild, whatever routing they use. `publish_post` and `send_post` (for `auto_types`) are then the only ways to post there.
+
+**Video safety:** `video_upload` looks the video up with YouTube oEmbed and refuses private, deleted, or unavailable videos. It **cannot detect unlisted or scheduled videos**. Counting Cubes videos (series, persona, or uploading channel mentioning Counting Cubes) need `confirm_public: true` and an approver's ✅ on every post — even when `video_upload` is in `auto_types`, `send_post` refuses them — and must never be announced before the video is public.
+
 ## Tools
 
 ### Messaging (16 tools)
@@ -395,6 +452,18 @@ One bot, unlimited posting identities — persona identity is a per-message webh
 | `create_persona` | Ensure a channel has a persona-capable webhook (token never exposed) |
 | `send_as`        | Post as any persona name/avatar; returns the message id              |
 | `list_personas`  | List persona webhooks per channel or guild                           |
+
+### Posts (5 tools)
+
+The [SMP posting kit](#smp-posting-kit): typed posts rendered as persona presets, gated by approver reactions.
+
+| Tool            | Description                                                                                    |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| `preview_post`  | Render a post and post it to the preview channel; records it as pending                        |
+| `publish_post`  | Publish a pending preview once an approver has reacted ✅ (unless the type is in `auto_types`) |
+| `send_post`     | Publish directly — only for types listed in `posts.auto_types`                                 |
+| `list_posts`    | Pending previews, last 50 published posts, approval settings (read-only)                       |
+| `preview_posts` | Batch `preview_post` for up to 10 posts; per-item results                                      |
 
 ### Polls (3 tools)
 
@@ -521,15 +590,15 @@ Load only the tools an agent needs. Reduces schema token overhead by up to 85% f
 
 ### Built-in profiles
 
-| Profile      | Tools | Description                                                                                                                                                                                                                        |
-| ------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `full`       | 72    | All tools (default)                                                                                                                                                                                                                |
-| `monitoring` | 17    | get_messages, get_message, get_replies, get_reactions, send_message, send_as, add_reaction, create_thread, send_poll, get_poll_results, leave_note, get_notes, resolve_note, list_sessions, health_check, list_projects, list_bots |
-| `readonly`   | 13    | get_messages, get_message, get_replies, get_reactions, get_poll_results, list_personas, list_forum_posts, list_channels, list_members, get_guild, health_check, list_projects, list_bots                                           |
-| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log                                                                                                                             |
-| `messaging`  | 10    | add_reaction, delete_message, edit_message, forward_message, get_messages, get_message, get_replies, get_reactions, send_as, send_message                                                                                          |
-| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode                                                                                                                             |
-| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks                                                                                                                                          |
+| Profile      | Tools | Description                                                                                                                                                                                                                                                |
+| ------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `full`       | 77    | All tools (default)                                                                                                                                                                                                                                        |
+| `monitoring` | 19    | get_messages, get_message, get_replies, get_reactions, send_message, send_as, add_reaction, create_thread, send_poll, get_poll_results, leave_note, get_notes, resolve_note, list_sessions, list_posts, get_events, health_check, list_projects, list_bots |
+| `readonly`   | 15    | get_messages, get_message, get_replies, get_reactions, get_poll_results, list_personas, list_posts, list_forum_posts, get_events, list_channels, list_members, get_guild, health_check, list_projects, list_bots                                           |
+| `moderation` | 7     | get_messages, kick_member, ban_member, timeout_member, delete_message, purge_messages, query_audit_log                                                                                                                                                     |
+| `messaging`  | 15    | add_reaction, delete_message, edit_message, forward_message, get_messages, get_message, get_replies, get_reactions, list_posts, preview_post, preview_posts, publish_post, send_as, send_message, send_post                                                |
+| `channels`   | 7     | create_channel, delete_channel, edit_channel, get_channel, list_channels, purge_messages, set_slowmode                                                                                                                                                     |
+| `webhooks`   | 6     | create_webhook, delete_webhook, edit_webhook, execute_webhook, get_webhook, list_webhooks                                                                                                                                                                  |
 
 ### Using profiles
 
