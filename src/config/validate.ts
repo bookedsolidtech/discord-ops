@@ -1,4 +1,7 @@
 import type { LoadedConfig } from "./index.js";
+import type { ProjectConfig } from "./schema.js";
+import { resolvePostsConfig } from "./personas.js";
+import { personaName } from "./persona-name.js";
 
 export interface ProjectValidation {
   name: string;
@@ -102,6 +105,10 @@ export function validateConfig(config: LoadedConfig): ConfigValidationResult {
     if (Object.keys(project.channels).length === 0) {
       warnings.push(`Project "${name}" has no channels configured`);
     }
+
+    const postingKit = validatePostingKit(name, project);
+    warnings.push(...postingKit.warnings);
+    errors.push(...postingKit.errors);
   }
 
   // Warn about shared guilds with different tokens
@@ -174,4 +181,66 @@ export function validateConfig(config: LoadedConfig): ConfigValidationResult {
   }
 
   return { projects, warnings, errors };
+}
+
+/**
+ * Semantic checks for a project's persona presets and posting-kit config —
+ * the parts the zod schema cannot express (cross-references to channel
+ * aliases, duplicate names). Structural problems (a reserved preset name, a
+ * private avatar URL, an out-of-range color) already fail config parsing.
+ */
+export function validatePostingKit(
+  projectName: string,
+  project: ProjectConfig,
+): { warnings: string[]; errors: string[] } {
+  const warnings: string[] = [];
+  const errors: string[] = [];
+  const presets = project.personas ?? {};
+
+  const seenNames = new Map<string, string>();
+  for (const [key, preset] of Object.entries(presets)) {
+    if (!personaName.safeParse(key).success) {
+      warnings.push(
+        `Project "${projectName}": persona preset key "${key}" fails persona-name rules, so send_as can only reach it by its name "${preset.name}"`,
+      );
+    }
+    if (preset.default_channel && !project.channels[preset.default_channel]) {
+      errors.push(
+        `Project "${projectName}": persona preset "${key}" default_channel "${preset.default_channel}" is not a configured channel alias`,
+      );
+    }
+    const normalized = preset.name.trim().toLowerCase();
+    const clash = seenNames.get(normalized);
+    if (clash) {
+      errors.push(
+        `Project "${projectName}": persona presets "${clash}" and "${key}" share the name "${preset.name}" — preset names must be unique (case-insensitive)`,
+      );
+    } else {
+      seenNames.set(normalized, key);
+    }
+  }
+
+  // Only check posting-kit wiring when the project opts in (presets or a posts block).
+  if (project.posts || Object.keys(presets).length > 0) {
+    const posts = resolvePostsConfig(project);
+    if (!project.channels[posts.previewChannel]) {
+      warnings.push(
+        `Project "${projectName}": posts preview channel "${posts.previewChannel}" is not a configured channel alias — preview_post will fail until it is added`,
+      );
+    }
+    if (project.posts && posts.approverUserIds.length === 0 && posts.approverRoleIds.length === 0) {
+      warnings.push(
+        `Project "${projectName}": posts has no approvers (approver_user_ids, approver_role_ids, or owners) — nothing can be approved for publishing`,
+      );
+    }
+    for (const type of posts.autoTypes) {
+      if (type === "announcement" || type === "character_line") {
+        warnings.push(
+          `Project "${projectName}": posts.auto_types includes "${type}" — those posts publish with send_post and no approver ✅`,
+        );
+      }
+    }
+  }
+
+  return { warnings, errors };
 }
