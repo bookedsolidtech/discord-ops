@@ -107,6 +107,11 @@ export const PostsConfigSchema = z.object({
   approver_user_ids: z.array(snowflake).optional(),
   approver_role_ids: z.array(snowflake).optional(),
   /**
+   * Reactions that count as approval (default ["✅"]). Only approvers' reactions
+   * count, whichever emoji is used; bots never count.
+   */
+  approval_emojis: z.array(z.string().min(1).max(100)).min(1).max(5).optional(),
+  /**
    * Types that may post directly with send_post and need no ✅ (default []).
    * Every other type goes preview_post → approver ✅ → publish_post, every time.
    */

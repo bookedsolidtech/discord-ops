@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineTool, toolResult, toolResultJson } from "../types.js";
 import { snowflakeId } from "../schema.js";
-import { APPROVAL_EMOJI, describeApprovers, findApprover } from "../../posts/approval.js";
+import { approvalEmojiText, describeApprovers, findApprover } from "../../posts/approval.js";
 import { readLedger, updateLedger, type LedgerRecord } from "../../posts/ledger.js";
 import { isCountingCubes, payloadSha256 } from "../../posts/render.js";
 import { PostValidationError, parsePost } from "../../posts/schema.js";
@@ -191,10 +191,10 @@ export const publishPost = defineTool({
           return toolResult(
             `Not approved: ${result.reason}. ` +
               (countingCubes
-                ? `Every Counting Cubes post needs an approver's ${APPROVAL_EMOJI} on its own preview. `
-                : `Every "${post.type}" post needs an approver's ${APPROVAL_EMOJI} on its own preview ` +
+                ? `Every Counting Cubes post needs an approver's ${approvalEmojiText(project.posts)} on its own preview. `
+                : `Every "${post.type}" post needs an approver's ${approvalEmojiText(project.posts)} on its own preview ` +
                   "(the type is not in posts.auto_types). ") +
-              `${describeApprovers(project.posts)} must react ${APPROVAL_EMOJI} on preview message ` +
+              `${describeApprovers(project.posts)} must react ${approvalEmojiText(project.posts)} on preview message ` +
               `${input.preview_message_id} in the preview channel, then call publish_post again.`,
             true,
           );

@@ -48,12 +48,14 @@ export async function findApprover(
   guild: ApprovalGuild,
   posts: ResolvedPostsConfig,
 ): Promise<ApprovalResult> {
+  const emojis = approvalEmojis(posts);
+  const shownEmoji = emojis.join(" or ");
   const reactions = [...(message.reactions?.cache?.values() ?? [])];
-  const check = reactions.find(
-    (r) => r.emoji.name === APPROVAL_EMOJI || r.emoji.toString() === APPROVAL_EMOJI,
+  const checks = reactions.filter((r) =>
+    emojis.some((e) => sameEmoji(r.emoji.name, e) || sameEmoji(r.emoji.toString(), e)),
   );
-  if (!check) {
-    return { approved: false, reason: `no ${APPROVAL_EMOJI} reaction on the preview yet` };
+  if (checks.length === 0) {
+    return { approved: false, reason: `no ${shownEmoji} reaction on the preview yet` };
   }
 
   const approverIds = new Set(posts.approverUserIds);
@@ -63,45 +65,46 @@ export async function findApprover(
 
   // Discord pages reaction users 100 at a time (ordered by user id) and lists
   // normal and super (burst) reactions separately — walk both, page by page.
-  for (const type of [ReactionType.Normal, ReactionType.Burst]) {
-    after = undefined;
-    for (let page = 0; page < MAX_REACTION_PAGES; page++) {
-      const batch: ReactionUser[] = [
-        ...(await check.users.fetch({ type, limit: 100, ...(after ? { after } : {}) })).values(),
-      ];
-      for (const user of batch) {
-        if (user.bot) continue;
-        sawHuman = true;
-        if (approverIds.has(user.id)) return { approved: true, approvedBy: user.id, via: "user" };
-        if (posts.approverRoleIds.length > 0) {
-          let member;
-          try {
-            member = await guild.members.fetch(user.id);
-          } catch {
-            member = undefined; // left the guild, or not fetchable — cannot approve
+  for (const check of checks)
+    for (const type of [ReactionType.Normal, ReactionType.Burst]) {
+      after = undefined;
+      for (let page = 0; page < MAX_REACTION_PAGES; page++) {
+        const batch: ReactionUser[] = [
+          ...(await check.users.fetch({ type, limit: 100, ...(after ? { after } : {}) })).values(),
+        ];
+        for (const user of batch) {
+          if (user.bot) continue;
+          sawHuman = true;
+          if (approverIds.has(user.id)) return { approved: true, approvedBy: user.id, via: "user" };
+          if (posts.approverRoleIds.length > 0) {
+            let member;
+            try {
+              member = await guild.members.fetch(user.id);
+            } catch {
+              member = undefined; // left the guild, or not fetchable — cannot approve
+            }
+            if (member && posts.approverRoleIds.some((roleId) => member.roles.cache.has(roleId))) {
+              return { approved: true, approvedBy: user.id, via: "role" };
+            }
           }
-          if (member && posts.approverRoleIds.some((roleId) => member.roles.cache.has(roleId))) {
-            return { approved: true, approvedBy: user.id, via: "role" };
-          }
+          nonApprovers.add(user.id);
         }
-        nonApprovers.add(user.id);
+        if (batch.length < 100) break;
+        after = batch[batch.length - 1]!.id;
       }
-      if (batch.length < 100) break;
-      after = batch[batch.length - 1]!.id;
     }
-  }
 
   if (!sawHuman) {
     return {
       approved: false,
-      reason: `the only ${APPROVAL_EMOJI} reactions are from bots — bots cannot approve posts`,
+      reason: `the only ${shownEmoji} reactions are from bots — bots cannot approve posts`,
     };
   }
   const ids = [...nonApprovers];
   const shown = ids.slice(0, 10).join(", ");
   return {
     approved: false,
-    reason: `${APPROVAL_EMOJI} reactions are from non-approvers (${shown}${ids.length > 10 ? ", …" : ""})`,
+    reason: `${shownEmoji} reactions are from non-approvers (${shown}${ids.length > 10 ? ", …" : ""})`,
   };
 }
 
@@ -117,4 +120,20 @@ export function describeApprovers(posts: ResolvedPostsConfig): string {
   return parts.length
     ? parts.join(" or ")
     : "nobody (configure posts.approver_user_ids, approver_role_ids, or owners)";
+}
+
+/** Emoji equality ignoring the U+FE0F presentation selector Discord may drop (❤️ vs ❤). */
+function sameEmoji(a: string | null, b: string): boolean {
+  const strip = (s: string) => s.replace(/\uFE0F/g, "");
+  return a !== null && strip(a) === strip(b);
+}
+
+/** The reactions that approve for this project (posts.approval_emojis, default ✅). */
+function approvalEmojis(posts: ResolvedPostsConfig): string[] {
+  return posts.approvalEmojis?.length ? posts.approvalEmojis : [APPROVAL_EMOJI];
+}
+
+/** The approval reaction(s) for messages, e.g. "✅" or "✅ or 👍". */
+export function approvalEmojiText(posts: ResolvedPostsConfig): string {
+  return approvalEmojis(posts).join(" or ");
 }
