@@ -123,6 +123,12 @@ export const PostsConfigSchema = z.object({
    * refuse for this project's guild. Posts go through the posting kit only.
    */
   require_approval: z.boolean().optional(),
+  /**
+   * When true, publish_post deletes the preview and its header from the preview
+   * channel after a successful publish, so only previews awaiting approval remain.
+   * The posts ledger keeps the full record either way.
+   */
+  clear_preview_on_publish: z.boolean().optional(),
 });
 
 export type PostsConfig = z.infer<typeof PostsConfigSchema>;

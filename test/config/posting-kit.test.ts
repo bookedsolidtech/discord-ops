@@ -113,6 +113,7 @@ describe("resolvePostsConfig", () => {
       approvalEmojis: ["✅"],
       autoTypes: [],
       requireApproval: false,
+      clearPreviewOnPublish: false,
     });
   });
 

@@ -150,6 +150,9 @@ function setup() {
           content: (payload.content ?? "").trim(), // Discord trims message content
           embeds: payload.embeds ?? [],
           pin: vi.fn().mockResolvedValue(undefined),
+          delete: vi.fn(async () => {
+            messages.delete(mid);
+          }),
           reactions: { cache: new Map() },
         };
         messages.set(mid, msg);
@@ -898,6 +901,30 @@ describe("custom posts", () => {
     const result = await publish(env, out.preview_message_id);
     expect(result.isError).toBeUndefined();
     expect(JSON.stringify(env.sent.at(-1)!.payload)).not.toMatch(/v2/);
+  });
+
+  it("clears the preview and its header after publish when clear_preview_on_publish is set", async () => {
+    const env = setup();
+    env.ctx.config.global.projects["strawn-games"].posts.clear_preview_on_publish = true;
+    const out = await preview(env, custom);
+    env.react(out.preview_message_id, [{ id: OWNER }]);
+    const result = await publish(env, out.preview_message_id);
+    expect(result.isError).toBeUndefined();
+    expect(JSON.parse(result.content[0]!.text).preview_cleared).toBe(true);
+    expect(env.messages.has(out.preview_message_id)).toBe(false);
+    expect(env.messages.has(out.header_message_id)).toBe(false);
+    // The ledger keeps the record.
+    const rec = readLedger("strawn-games").records.find((r) => r.id === out.preview_message_id)!;
+    expect(rec.status).toBe("published");
+  });
+
+  it("keeps the preview after publish by default", async () => {
+    const env = setup();
+    const out = await preview(env, custom);
+    env.react(out.preview_message_id, [{ id: OWNER }]);
+    const result = await publish(env, out.preview_message_id);
+    expect(JSON.parse(result.content[0]!.text)).not.toHaveProperty("preview_cleared");
+    expect(env.messages.has(out.preview_message_id)).toBe(true);
   });
 
   it("refuses a malformed revision label", async () => {

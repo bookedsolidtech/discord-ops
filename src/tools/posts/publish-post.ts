@@ -263,6 +263,20 @@ export const publishPost = defineTool({
           `"publishing", which blocks a duplicate publish.`;
       }
 
+      // Clean the preview channel: the ledger keeps the record, so the messages can go.
+      let previewCleared: boolean | undefined;
+      let previewCleanupError: string | undefined;
+      if (project.posts.clearPreviewOnPublish) {
+        try {
+          await message.delete();
+          if (header) await header.delete();
+          previewCleared = true;
+        } catch (err) {
+          previewCleared = false;
+          previewCleanupError = errorText(err);
+        }
+      }
+
       return toolResultJson({
         published: true,
         message_id: sent.id,
@@ -276,6 +290,8 @@ export const publishPost = defineTool({
           ? { pinned: !pinError, ...(pinError ? { pin_error: pinError } : {}) }
           : {}),
         ...(ledgerWarning ? { ledger_warning: ledgerWarning } : {}),
+        ...(previewCleared !== undefined ? { preview_cleared: previewCleared } : {}),
+        ...(previewCleanupError ? { preview_cleanup_error: previewCleanupError } : {}),
       });
     } catch (err) {
       return toolResult(errorText(err), true);
