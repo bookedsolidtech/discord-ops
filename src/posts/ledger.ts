@@ -49,6 +49,8 @@ const PayloadSchema = z.object({
   /** forum_post: thread name and tag names for the new forum thread. */
   thread_name: z.string().nullable(),
   tags: z.array(z.string()),
+  /** Preview revision label shown in the header (e.g. "v2"); absent on unlabelled posts. */
+  revision: z.string().optional(),
 });
 
 export type PostPayload = z.infer<typeof PayloadSchema>;
