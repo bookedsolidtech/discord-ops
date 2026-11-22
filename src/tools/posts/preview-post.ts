@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { defineTool, toolResult, toolResultJson, type ToolContext } from "../types.js";
-import { APPROVAL_EMOJI, describeApprovers } from "../../posts/approval.js";
+import { approvalEmojiText, describeApprovers } from "../../posts/approval.js";
 import { updateLedger, withChannelLock } from "../../posts/ledger.js";
 import { PostValidationError } from "../../posts/schema.js";
 import {
@@ -130,7 +130,7 @@ export async function previewOne(
     needs_approval: approval,
     payload_sha256: prepared.sha256,
     next_step: approval
-      ? `${describeApprovers(project.posts)} must react ${APPROVAL_EMOJI} on preview message ${sent.id}, then call ${publishCall}`
+      ? `${describeApprovers(project.posts)} must react ${approvalEmojiText(project.posts)} on preview message ${sent.id}, then call ${publishCall}`
       : `"${prepared.post.type}" is in posts.auto_types — call ${publishCall} (no reaction needed), or post directly with send_post`,
   };
 }
