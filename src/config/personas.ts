@@ -60,6 +60,8 @@ export interface ResolvedPostsConfig {
   /** Types send_post may publish directly, without a ✅. */
   autoTypes: PostType[];
   requireApproval: boolean;
+  /** Delete the preview and header after a successful publish. */
+  clearPreviewOnPublish: boolean;
 }
 
 /** Applies posting-kit defaults to a project's optional `posts` block. */
@@ -77,6 +79,7 @@ export function resolvePostsConfig(
     approvalEmojis: [...new Set(posts?.approval_emojis ?? ["✅"])],
     autoTypes: [...new Set(posts?.auto_types ?? [])],
     requireApproval: posts?.require_approval === true,
+    clearPreviewOnPublish: posts?.clear_preview_on_publish === true,
   };
 }
 
