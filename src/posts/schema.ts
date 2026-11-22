@@ -81,6 +81,13 @@ const base = {
     .optional()
     .describe("Target channel ID (instead of channel) — must be in the project's guild"),
   pin: z.boolean().optional().describe("Pin the published post (the bot pins it)"),
+  revision: z
+    .string()
+    .regex(/^v\d{1,3}$/, 'Must look like "v2"')
+    .optional()
+    .describe(
+      'Revision label for a re-previewed post (e.g. "v2"). Shown in the preview header only; never published',
+    ),
   project: z
     .string()
     .optional()

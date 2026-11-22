@@ -880,6 +880,36 @@ describe("custom posts", () => {
     expect(env.sent.at(-1)!.payload.embeds).toEqual(body.embeds);
   });
 
+  it("labels a revision in the header only, and still publishes on ✅", async () => {
+    const env = setup();
+    const plain = await preview(env, custom);
+    expect(env.sent[0]!.payload.content).toMatch(/^PREVIEW → #announcements/);
+    const out = await preview(env, { ...custom, revision: "v2" });
+    expect(env.sent[2]!.payload.content).toMatch(/^PREVIEW v2 → #announcements/);
+    // The label never reaches the post body.
+    expect(previewMessage(env, out).payload).toEqual(previewMessage(env, plain).payload);
+    const records = readLedger("strawn-games").records;
+    expect(records.find((r) => r.id === out.preview_message_id)!.payload.revision).toBe("v2");
+    expect(records.find((r) => r.id === plain.preview_message_id)!.payload).not.toHaveProperty(
+      "revision",
+    );
+
+    env.react(out.preview_message_id, [{ id: OWNER }]);
+    const result = await publish(env, out.preview_message_id);
+    expect(result.isError).toBeUndefined();
+    expect(JSON.stringify(env.sent.at(-1)!.payload)).not.toMatch(/v2/);
+  });
+
+  it("refuses a malformed revision label", async () => {
+    const env = setup();
+    const result = await previewPost.handle(
+      { project: "strawn-games", post: { ...custom, revision: "final" } },
+      env.ctx,
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toMatch(/revision/);
+  });
+
   it("refuses a custom post with neither content nor embeds", async () => {
     const env = setup();
     const result = await previewPost.handle(
