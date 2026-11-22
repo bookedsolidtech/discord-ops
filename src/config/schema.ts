@@ -139,6 +139,11 @@ export const ProjectConfigSchema = z.object({
   tool_profile: ToolProfileEnum.optional(),
   profile_add: z.array(z.string()).optional(),
   profile_remove: z.array(z.string()).optional(),
+  /**
+   * Tools refused in this project's guild for every call, however it is routed
+   * (project, alias, channel_id or guild_id). Unknown names fail server startup.
+   */
+  deny_tools: z.array(z.string()).optional(),
   owners: z.array(z.string().regex(/^\d{17,20}$/)).optional(),
   notify_owners_on: z.array(notificationType).optional(),
   /** Persona presets keyed by a short id (e.g. "meelah"), used by send_as and the posting kit */

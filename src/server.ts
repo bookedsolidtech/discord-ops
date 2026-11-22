@@ -11,6 +11,11 @@ import { filterTools, validateProfileToolNames } from "./profiles/index.js";
 import { logger } from "./utils/logger.js";
 import { getTokenForProject } from "./config/index.js";
 import { profileGateError } from "./config/tool-gate.js";
+import {
+  DENYABLE_TOOLS,
+  denyToolsGateError,
+  invalidDeniedTools,
+} from "./config/deny-tools-gate.js";
 import { directPostGateError } from "./config/direct-post-gate.js";
 
 const require = createRequire(import.meta.url);
@@ -75,6 +80,15 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
     validateProfileToolNames(new Set(allTools.map((t) => t.name)));
   }
 
+  // A deny_tools entry that is not supported would deny nothing: refuse to start.
+  const invalidDenied = invalidDeniedTools(ctx.config.global.projects);
+  if (invalidDenied.length > 0) {
+    throw new Error(
+      `deny_tools names unsupported tools: ${invalidDenied.join(", ")}. ` +
+        `Supported: ${[...DENYABLE_TOOLS].join(", ")}`,
+    );
+  }
+
   const profileName = options?.tools?.length ? "custom" : (options?.profile ?? "full");
 
   const destructiveLimiter = new RateLimiter(10, 60);
@@ -125,6 +139,15 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
               isError: true,
             };
           }
+        }
+
+        // deny_tools — tools a project refuses in its guild, however the call is routed.
+        const denyError = await denyToolsGateError(tool.name, parsed, ctx);
+        if (denyError) {
+          return {
+            content: [{ type: "text" as const, text: denyError }],
+            isError: true,
+          };
         }
 
         // posts.require_approval — direct-post tools refuse for gated projects' guilds.
