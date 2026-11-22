@@ -142,6 +142,48 @@ async function destination(
   return { guilds: config ? new Set([config.guild_id]) : new Set() };
 }
 
+/** Top-level params that name a channel, thread or category. */
+const CHANNEL_PARAMS = ["channel_id", "to_channel_id", "thread_id", "parent_id"];
+
+/**
+ * Every guild a call could act in: its destination (channel, alias, or the
+ * default project), an explicit guild_id, and the owning guild of every
+ * channel, thread, category or webhook id it names. Over-approximates on
+ * purpose so a deny gate errs toward refusing. "unknown" when any named
+ * resource cannot be placed.
+ */
+export async function callGuilds(
+  toolName: string,
+  parsed: Params,
+  ctx: ToolContext,
+): Promise<Set<string> | "unknown"> {
+  const dest = await destination(toolName, parsed, ctx);
+  if (dest.guilds === "unknown") return "unknown";
+  const out = new Set(dest.guilds);
+  const guildId = str(parsed.guild_id);
+  if (guildId) out.add(guildId);
+  const project = str(parsed.project);
+  for (const key of CHANNEL_PARAMS) {
+    const id = str(parsed[key]);
+    if (!id) continue;
+    const guilds = await guildsForChannel(id, project, ctx);
+    if (guilds === "unknown") return "unknown";
+    for (const g of guilds) out.add(g);
+  }
+  const webhookId = str(parsed.webhook_id);
+  if (webhookId) {
+    try {
+      const client = await ctx.discord.getClient(tokenFor(project, ctx));
+      const webhook = (await client.fetchWebhook(webhookId)) as { guildId?: string | null };
+      if (!webhook.guildId) return "unknown";
+      out.add(webhook.guildId);
+    } catch {
+      return "unknown";
+    }
+  }
+  return out;
+}
+
 /**
  * Returns the refusal text when a direct-post tool targets a guild whose
  * project sets posts.require_approval, or undefined to let the call run.
