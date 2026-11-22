@@ -1,5 +1,11 @@
 # discord-ops
 
+## 0.29.0
+
+### Minor Changes
+
+- 6b6d39a: Posting kit: `posts.approval_emojis` sets which reactions approve a preview (default `["✅"]`, up to 5). Only approvers' reactions count, whatever the emoji, and bots never count. Approval and refusal messages name the configured emojis.
+
 ## 0.28.0
 
 ### Minor Changes
