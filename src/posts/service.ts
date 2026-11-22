@@ -231,6 +231,8 @@ export function buildPayload(
     pin: post.pin === true,
     thread_name: rendered.thread?.name ?? null,
     tags: rendered.thread?.tags ?? [],
+    // Only present when set, so payloads (and hashes) of unlabelled posts are unchanged.
+    ...(post.revision ? { revision: post.revision } : {}),
   };
   return { payload, sha256: payloadSha256(payload) };
 }
@@ -316,7 +318,8 @@ export function previewHeader(
   // The exact destination id and project are part of what the approver \u2705s, so a
   // record copied to another project (same alias, different channel) fails the check.
   const where = label === `<#${bind.channelId}>` ? label : `${label} (<#${bind.channelId}>)`;
-  const parts = [`PREVIEW \u2192 ${where}`, `project ${bind.project}`, payload.type];
+  const revision = payload.revision ? ` ${payload.revision}` : "";
+  const parts = [`PREVIEW${revision} \u2192 ${where}`, `project ${bind.project}`, payload.type];
   if (payload.thread_name) parts.push(`new thread "${payload.thread_name}"`);
   if (payload.tags.length) parts.push(`tags: ${payload.tags.join(", ")}`);
   if (payload.pin) parts.push("will be pinned");
