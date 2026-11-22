@@ -55,6 +55,8 @@ export interface ResolvedPostsConfig {
   previewChannel: string;
   approverUserIds: string[];
   approverRoleIds: string[];
+  /** Reactions that count as an approver's approval (default ["✅"]). */
+  approvalEmojis: string[];
   /** Types send_post may publish directly, without a ✅. */
   autoTypes: PostType[];
   requireApproval: boolean;
@@ -72,6 +74,7 @@ export function resolvePostsConfig(
       ...new Set([...(posts?.approver_user_ids ?? []), ...(project?.owners ?? [])]),
     ],
     approverRoleIds: [...new Set(posts?.approver_role_ids ?? [])],
+    approvalEmojis: [...new Set(posts?.approval_emojis ?? ["✅"])],
     autoTypes: [...new Set(posts?.auto_types ?? [])],
     requireApproval: posts?.require_approval === true,
   };

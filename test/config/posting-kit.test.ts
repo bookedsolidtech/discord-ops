@@ -110,9 +110,16 @@ describe("resolvePostsConfig", () => {
       previewChannel: "feed-preview",
       approverUserIds: [],
       approverRoleIds: [],
+      approvalEmojis: ["✅"],
       autoTypes: [],
       requireApproval: false,
     });
+  });
+
+  it("takes approval_emojis when set", () => {
+    expect(resolvePostsConfig({ posts: { approval_emojis: ["✅", "👍"] } }).approvalEmojis).toEqual(
+      ["✅", "👍"],
+    );
   });
 
   it("reads auto_types and require_approval", () => {

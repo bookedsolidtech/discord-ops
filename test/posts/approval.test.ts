@@ -35,6 +35,54 @@ const noMembers = {
   members: { fetch: vi.fn(async () => Promise.reject(new Error("Unknown Member"))) },
 };
 
+/** One reaction of the given emoji, by the given users. */
+function reacted(emoji: string, who: Array<{ id: string; bot?: boolean }>) {
+  const fetch = vi.fn(async () => new Map(who.map((u) => [u.id, u])));
+  return {
+    reactions: {
+      cache: new Map([
+        [emoji, { emoji: { name: emoji, toString: () => emoji }, users: { fetch } }],
+      ]),
+    },
+  };
+}
+
+describe("findApprover approval_emojis", () => {
+  const thumbs = { ...posts, approverRoleIds: [], approvalEmojis: ["✅", "👍"] };
+  it("matches an emoji whether or not Discord keeps the U+FE0F selector", async () => {
+    const result = await findApprover(reacted("❤", [{ id: "700000000000000001" }]), noMembers, {
+      ...thumbs,
+      approvalEmojis: ["❤️"],
+    });
+    expect(result.approved).toBe(true);
+  });
+  it("accepts an approver's 👍 when configured", async () => {
+    const result = await findApprover(
+      reacted("👍", [{ id: "700000000000000001" }]),
+      noMembers,
+      thumbs,
+    );
+    expect(result).toMatchObject({ approved: true, approvedBy: "700000000000000001" });
+  });
+  it("ignores 👍 by default", async () => {
+    const result = await findApprover(reacted("👍", [{ id: "700000000000000001" }]), noMembers, {
+      ...posts,
+      approverRoleIds: [],
+      approvalEmojis: ["✅"],
+    });
+    expect(result.approved).toBe(false);
+  });
+  it("never counts a non-approver's or a bot's 👍", async () => {
+    const result = await findApprover(
+      reacted("👍", [{ id: "600000000000000009" }, { id: "700000000000000002", bot: true }]),
+      noMembers,
+      thumbs,
+    );
+    expect(result).toMatchObject({ approved: false });
+    expect((result as { reason: string }).reason).toMatch(/non-approvers/);
+  });
+});
+
 describe("findApprover", () => {
   it("finds an approver past the first 100 reactors", async () => {
     const all = [...users(150), { id: "700000000000000001" }];
