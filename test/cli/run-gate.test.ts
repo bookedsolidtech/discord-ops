@@ -76,3 +76,62 @@ describe("discord-ops run — require_approval", () => {
     log.mockRestore();
   });
 });
+
+describe("discord-ops run — deny_tools", () => {
+  const handle = vi.fn().mockResolvedValue({ content: [{ type: "text", text: "deleted" }] });
+
+  beforeEach(() => {
+    allTools.length = 0;
+    handle.mockClear();
+    allTools.push({
+      name: "delete_role",
+      description: "",
+      category: "roles",
+      inputSchema: z.object({ guild_id: z.string(), role_id: z.string() }),
+      handle,
+    } as any);
+  });
+
+  async function run(denyTools: string[], guildId: string) {
+    const cfg = config(false) as any;
+    cfg.global.projects["strawn-games"].deny_tools = denyTools;
+    vi.mocked(loadConfig).mockReturnValue(cfg);
+    const exit = vi.spyOn(process, "exit").mockImplementation(((code: number) => {
+      throw new Error(`exit ${code}`);
+    }) as never);
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    let thrown: string | undefined;
+    try {
+      await runTool(
+        "delete_role",
+        JSON.stringify({ guild_id: guildId, role_id: "300000000000000001" }),
+      );
+    } catch (e) {
+      thrown = (e as Error).message;
+    }
+    const text = err.mock.calls.flat().join(" ");
+    [exit, err, log].forEach((s) => s.mockRestore());
+    return { thrown, text };
+  }
+
+  it("refuses a denied tool in the project's guild", async () => {
+    const { thrown, text } = await run(["delete_role"], "444444444444444444");
+    expect(thrown).toBe("exit 1");
+    expect(text).toMatch(/delete_role.*deny_tools/);
+    expect(handle).not.toHaveBeenCalled();
+  });
+
+  it("refuses to run when deny_tools names an unsupported tool", async () => {
+    const { thrown, text } = await run(["no_such_tool"], "444444444444444444");
+    expect(thrown).toBe("exit 1");
+    expect(text).toContain("no_such_tool");
+    expect(handle).not.toHaveBeenCalled();
+  });
+
+  it("runs the tool in another guild", async () => {
+    const { thrown } = await run(["delete_role"], "555555555555555555");
+    expect(thrown).toBeUndefined();
+    expect(handle).toHaveBeenCalled();
+  });
+});
