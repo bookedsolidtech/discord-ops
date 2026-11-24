@@ -155,6 +155,15 @@ export const ProjectConfigSchema = z.object({
    * (project, alias, channel_id or guild_id). Unknown names fail server startup.
    */
   deny_tools: z.array(z.string()).optional(),
+  /**
+   * Webhook sender inventory: webhook ID → who posts to it (service and the
+   * env or secret name that holds the URL; never the URL itself). An empty
+   * list records that nothing sends to it. When set, delete_webhook and
+   * delete_channel (which deletes the channel's webhooks) refuse, in this
+   * project's guild, any webhook listed with senders and any webhook missing
+   * from the map, unless the call passes `senders_retired: true`.
+   */
+  webhook_senders: z.record(snowflake, z.array(z.string().min(1))).optional(),
   owners: z.array(z.string().regex(/^\d{17,20}$/)).optional(),
   notify_owners_on: z.array(notificationType).optional(),
   /** Persona presets keyed by a short id (e.g. "meelah"), used by send_as and the posting kit */
