@@ -62,3 +62,15 @@ export function invalidDeniedTools(projects: Record<string, { deny_tools?: strin
   }
   return invalid;
 }
+
+/** Why this deny_tools config must be refused, or undefined when it is supported. */
+export function unsupportedDenyToolsError(
+  projects: Record<string, { deny_tools?: string[] }>,
+): string | undefined {
+  const invalid = invalidDeniedTools(projects);
+  if (invalid.length === 0) return undefined;
+  return (
+    `deny_tools names unsupported tools: ${invalid.join(", ")}. ` +
+    `Supported: ${[...DENYABLE_TOOLS].join(", ")}`
+  );
+}
