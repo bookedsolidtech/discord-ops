@@ -47,6 +47,11 @@ export interface ToolDefinition {
    */
   gatesOwnChannels?: boolean;
   /**
+   * Read-only check a destructive tool runs in dry-run mode, where `handle` is
+   * skipped. Returns the refusal `handle` would give, or undefined.
+   */
+  preflight?: (input: any, ctx: ToolContext) => Promise<ToolResult | undefined>;
+  /**
    * The erased handle type at the interface level. `input` is typed as `any`
    * here because `ToolDefinition` is not generic over its input schema — the
    * schema type parameter is lost when tools are collected into `ToolDefinition[]`.
@@ -71,6 +76,7 @@ export function defineTool<TSchema extends z.ZodType>(definition: {
   destructive?: boolean;
   requiresGuild?: boolean;
   gatesOwnChannels?: boolean;
+  preflight?: (input: z.infer<TSchema>, ctx: ToolContext) => Promise<ToolResult | undefined>;
   handle: (input: z.infer<TSchema>, ctx: ToolContext) => Promise<ToolResult>;
 }): ToolDefinition {
   return definition as ToolDefinition;
