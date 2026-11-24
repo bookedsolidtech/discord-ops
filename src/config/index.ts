@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { homedir } from "node:os";
 import { logger } from "../utils/logger.js";
+import { findUnknownProjectKeys } from "./unknown-keys.js";
 import {
   GlobalConfigSchema,
   PerProjectConfigSchema,
@@ -192,6 +193,18 @@ export function loadConfig(): LoadedConfig {
   return { global, perProject, defaultToken };
 }
 
+/** Parses a raw global config, refusing misspelled guard settings the schema would drop. */
+function parseGlobalConfig(raw: unknown): GlobalConfig {
+  const { errors, warnings } = findUnknownProjectKeys(raw);
+  if (errors.length > 0) {
+    throw new Error(`Unknown project config keys that would disable a guard: ${errors.join(", ")}`);
+  }
+  if (warnings.length > 0) {
+    logger.warn(`Ignoring unknown project config keys: ${warnings.join(", ")}`);
+  }
+  return GlobalConfigSchema.parse(raw);
+}
+
 function loadGlobalConfig(): GlobalConfig {
   const configEnv = process.env.DISCORD_OPS_CONFIG;
 
@@ -206,7 +219,7 @@ function loadGlobalConfig(): GlobalConfig {
         `DISCORD_OPS_CONFIG contains invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
-    return GlobalConfigSchema.parse(raw);
+    return parseGlobalConfig(raw);
   }
 
   // H-4: Resolve to absolute path and require .json extension to guard against path traversal
@@ -223,7 +236,7 @@ function loadGlobalConfig(): GlobalConfig {
 
   try {
     const raw = JSON.parse(readFileSync(configPath, "utf-8"));
-    return GlobalConfigSchema.parse(raw);
+    return parseGlobalConfig(raw);
   } catch (err) {
     throw new Error(
       `Failed to parse global config at "${configPath}": ${err instanceof Error ? err.message : String(err)}`,
