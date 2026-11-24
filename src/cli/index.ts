@@ -72,7 +72,7 @@ async function main(): Promise<void> {
     }
     const argsIndex = args.indexOf("--args");
     const rawArgs = argsIndex !== -1 ? args[argsIndex + 1] : "{}";
-    await runTool(toolName, rawArgs);
+    await runTool(toolName, rawArgs, { dryRun: args.includes("--dry-run") });
     return;
   }
 
@@ -93,7 +93,7 @@ async function main(): Promise<void> {
   const discord = new DiscordClient(config.defaultToken);
 
   // Create MCP server with tool context
-  const { server } = createServer({ discord, config });
+  const { server } = createServer({ discord, config }, { dryRun: args.includes("--dry-run") });
 
   // Handle serve subcommand (HTTP/SSE transport)
   if (args[0] === "serve") {
