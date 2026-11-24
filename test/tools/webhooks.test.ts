@@ -267,6 +267,93 @@ describe("delete_webhook", () => {
     );
     expect(mockWebhook.delete).toHaveBeenCalledWith("No longer needed");
   });
+
+  describe("webhook_senders inventory", () => {
+    const HOOK = "888888888888888888";
+    const GUILD = "444444444444444444";
+
+    function ctxWithInventory(
+      inventory: Record<string, string[]> | undefined,
+      guildId: string | null = GUILD,
+    ) {
+      const mockWebhook = createMockWebhook({ name: "Uploads", guildId });
+      const mockClient = { fetchWebhook: vi.fn().mockResolvedValue(mockWebhook) };
+      const ctx = createCtx();
+      (ctx.discord.getClient as any).mockResolvedValue(mockClient);
+      (ctx.config.global.projects["test-project"] as any).webhook_senders = inventory;
+      return { ctx, mockWebhook };
+    }
+
+    it("refuses a webhook the inventory lists with senders", async () => {
+      const { ctx, mockWebhook } = ctxWithInventory({ [HOOK]: ["pulse (SG_UPLOADS_CC)"] });
+      const result = await deleteWebhook.handle({ webhook_id: HOOK, guild_id: GUILD }, ctx);
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain("pulse (SG_UPLOADS_CC)");
+      expect(mockWebhook.delete).not.toHaveBeenCalled();
+    });
+
+    it("refuses a webhook missing from the inventory", async () => {
+      const { ctx, mockWebhook } = ctxWithInventory({ "999999999999999999": [] });
+      const result = await deleteWebhook.handle({ webhook_id: HOOK, guild_id: GUILD }, ctx);
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain("not in the webhook_senders");
+      expect(mockWebhook.delete).not.toHaveBeenCalled();
+    });
+
+    it("deletes a webhook the inventory lists with no senders", async () => {
+      const { ctx, mockWebhook } = ctxWithInventory({ [HOOK]: [] });
+      const result = await deleteWebhook.handle({ webhook_id: HOOK, guild_id: GUILD }, ctx);
+      expect(result.isError).toBeUndefined();
+      expect(mockWebhook.delete).toHaveBeenCalled();
+    });
+
+    it("deletes a listed webhook when senders_retired is true and names the senders", async () => {
+      const { ctx, mockWebhook } = ctxWithInventory({ [HOOK]: ["pulse (SG_UPLOADS_CC)"] });
+      const result = await deleteWebhook.handle(
+        { webhook_id: HOOK, guild_id: GUILD, senders_retired: true },
+        ctx,
+      );
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0]!.text).toContain("Senders confirmed retired: pulse (SG_UPLOADS_CC)");
+      expect(mockWebhook.delete).toHaveBeenCalled();
+    });
+
+    it("ignores an inventory that belongs to another guild", async () => {
+      const { ctx, mockWebhook } = ctxWithInventory({ [HOOK]: ["pulse"] }, "555555555555555555");
+      const result = await deleteWebhook.handle({ webhook_id: HOOK, guild_id: GUILD }, ctx);
+      expect(result.isError).toBeUndefined();
+      expect(mockWebhook.delete).toHaveBeenCalled();
+    });
+
+    it("falls back to guild_id when the webhook has no guild", async () => {
+      const { ctx, mockWebhook } = ctxWithInventory({ [HOOK]: ["pulse"] }, null);
+      const result = await deleteWebhook.handle({ webhook_id: HOOK, guild_id: GUILD }, ctx);
+      expect(result.isError).toBe(true);
+      expect(mockWebhook.delete).not.toHaveBeenCalled();
+    });
+
+    it("refuses when any project in the guild lists a sender", async () => {
+      const { ctx, mockWebhook } = ctxWithInventory({ [HOOK]: [] });
+      (ctx.config.global.projects as any)["second-project"] = {
+        guild_id: GUILD,
+        channels: {},
+        webhook_senders: { [HOOK]: ["pulse"] },
+      };
+      const result = await deleteWebhook.handle({ webhook_id: HOOK, guild_id: GUILD }, ctx);
+      expect(result.isError).toBe(true);
+      expect(mockWebhook.delete).not.toHaveBeenCalled();
+    });
+
+    it("uses the webhook's own guild, not the guild_id argument", async () => {
+      const { ctx, mockWebhook } = ctxWithInventory({ [HOOK]: ["pulse"] });
+      const result = await deleteWebhook.handle(
+        { webhook_id: HOOK, guild_id: "555555555555555555" },
+        ctx,
+      );
+      expect(result.isError).toBe(true);
+      expect(mockWebhook.delete).not.toHaveBeenCalled();
+    });
+  });
 });
 
 // --- execute_webhook ---

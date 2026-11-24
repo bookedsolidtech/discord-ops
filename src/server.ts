@@ -197,8 +197,20 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
           }
         }
 
-        // Dry-run intercept — skip Discord API calls for destructive tools
+        // Dry-run intercept — destructive tools run only their read-only preflight
         if (dryRun && tool.destructive) {
+          const refusal = await tool.preflight?.(parsed, ctx);
+          if (refusal) {
+            auditToolCall({
+              tool: tool.name,
+              params,
+              durationMs: Date.now() - start,
+              success: false,
+              error: sanitizeError(refusal.content[0]?.text),
+            });
+            return refusal;
+          }
+
           const simulated = {
             dryRun: true,
             tool: tool.name,
