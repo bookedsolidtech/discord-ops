@@ -1,5 +1,12 @@
 # discord-ops
 
+## 0.32.0
+
+### Minor Changes
+
+- 8ee7e9b: `discord-ops run` now applies `deny_tools`, and refuses to run when it names an unsupported tool, as the MCP server does. Config loading refuses a misspelled `deny_tools`, `webhook_senders` or `posts.require_approval` key instead of silently dropping it, and warns about other unknown project keys.
+- 668e483: Dry-run now works everywhere it is documented. `discord-ops run` ignored `DRY_RUN`, `DISCORD_OPS_DRY_RUN` and `--dry-run`, so a rehearsed destructive call really ran, and the MCP server ignored `--dry-run`. `discord-ops run` also applies each project's tool profile, as the MCP server does.
+
 ## 0.31.0
 
 ### Minor Changes
