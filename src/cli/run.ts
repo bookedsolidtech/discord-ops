@@ -1,10 +1,16 @@
 import { loadConfig } from "../config/index.js";
+import { profileGateError } from "../config/tool-gate.js";
+import { dryRunResult, isDryRunEnabled } from "../utils/dry-run.js";
 import { DiscordClient } from "../client.js";
 import { allTools } from "../tools/index.js";
 import { directPostGateError } from "../config/direct-post-gate.js";
 import { denyToolsGateError, unsupportedDenyToolsError } from "../config/deny-tools-gate.js";
 
-export async function runTool(toolName: string, rawArgs: string): Promise<void> {
+export async function runTool(
+  toolName: string,
+  rawArgs: string,
+  options: { dryRun?: boolean } = {},
+): Promise<void> {
   // Find tool
   const tool = allTools.find((t) => t.name === toolName);
   if (!tool) {
@@ -57,7 +63,24 @@ export async function runTool(toolName: string, rawArgs: string): Promise<void> 
       process.exit(1);
     }
 
-    const result = await tool.handle(parsed.data, { discord, config });
+    // Same per-project tool profile gate the MCP server applies.
+    const input = parsed.data as Record<string, unknown>;
+    if (typeof input.project === "string") {
+      const channelAlias = typeof input.channel === "string" ? input.channel : undefined;
+      const profileError = profileGateError(toolName, input.project, channelAlias, config, {
+        projectLevelOnly: tool.gatesOwnChannels === true,
+      });
+      if (profileError) {
+        console.error(profileError);
+        process.exit(1);
+      }
+    }
+
+    const ctx = { discord, config };
+    const result =
+      tool.destructive && isDryRunEnabled(options.dryRun)
+        ? await dryRunResult(tool, input, ctx)
+        : await tool.handle(parsed.data, ctx);
 
     if (result.isError) {
       const text = result.content.map((c) => c.text).join("\n");

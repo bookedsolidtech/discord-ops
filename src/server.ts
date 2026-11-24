@@ -6,6 +6,7 @@ import type { ToolContext } from "./tools/types.js";
 import { sanitizeError } from "./security/sanitizer.js";
 import { auditToolCall } from "./security/audit.js";
 import { RateLimiter } from "./security/rate-limiter.js";
+import { dryRunResult, isDryRunEnabled } from "./utils/dry-run.js";
 import { checkPermissions } from "./security/permissions.js";
 import { filterTools, validateProfileToolNames } from "./profiles/index.js";
 import { logger } from "./utils/logger.js";
@@ -49,13 +50,8 @@ export interface CreateServerResult {
   meta: ServerMeta;
 }
 
-function isDryRunEnabled(options?: ServerOptions): boolean {
-  if (options?.dryRun) return true;
-  return !!(process.env.DISCORD_OPS_DRY_RUN || process.env.DRY_RUN);
-}
-
 export function createServer(ctx: ToolContext, options?: ServerOptions): CreateServerResult {
-  const dryRun = isDryRunEnabled(options);
+  const dryRun = isDryRunEnabled(options?.dryRun);
 
   if (dryRun) {
     logger.warn("Dry-run mode active — destructive tools will simulate execution");
@@ -190,37 +186,17 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
 
         // Dry-run intercept — destructive tools run only their read-only preflight
         if (dryRun && tool.destructive) {
-          const refusal = await tool.preflight?.(parsed, ctx);
-          if (refusal) {
-            auditToolCall({
-              tool: tool.name,
-              params,
-              durationMs: Date.now() - start,
-              success: false,
-              error: sanitizeError(refusal.content[0]?.text),
-            });
-            return refusal;
-          }
-
-          const simulated = {
-            dryRun: true,
-            tool: tool.name,
-            action: "simulated",
-            params: parsed,
-            message: `[DRY RUN] Would execute ${tool.name} — no changes made`,
-          };
+          const simulated = await dryRunResult(tool, parsed, ctx);
 
           auditToolCall({
             tool: tool.name,
             params,
             durationMs: Date.now() - start,
-            success: true,
-            error: undefined,
+            success: !simulated.isError,
+            error: simulated.isError ? sanitizeError(simulated.content[0]?.text) : undefined,
           });
 
-          return {
-            content: [{ type: "text" as const, text: JSON.stringify(simulated, null, 2) }],
-          };
+          return simulated;
         }
 
         const result = await tool.handle(parsed, ctx);
