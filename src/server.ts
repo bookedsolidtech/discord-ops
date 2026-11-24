@@ -11,11 +11,7 @@ import { filterTools, validateProfileToolNames } from "./profiles/index.js";
 import { logger } from "./utils/logger.js";
 import { getTokenForProject } from "./config/index.js";
 import { profileGateError } from "./config/tool-gate.js";
-import {
-  DENYABLE_TOOLS,
-  denyToolsGateError,
-  invalidDeniedTools,
-} from "./config/deny-tools-gate.js";
+import { denyToolsGateError, unsupportedDenyToolsError } from "./config/deny-tools-gate.js";
 import { directPostGateError } from "./config/direct-post-gate.js";
 
 const require = createRequire(import.meta.url);
@@ -81,13 +77,8 @@ export function createServer(ctx: ToolContext, options?: ServerOptions): CreateS
   }
 
   // A deny_tools entry that is not supported would deny nothing: refuse to start.
-  const invalidDenied = invalidDeniedTools(ctx.config.global.projects);
-  if (invalidDenied.length > 0) {
-    throw new Error(
-      `deny_tools names unsupported tools: ${invalidDenied.join(", ")}. ` +
-        `Supported: ${[...DENYABLE_TOOLS].join(", ")}`,
-    );
-  }
+  const unsupported = unsupportedDenyToolsError(ctx.config.global.projects);
+  if (unsupported) throw new Error(unsupported);
 
   const profileName = options?.tools?.length ? "custom" : (options?.profile ?? "full");
 
