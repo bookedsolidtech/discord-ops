@@ -14,6 +14,8 @@ import { runTool } from "./run.js";
 import { runValidate } from "./validate.js";
 import { runListen } from "./listen.js";
 import { validateFlags } from "./validate-flags.js";
+import { serverOptionsFromArgs } from "./tool-selection.js";
+import { PROFILE_NAMES } from "../profiles/index.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string };
@@ -44,6 +46,9 @@ async function main(): Promise<void> {
     console.log(`discord-ops ${pkg.version}`);
     process.exit(0);
   }
+
+  // Refuses a tool selection it cannot apply before any subcommand runs.
+  const serverOptions = serverOptionsFromArgs(args);
 
   // Handle init subcommand (does not require DISCORD_TOKEN)
   if (args[0] === "init") {
@@ -93,7 +98,7 @@ async function main(): Promise<void> {
   const discord = new DiscordClient(config.defaultToken);
 
   // Create MCP server with tool context
-  const { server } = createServer({ discord, config }, { dryRun: args.includes("--dry-run") });
+  const { server } = createServer({ discord, config }, serverOptions);
 
   // Handle serve subcommand (HTTP/SSE transport)
   if (args[0] === "serve") {
@@ -214,8 +219,8 @@ OPTIONS:
   --allowed-origin <origin>  Allowed CORS origin (default: http://localhost)
   --allow-unauthenticated    Allow serve mode without DISCORD_OPS_HTTP_TOKEN (insecure)
   --args <json>              JSON arguments for the run subcommand
-  --profile <name>           Tool profile: full, monitoring, readonly, moderation
-  --tools <list>             Comma-separated list of tools to enable
+  --profile <name>           Tool profile: ${PROFILE_NAMES.join(", ")}
+  --tools <list>             Comma-separated list of tools to enable (not with --profile)
   --dry-run                  Preview actions without executing
   --stdout                   Also emit each event line to stdout (listen mode)
 
