@@ -608,10 +608,9 @@ discord-ops --profile monitoring
 
 # Load specific tools
 discord-ops --tools "send_message,send_template,health_check"
-
-# Combined (profile as base + add tools)
-discord-ops --profile readonly --tools "send_message"
 ```
+
+`--profile` and `--tools` cannot be combined. An unknown profile or tool name, an empty list, or either flag on a subcommand other than `serve` refuses to start, so a mistyped selection never loads the full tool set.
 
 ### Per-project profile config
 
